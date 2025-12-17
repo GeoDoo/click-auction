@@ -149,6 +149,28 @@
       box-shadow: 0 10px 30px rgba(0, 245, 212, 0.4);
     }
 
+    /* Quick Rules */
+    .rules-quick {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .rule-item {
+      background: rgba(0, 201, 167, 0.1);
+      border: 1px solid rgba(0, 201, 167, 0.3);
+      padding: 0.5rem 1rem;
+      border-radius: 50px;
+      font-size: 0.85rem;
+      color: #aaa;
+    }
+
+    .rule-item strong {
+      color: var(--primary);
+    }
+
     /* Game Screen */
     .game-screen {
       display: none;
@@ -545,6 +567,12 @@
   <div class="join-screen" id="joinScreen">
     <h1 class="logo">CLICK AUCTION</h1>
     <p class="subtitle">Join as a DSP</p>
+    
+    <div class="rules-quick">
+      <div class="rule-item">⏱️ <strong>10 sec</strong> auction</div>
+      <div class="rule-item">👆 Tap = <strong>1 bid</strong></div>
+      <div class="rule-item">🏆 Most bids <strong>wins!</strong></div>
+    </div>
     
     <div class="join-form">
       <div class="input-group">

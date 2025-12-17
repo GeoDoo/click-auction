@@ -287,11 +287,61 @@
       
     }
     
+    /* Rules section */
+    .rules-section {
+      margin-top: 2.5rem;
+      padding: 1.5rem;
+      background: rgba(0, 201, 167, 0.05);
+      border: 1px solid rgba(0, 201, 167, 0.2);
+      border-radius: 16px;
+      max-width: 500px;
+      text-align: left;
+    }
+
+    .rules-section h3 {
+      font-family: 'Orbitron', sans-serif;
+      color: var(--primary);
+      margin: 0 0 1rem 0;
+      font-size: 1.1rem;
+      text-align: center;
+    }
+
+    .rules-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .rule {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      font-size: 0.9rem;
+      color: #ccc;
+      line-height: 1.4;
+    }
+
+    .rule-icon {
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .rule strong {
+      color: var(--secondary);
+    }
+
     @media (max-width: 400px) {
       .logo { font-size: 1.6rem; }
       .qr-container img {
         width: 180px;
         height: 180px;
+      }
+      .rules-section {
+        padding: 1rem;
+        margin-top: 1.5rem;
+      }
+      .rule {
+        font-size: 0.85rem;
       }
     }
   </style>
@@ -333,6 +383,28 @@
       <div class="instruction">
         <span class="instruction-number">3</span>
         <span>Click to bid!</span>
+      </div>
+    </div>
+
+    <div class="rules-section">
+      <h3>📋 How It Works</h3>
+      <div class="rules-list">
+        <div class="rule">
+          <span class="rule-icon">⏱️</span>
+          <span>When the auction starts, you have <strong>10 seconds</strong> to bid</span>
+        </div>
+        <div class="rule">
+          <span class="rule-icon">👆</span>
+          <span>Tap the BID button as <strong>fast as you can</strong> - each tap = 1 bid</span>
+        </div>
+        <div class="rule">
+          <span class="rule-icon">🏆</span>
+          <span>Most bids wins! Winner's ad displays on the big screen</span>
+        </div>
+        <div class="rule">
+          <span class="rule-icon">🎯</span>
+          <span>It's like a real-time <strong>programmatic auction</strong> - you're the DSP!</span>
+        </div>
       </div>
     </div>
 
