@@ -3,6 +3,7 @@ const { Server } = require('socket.io');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
+const { Redis } = require('@upstash/redis');
 
 const app = express();
 const server = http.createServer(app);
@@ -50,13 +51,34 @@ app.use(express.static(path.join(__dirname, 'public')));
 // PERSISTENT SCORES (survives server restarts)
 // ============================================
 const SCORES_FILE = path.join(__dirname, 'scores.json');
+const REDIS_KEY = 'click-auction:stats';
+
+// Initialize Redis if credentials are provided
+let redis = null;
+if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+  redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN,
+  });
+  console.log('🔴 Redis connected (Upstash)');
+} else {
+  console.log('📁 Using local file storage (set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN for cloud persistence)');
+}
 
 // All-time stats structure: { "PlayerName": { wins, totalClicks, roundsPlayed, bestRound, lastPlayed } }
 let allTimeStats = {};
 
-function loadScores() {
+async function loadScores() {
   try {
-    if (fs.existsSync(SCORES_FILE)) {
+    if (redis) {
+      // Load from Redis
+      const data = await redis.get(REDIS_KEY);
+      if (data) {
+        allTimeStats = typeof data === 'string' ? JSON.parse(data) : data;
+        console.log(`📊 Loaded ${Object.keys(allTimeStats).length} player records from Redis`);
+      }
+    } else if (fs.existsSync(SCORES_FILE)) {
+      // Fallback to local file
       const data = fs.readFileSync(SCORES_FILE, 'utf8');
       allTimeStats = JSON.parse(data);
       console.log(`📊 Loaded ${Object.keys(allTimeStats).length} player records from scores.json`);
@@ -67,10 +89,17 @@ function loadScores() {
   }
 }
 
-function saveScores() {
+async function saveScores() {
   try {
-    fs.writeFileSync(SCORES_FILE, JSON.stringify(allTimeStats, null, 2));
-    console.log('💾 Scores saved to scores.json');
+    if (redis) {
+      // Save to Redis
+      await redis.set(REDIS_KEY, JSON.stringify(allTimeStats));
+      console.log('💾 Scores saved to Redis');
+    } else {
+      // Fallback to local file
+      fs.writeFileSync(SCORES_FILE, JSON.stringify(allTimeStats, null, 2));
+      console.log('💾 Scores saved to scores.json');
+    }
   } catch (err) {
     console.error('Error saving scores:', err);
   }
@@ -359,9 +388,9 @@ app.get('/api/stats', (req, res) => {
   });
 });
 
-app.post('/api/stats/reset', (req, res) => {
+app.post('/api/stats/reset', async (req, res) => {
   allTimeStats = {};
-  saveScores();
+  await saveScores();
   console.log('🗑️ All-time stats reset');
   broadcastState();
   res.json({ success: true, message: 'Stats reset' });
