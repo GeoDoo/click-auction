@@ -7,7 +7,7 @@ A real-time multiplayer auction game where audience members compete as DSPs (Dem
 ## 🎮 How It Works
 
 1. **Players join** as "DSPs" via their phones by scanning a QR code
-2. **Host starts** an auction round with a timer (default 10 seconds)
+2. **Host starts** an auction round with a configurable timer (5-60 seconds)
 3. **Players tap** furiously to place bids (each tap = 1 bid)
 4. **Winner's ad** is dynamically generated and displayed on the big screen!
 
@@ -15,7 +15,7 @@ Perfect for conferences, events, and any gathering where you want to gamify prog
 
 ## 📋 Game Rules
 
-- ⏱️ **10 seconds** to bid when the auction starts
+- ⏱️ **Limited time** to bid when the auction starts (host sets duration)
 - 👆 Each tap on the BID button = **1 bid**
 - 🏆 **Most bids wins!** Winner's custom ad displays on screen
 - 🎯 It's like a real-time **programmatic auction** - you're the DSP!
