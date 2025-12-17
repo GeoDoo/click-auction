@@ -1010,7 +1010,111 @@
   <script>
     const socket = io();
     let maxClicks = 1;
+    let lastCountdown = null;
+    let lastStatus = 'waiting';
     const adGenerator = new AdGenerator(800, 500);
+
+    // ==========================================
+    // SOUND MANAGER - For big screen effects
+    // ==========================================
+    const SoundManager = {
+      ctx: null,
+      enabled: true,
+      initialized: false,
+      unlocked: false,
+
+      async init() {
+        if (this.initialized && this.unlocked) return;
+        
+        try {
+          if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            this.initialized = true;
+          }
+          
+          if (this.ctx.state === 'suspended') {
+            await this.ctx.resume();
+          }
+          
+          if (!this.unlocked) {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            gain.gain.value = 0.001;
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start();
+            osc.stop(this.ctx.currentTime + 0.01);
+            this.unlocked = true;
+            console.log('🔊 Display audio unlocked!');
+          }
+        } catch (e) {
+          console.log('Sound error:', e);
+        }
+      },
+
+      beep(freq = 440, duration = 0.1, type = 'sine', volume = 0.5) {
+        if (!this.ctx || !this.enabled || !this.unlocked) return;
+        
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          gain.gain.setValueAtTime(volume, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+          
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          
+          osc.start(this.ctx.currentTime);
+          osc.stop(this.ctx.currentTime + duration);
+        } catch (e) {}
+      },
+
+      countdownTick() {
+        this.beep(520, 0.2, 'sine', 0.7);
+      },
+
+      go() {
+        if (!this.ctx || !this.enabled || !this.unlocked) return;
+        
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(900, this.ctx.currentTime + 0.3);
+          gain.gain.setValueAtTime(0.6, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
+          
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          
+          osc.start(this.ctx.currentTime);
+          osc.stop(this.ctx.currentTime + 0.4);
+        } catch (e) {}
+      },
+
+      winner() {
+        if (!this.ctx || !this.enabled || !this.unlocked) return;
+        
+        const notes = [523, 659, 784, 1047, 1319];
+        notes.forEach((freq, i) => {
+          setTimeout(() => this.beep(freq, 0.45, 'sine', 0.6), i * 120);
+        });
+      },
+
+      toggle() {
+        this.enabled = !this.enabled;
+        return this.enabled;
+      }
+    };
+
+    // Initialize sound on any interaction
+    document.addEventListener('click', () => SoundManager.init());
+    document.addEventListener('touchstart', () => SoundManager.init());
 
     // Fetch config to get the correct base URL
     fetch('/api/config')
@@ -1067,6 +1171,11 @@
         countdownOverlay.className = 'countdown-overlay active';
         countdownNumber.textContent = state.timeRemaining;
         countdownNumber.style.animation = 'none';
+        // Play countdown sound
+        if (lastCountdown !== state.timeRemaining) {
+          lastCountdown = state.timeRemaining;
+          SoundManager.countdownTick();
+        }
         countdownNumber.offsetHeight; // Trigger reflow
         countdownNumber.style.animation = 'countdown-pop 1s ease-out';
       } else if (state.status === 'bidding') {
@@ -1074,6 +1183,10 @@
         timerValue.textContent = state.timeRemaining;
         timerValue.className = 'timer-value' + (state.timeRemaining <= 3 ? ' urgent' : '');
         countdownOverlay.className = 'countdown-overlay';
+        // Play GO sound when bidding starts
+        if (lastStatus !== 'bidding') {
+          SoundManager.go();
+        }
       } else if (state.status === 'finished') {
         timerLabel.textContent = 'Auction Complete';
         timerValue.textContent = '✓';
@@ -1117,9 +1230,16 @@
         showResultsScreen(state);
         resultsScreen.className = 'results-screen active';
         createConfetti();
+        // Play winner fanfare (only once)
+        if (lastStatus !== 'finished') {
+          SoundManager.winner();
+        }
       } else {
         resultsScreen.className = 'results-screen';
       }
+      
+      // Track last status for sound triggers
+      lastStatus = state.status;
     }
 
     function showResultsScreen(state) {

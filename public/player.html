@@ -223,6 +223,30 @@
     .status-bidding { background: rgba(0, 255, 136, 0.2); color: var(--success); }
     .status-finished { background: rgba(0, 245, 212, 0.2); color: var(--primary); }
 
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .sound-toggle {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 0.4rem 0.6rem;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .sound-toggle:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .sound-toggle.muted {
+      opacity: 0.5;
+    }
+
     .game-main {
       flex: 1;
       display: flex;
@@ -595,7 +619,10 @@
         <div class="player-color-dot" id="playerColorDot"></div>
         <span class="player-name-display" id="playerNameDisplay"></span>
       </div>
-      <div class="game-status-badge status-waiting" id="gameStatusBadge">Waiting</div>
+      <div class="header-right">
+        <button class="sound-toggle" id="soundToggle" onclick="toggleSound()">🔊</button>
+        <div class="game-status-badge status-waiting" id="gameStatusBadge">Waiting</div>
+      </div>
     </div>
 
     <div class="game-main">
@@ -639,10 +666,155 @@
     let myColor = '#00f5d4';
     let myName = '';
     let gameStatus = 'waiting';
+    let lastCountdown = null;
+
+    // ==========================================
+    // SOUND MANAGER - Works on all devices!
+    // ==========================================
+    const SoundManager = {
+      ctx: null,
+      enabled: true,
+      initialized: false,
+      unlocked: false,
+
+      // Initialize and unlock audio context
+      async init() {
+        if (this.initialized && this.unlocked) return;
+        
+        try {
+          // Create context if not exists
+          if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            this.initialized = true;
+          }
+          
+          // Resume if suspended (required for Chrome/Android)
+          if (this.ctx.state === 'suspended') {
+            await this.ctx.resume();
+          }
+          
+          // Play a silent sound to fully unlock audio (Android fix)
+          if (!this.unlocked) {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            gain.gain.value = 0.001; // Nearly silent
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start();
+            osc.stop(this.ctx.currentTime + 0.01);
+            this.unlocked = true;
+            console.log('🔊 Audio unlocked!');
+          }
+        } catch (e) {
+          console.log('Sound error:', e);
+        }
+      },
+
+      // Play a beep sound with given frequency and duration
+      beep(freq = 440, duration = 0.1, type = 'sine', volume = 0.5) {
+        if (!this.ctx || !this.enabled || !this.unlocked) return;
+        
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          gain.gain.setValueAtTime(volume, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+          
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          
+          osc.start(this.ctx.currentTime);
+          osc.stop(this.ctx.currentTime + duration);
+        } catch (e) {
+          console.log('Beep error:', e);
+        }
+      },
+
+      // Tap sound - short click
+      tap() {
+        this.beep(880, 0.04, 'square', 0.4);
+      },
+
+      // Countdown tick - lower beep
+      countdownTick() {
+        this.beep(520, 0.15, 'sine', 0.6);
+      },
+
+      // GO sound - rising tone
+      go() {
+        if (!this.ctx || !this.enabled || !this.unlocked) return;
+        
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(900, this.ctx.currentTime + 0.25);
+          gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.35);
+          
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          
+          osc.start(this.ctx.currentTime);
+          osc.stop(this.ctx.currentTime + 0.35);
+        } catch (e) {
+          console.log('Go sound error:', e);
+        }
+      },
+
+      // Winner fanfare
+      winner() {
+        if (!this.ctx || !this.enabled || !this.unlocked) return;
+        
+        const notes = [523, 659, 784, 1047];
+        notes.forEach((freq, i) => {
+          setTimeout(() => this.beep(freq, 0.35, 'sine', 0.5), i * 100);
+        });
+      },
+
+      // Loser/end sound
+      end() {
+        this.beep(330, 0.3, 'sine', 0.4);
+      },
+
+      toggle() {
+        this.enabled = !this.enabled;
+        return this.enabled;
+      }
+    };
+
+    // Initialize sound on first user interaction (critical for mobile!)
+    function initAudio() {
+      SoundManager.init();
+    }
+    document.addEventListener('click', initAudio);
+    document.addEventListener('touchstart', initAudio);
+    document.addEventListener('touchend', initAudio);
+
+    // Toggle sound on/off
+    function toggleSound() {
+      const enabled = SoundManager.toggle();
+      const btn = document.getElementById('soundToggle');
+      btn.textContent = enabled ? '🔊' : '🔇';
+      btn.classList.toggle('muted', !enabled);
+      // Play a test beep if turning on
+      if (enabled) {
+        SoundManager.init();
+        SoundManager.beep(600, 0.1, 'sine', 0.2);
+      }
+    }
 
     function joinGame() {
       const name = document.getElementById('playerName').value.trim() || 'Anonymous DSP';
       const adContent = document.getElementById('adContent').value.trim() || `${name} wins! 🎉`;
+      
+      // Initialize audio on join (user interaction)
+      SoundManager.init();
       
       myName = name;
       socket.emit('joinGame', { name, adContent });
@@ -668,6 +840,9 @@
       
       myClicks++;
       socket.emit('click');
+      
+      // Sound effect
+      SoundManager.tap();
       
       // Update counter with animation
       const counter = document.getElementById('clickCounter');
@@ -725,10 +900,19 @@
         timerLabel.textContent = 'Get Ready!';
         timerValue.textContent = state.timeRemaining;
         timerValue.className = 'timer-value countdown';
+        // Play countdown tick sound
+        if (lastCountdown !== state.timeRemaining) {
+          lastCountdown = state.timeRemaining;
+          SoundManager.countdownTick();
+        }
       } else if (state.status === 'bidding') {
         timerLabel.textContent = 'BID NOW!';
         timerValue.textContent = state.timeRemaining;
         timerValue.className = 'timer-value' + (state.timeRemaining <= 3 ? ' urgent' : '');
+        // Play GO sound when bidding starts
+        if (gameStatus !== 'bidding') {
+          SoundManager.go();
+        }
       } else if (state.status === 'finished') {
         timerLabel.textContent = 'Auction Complete';
         timerValue.textContent = '✓';
@@ -775,6 +959,13 @@
           const totalPlayers = state.leaderboard.length;
           
           overlay.className = 'winner-overlay active' + (isWinner ? ' you-won' : '');
+          
+          // Play sound based on result
+          if (isWinner) {
+            SoundManager.winner();
+          } else {
+            SoundManager.end();
+          }
           
           // Different display based on rank
           if (isWinner) {
