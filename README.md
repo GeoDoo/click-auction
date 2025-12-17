@@ -2,16 +2,27 @@
 
 A real-time multiplayer auction game where audience members compete as DSPs (Demand-Side Platforms) to win the bid by clicking as fast as possible!
 
+**Live Demo:** https://click-auction.onrender.com
+
 ## 🎮 How It Works
 
-1. **Players join** as "DSPs" via their phones/devices
-2. **Host starts** an auction round with a timer
-3. **Players click** furiously to place bids (each click = 1 bid)
-4. **Winner's ad** is displayed on the big screen when time runs out!
+1. **Players join** as "DSPs" via their phones by scanning a QR code
+2. **Host starts** an auction round with a timer (default 10 seconds)
+3. **Players tap** furiously to place bids (each tap = 1 bid)
+4. **Winner's ad** is dynamically generated and displayed on the big screen!
 
 Perfect for conferences, events, and any gathering where you want to gamify programmatic advertising concepts.
 
+## 📋 Game Rules
+
+- ⏱️ **10 seconds** to bid when the auction starts
+- 👆 Each tap on the BID button = **1 bid**
+- 🏆 **Most bids wins!** Winner's custom ad displays on screen
+- 🎯 It's like a real-time **programmatic auction** - you're the DSP!
+
 ## 🚀 Quick Start
+
+### Local Development
 
 ```bash
 # Install dependencies
@@ -21,73 +32,121 @@ npm install
 npm start
 ```
 
-Then open your browser:
-- **Landing Page:** http://localhost:3000
+Open your browser:
+- **Landing Page (QR Code):** http://localhost:3000
 - **Player View:** http://localhost:3000/play
 - **Host Control:** http://localhost:3000/host
 - **Big Screen Display:** http://localhost:3000/display
 
+### Cloud Deployment (Render)
+
+1. Push to GitHub
+2. Connect to [Render](https://render.com)
+3. Deploy as Web Service
+4. (Optional) Add Redis for persistent scores
+
 ## 📱 Pages
+
+### `/` - Landing Page
+Display on a screen for players to join:
+- Large QR code for easy scanning
+- Game rules and instructions
+- Clean, branded interface
 
 ### `/play` - Player Page
 Share this URL with your audience. Players:
 - Enter their DSP name
-- Optionally add a custom "winning ad" message
-- Smash the BIG button during the auction!
+- Add a custom "winning ad" message
+- Tap the BIG button during the auction!
 
 ### `/host` - Host Control Panel
 For the event organizer:
 - Set auction duration (5-60 seconds)
 - Start/reset auctions
-- View all connected players
+- View connected players with live click counts
 - Kick troublemakers 😈
+- QR code for easy sharing
+- All-time stats leaderboard
 
 ### `/display` - Big Screen
-Project this on a screen for everyone to see:
+Project this for everyone to see:
 - Live countdown timer
-- Real-time leaderboard with click counts
-- Epic winner announcement with confetti! 🎊
+- Real-time leaderboard with click animations
+- Podium for top 3 players
+- Dynamic winner ad generation with confetti! 🎊
+- All-time champions section
 
 ## 🎯 Game Flow
 
 1. **Waiting** - Players join, host prepares
 2. **Countdown** - 3, 2, 1... builds anticipation!
-3. **Bidding** - CLICK! CLICK! CLICK!
-4. **Winner** - Celebration screen with the winning DSP's ad
+3. **Bidding** - TAP! TAP! TAP!
+4. **Winner** - Celebration with dynamically generated ad
+
+## 🔧 Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `PORT` | Auto | Set by hosting platform |
+| `UPSTASH_REDIS_REST_URL` | Optional | Redis URL for persistent scores |
+| `UPSTASH_REDIS_REST_TOKEN` | Optional | Redis token for authentication |
+
+### Setting up Persistence (Optional)
+
+1. Create free account at [Upstash](https://upstash.com)
+2. Create a Redis database
+3. Add environment variables to Render:
+   - `UPSTASH_REDIS_REST_URL`
+   - `UPSTASH_REDIS_REST_TOKEN`
+
+Without Redis, scores persist locally but reset on redeploy.
+
+## 🛠 Tech Stack
+
+- **Backend:** Node.js + Express
+- **Real-time:** Socket.io
+- **Persistence:** Upstash Redis (optional) / Local JSON file
+- **Frontend:** Vanilla HTML/CSS/JS
+- **Hosting:** Render (or any Node.js host)
+
+## 💡 Tips for Running Events
+
+1. **Display the landing page** on a big screen for QR code scanning
+2. **Open `/host`** on your laptop to control the game
+3. **Project `/display`** on another screen for the leaderboard
+4. Test with a few people before the main event
+5. Use fullscreen mode (F11) for `/display`
+
+## 🎨 Branding
+
+The game features **VIOOH's brand colors**:
+- Primary: `#00C9A7` (Teal)
+- Secondary: `#845EC2` (Purple)  
+- Accent: `#F15BB5` (Pink)
+
+Customize in any HTML file's `:root` CSS variables.
 
 ## 🏆 Prize Ideas
 
 - DOOH swag
 - Gift cards
 - Bragging rights
-- A real programmatic campaign credit! 
+- A real programmatic campaign credit!
 
-## 🛠 Tech Stack
+## 📁 Project Structure
 
-- **Backend:** Node.js + Express
-- **Real-time:** Socket.io
-- **Frontend:** Vanilla HTML/CSS/JS (no framework needed!)
-
-## 💡 Tips for Running
-
-1. Use a **local network** - all devices should be on the same WiFi
-2. Share the `/play` URL via QR code for easy joining
-3. Test with a few people before the main event
-4. Have the `/display` page on fullscreen (F11)
-
-## 🎨 Customization
-
-The game uses CSS variables for easy theming. Edit the `:root` section in any HTML file to change colors:
-
-```css
-:root {
-  --primary: #00f5d4;   /* Cyan accent */
-  --secondary: #7b2cbf; /* Purple */
-  --accent: #f15bb5;    /* Pink */
-  --success: #00ff88;   /* Green for clicks */
-  --warning: #ffbe0b;   /* Yellow for alerts */
-  --danger: #ff006e;    /* Red for urgency */
-}
+```
+click-auction/
+├── server.js           # Main server with Socket.io
+├── package.json
+├── render.yaml         # Render deployment config
+├── public/
+│   ├── index.html      # Landing page with QR
+│   ├── player.html     # Player bidding interface
+│   ├── host.html       # Host control panel
+│   ├── display.html    # Big screen display
+│   └── ad-generator.js # Dynamic ad image generator
+└── scores.json         # Local persistence (auto-created)
 ```
 
 ## 🤝 Credits
@@ -97,4 +156,3 @@ Built for **VIOOH** - The world's leading premium digital out-of-home (DOOH) sup
 ---
 
 *May the fastest fingers win!* 👆💨
-
