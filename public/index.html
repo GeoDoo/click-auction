@@ -339,13 +339,24 @@
   </div>
 
   <script>
-    // Generate QR Code using API
-    const playUrl = window.location.origin + '/play';
-    document.getElementById('urlDisplay').textContent = playUrl;
-    
-    // Use QR Server API (free, no signup needed)
-    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(playUrl)}&bgcolor=ffffff&color=0a0a0f&margin=10`;
-    document.getElementById('qrcode').src = qrApiUrl;
+    // Fetch config to get the correct base URL (local network or production)
+    fetch('/api/config')
+      .then(res => res.json())
+      .then(config => {
+        const playUrl = config.baseUrl + '/play';
+        document.getElementById('urlDisplay').textContent = playUrl;
+        
+        // Use QR Server API (free, no signup needed)
+        const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(playUrl)}&bgcolor=ffffff&color=0a0a0f&margin=10`;
+        document.getElementById('qrcode').src = qrApiUrl;
+      })
+      .catch(() => {
+        // Fallback to origin if config fails
+        const playUrl = window.location.origin + '/play';
+        document.getElementById('urlDisplay').textContent = playUrl;
+        const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(playUrl)}&bgcolor=ffffff&color=0a0a0f&margin=10`;
+        document.getElementById('qrcode').src = qrApiUrl;
+      });
   </script>
 </body>
 </html>

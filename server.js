@@ -3,10 +3,49 @@ const { Server } = require('socket.io');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+
+// ============================================
+// CONFIGURATION
+// ============================================
+// Set BASE_URL environment variable for production, or leave empty for local network mode
+// Examples:
+//   LOCAL: unset or empty (uses auto-detected local IP)
+//   PRODUCTION: BASE_URL=https://click-auction-production.up.railway.app
+const PORT = process.env.PORT || 3000;
+const BASE_URL = process.env.BASE_URL || null; // null = auto-detect local IP
+
+function getLocalIP() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return 'localhost';
+}
+
+function getBaseUrl() {
+  if (BASE_URL) {
+    return BASE_URL;
+  }
+  const localIP = getLocalIP();
+  return `http://${localIP}:${PORT}`;
+}
+
+// API endpoint for clients to get the base URL
+app.get('/api/config', (req, res) => {
+  res.json({
+    baseUrl: getBaseUrl(),
+    mode: BASE_URL ? 'production' : 'local'
+  });
+});
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
@@ -349,44 +388,33 @@ app.post('/api/stats/reset', (req, res) => {
   res.json({ success: true, message: 'Stats reset' });
 });
 
-const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0'; // Listen on all network interfaces
 
-// Get local IP address for display
-function getLocalIP() {
-  const { networkInterfaces } = require('os');
-  const nets = networkInterfaces();
-  for (const name of Object.keys(nets)) {
-    for (const net of nets[name]) {
-      if (net.family === 'IPv4' && !net.internal) {
-        return net.address;
-      }
-    }
-  }
-  return 'localhost';
-}
-
 server.listen(PORT, HOST, () => {
-  const localIP = getLocalIP();
+  const baseUrl = getBaseUrl();
+  const mode = BASE_URL ? 'PRODUCTION' : 'LOCAL NETWORK';
+  
   console.log(`
 ╔══════════════════════════════════════════════════════════════════╗
 ║                      🎯 CLICK AUCTION 🎯                          ║
 ╠══════════════════════════════════════════════════════════════════╣
+║  Mode: ${mode.padEnd(56)}║
+╠══════════════════════════════════════════════════════════════════╣
 ║                                                                  ║
-║  🖥️  Local:    http://localhost:${PORT}                             ║
-║  📱  Network:  http://${localIP}:${PORT}                        ║
+║  🌐 Base URL: ${baseUrl.padEnd(49)}║
 ║                                                                  ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║  SHARE THIS WITH PLAYERS:                                        ║
 ║                                                                  ║
-║     http://${localIP}:${PORT}/play                              ║
+║     ${(baseUrl + '/play').padEnd(59)}║
 ║                                                                  ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║  Routes:                                                         ║
-║    /        - Landing page                                       ║
-║    /play    - Player page (DSPs join here)                       ║
-║    /host    - Host control panel                                 ║
-║    /display - Big screen display                                 ║
+║    /           - Landing page with QR code                       ║
+║    /play       - Player page (DSPs join here)                    ║
+║    /host       - Host control panel                              ║
+║    /display    - Big screen display                              ║
+║    /api/config - Get current configuration                       ║
 ║                                                                  ║
 ╚══════════════════════════════════════════════════════════════════╝
   `);

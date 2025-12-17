@@ -1012,13 +1012,21 @@
     let maxClicks = 1;
     const adGenerator = new AdGenerator(800, 500);
 
-    // Set join URL and QR code
-    const playUrl = window.location.origin + '/play';
-    document.getElementById('joinUrl').textContent = playUrl;
-    
-    // Generate QR code
-    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(playUrl)}&bgcolor=ffffff&color=0a0b1e&margin=5`;
-    document.getElementById('joinQr').src = qrApiUrl;
+    // Fetch config to get the correct base URL
+    fetch('/api/config')
+      .then(res => res.json())
+      .then(config => {
+        const playUrl = config.baseUrl + '/play';
+        document.getElementById('joinUrl').textContent = playUrl;
+        const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(playUrl)}&bgcolor=ffffff&color=0a0b1e&margin=5`;
+        document.getElementById('joinQr').src = qrApiUrl;
+      })
+      .catch(() => {
+        const playUrl = window.location.origin + '/play';
+        document.getElementById('joinUrl').textContent = playUrl;
+        const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(playUrl)}&bgcolor=ffffff&color=0a0b1e&margin=5`;
+        document.getElementById('joinQr').src = qrApiUrl;
+      });
 
     function updateUI(state) {
       // Update background
