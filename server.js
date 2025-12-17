@@ -3,7 +3,6 @@ const { Server } = require('socket.io');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
 
 const app = express();
 const server = http.createServer(app);
@@ -12,38 +11,18 @@ const io = new Server(server);
 // ============================================
 // CONFIGURATION
 // ============================================
-// Set BASE_URL environment variable for production, or leave empty for local network mode
-// Examples:
-//   LOCAL: unset or empty (uses auto-detected local IP)
-//   PRODUCTION: BASE_URL=https://click-auction.onrender.com
 const PORT = process.env.PORT || 3000;
-const BASE_URL = process.env.BASE_URL || null; // null = auto-detect local IP
-
-function getLocalIP() {
-  const interfaces = os.networkInterfaces();
-  for (const name of Object.keys(interfaces)) {
-    for (const iface of interfaces[name]) {
-      if (iface.family === 'IPv4' && !iface.internal) {
-        return iface.address;
-      }
-    }
-  }
-  return 'localhost';
-}
-
-function getBaseUrl() {
-  if (BASE_URL) {
-    return BASE_URL;
-  }
-  const localIP = getLocalIP();
-  return `http://${localIP}:${PORT}`;
-}
 
 // API endpoint for clients to get the base URL
+// Uses the request's host header - works automatically in both local and production
 app.get('/api/config', (req, res) => {
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  const baseUrl = `${protocol}://${host}`;
+  
   res.json({
-    baseUrl: getBaseUrl(),
-    mode: BASE_URL ? 'production' : 'local'
+    baseUrl: baseUrl,
+    mode: host.includes('localhost') || host.match(/^\d+\.\d+\.\d+\.\d+/) ? 'local' : 'production'
   });
 });
 
@@ -391,23 +370,12 @@ app.post('/api/stats/reset', (req, res) => {
 const HOST = '0.0.0.0'; // Listen on all network interfaces
 
 server.listen(PORT, HOST, () => {
-  const baseUrl = getBaseUrl();
-  const mode = BASE_URL ? 'PRODUCTION' : 'LOCAL NETWORK';
-  
   console.log(`
 ╔══════════════════════════════════════════════════════════════════╗
 ║                      🎯 CLICK AUCTION 🎯                          ║
 ╠══════════════════════════════════════════════════════════════════╣
-║  Mode: ${mode.padEnd(56)}║
-╠══════════════════════════════════════════════════════════════════╣
-║                                                                  ║
-║  🌐 Base URL: ${baseUrl.padEnd(49)}║
-║                                                                  ║
-╠══════════════════════════════════════════════════════════════════╣
-║  SHARE THIS WITH PLAYERS:                                        ║
-║                                                                  ║
-║     ${(baseUrl + '/play').padEnd(59)}║
-║                                                                  ║
+║  Server running on port ${String(PORT).padEnd(39)}║
+║  QR codes auto-detect the correct URL from browser               ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║  Routes:                                                         ║
 ║    /           - Landing page with QR code                       ║
@@ -415,7 +383,6 @@ server.listen(PORT, HOST, () => {
 ║    /host       - Host control panel                              ║
 ║    /display    - Big screen display                              ║
 ║    /api/config - Get current configuration                       ║
-║                                                                  ║
 ╚══════════════════════════════════════════════════════════════════╝
   `);
 });
