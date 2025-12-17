@@ -47,7 +47,24 @@ app.get('/api/config', (req, res) => {
   });
 });
 
-// Serve static files
+// Page routes (defined before static to ensure they always work)
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/play', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'player.html'));
+});
+
+app.get('/host', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'host.html'));
+});
+
+app.get('/display', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'display.html'));
+});
+
+// Serve static files (JS, CSS, images)
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ============================================
@@ -353,23 +370,6 @@ function endAuction() {
   
   broadcastState();
 }
-
-// Routes
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-app.get('/play', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'player.html'));
-});
-
-app.get('/host', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'host.html'));
-});
-
-app.get('/display', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'display.html'));
-});
 
 // API endpoints for stats
 app.get('/api/stats', (req, res) => {
