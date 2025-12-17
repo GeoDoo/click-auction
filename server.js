@@ -15,7 +15,7 @@ const io = new Server(server);
 // Set BASE_URL environment variable for production, or leave empty for local network mode
 // Examples:
 //   LOCAL: unset or empty (uses auto-detected local IP)
-//   PRODUCTION: BASE_URL=https://click-auction-production.up.railway.app
+//   PRODUCTION: BASE_URL=https://click-auction.onrender.com
 const PORT = process.env.PORT || 3000;
 const BASE_URL = process.env.BASE_URL || null; // null = auto-detect local IP
 
