@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Host Control - Click Auction</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #00f5d4;
+      --secondary: #7b2cbf;
+      --accent: #f15bb5;
+      --success: #00ff88;
+      --warning: #ffbe0b;
+      --danger: #ff006e;
+      --dark: #0a0a0f;
+      --darker: #050508;
+      --card-bg: rgba(15, 15, 25, 0.95);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Rajdhani', sans-serif;
+      background: var(--darker);
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+
+    .bg {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: -1;
+      background: 
+        radial-gradient(ellipse at 0% 0%, rgba(241, 91, 181, 0.1) 0%, transparent 50%),
+        radial-gradient(ellipse at 100% 100%, rgba(0, 245, 212, 0.1) 0%, transparent 50%),
+        var(--darker);
+    }
+
+    header {
+      background: var(--card-bg);
+      border-bottom: 1px solid rgba(0, 245, 212, 0.2);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.5rem;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: blink 2s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .main {
+      padding: 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 350px;
+      gap: 2rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid rgba(0, 245, 212, 0.15);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .card h2 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.2rem;
+      color: var(--primary);
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .control-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .setting-row label {
+      flex: 1;
+      font-size: 1.1rem;
+    }
+
+    .setting-row input[type="number"] {
+      width: 100px;
+      padding: 0.75rem 1rem;
+      font-size: 1.2rem;
+      font-family: 'Orbitron', sans-serif;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(0, 245, 212, 0.3);
+      border-radius: 8px;
+      color: var(--primary);
+      text-align: center;
+    }
+
+    .setting-row input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 15px rgba(0, 245, 212, 0.3);
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 1rem 2rem;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      flex: 1;
+      min-width: 150px;
+    }
+
+    .btn-start {
+      background: linear-gradient(135deg, var(--success), #00cc6a);
+      color: var(--dark);
+    }
+
+    .btn-start:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(0, 255, 136, 0.3);
+    }
+
+    .btn-reset {
+      background: linear-gradient(135deg, var(--warning), #e6aa00);
+      color: var(--dark);
+    }
+
+    .btn-reset:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(255, 190, 11, 0.3);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .game-status {
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 0.5rem 1.5rem;
+      border-radius: 50px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1rem;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+
+    .status-waiting { background: rgba(255, 190, 11, 0.2); color: var(--warning); border: 1px solid var(--warning); }
+    .status-countdown { background: rgba(241, 91, 181, 0.2); color: var(--accent); border: 1px solid var(--accent); animation: pulse 0.5s infinite; }
+    .status-bidding { background: rgba(0, 255, 136, 0.2); color: var(--success); border: 1px solid var(--success); animation: pulse 0.3s infinite; }
+    .status-finished { background: rgba(0, 245, 212, 0.2); color: var(--primary); border: 1px solid var(--primary); }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    .timer-display {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 5rem;
+      font-weight: 900;
+      color: var(--primary);
+      text-shadow: 0 0 30px rgba(0, 245, 212, 0.5);
+      line-height: 1;
+    }
+
+    .timer-display.countdown { color: var(--accent); text-shadow: 0 0 30px rgba(241, 91, 181, 0.5); }
+    .timer-display.urgent { color: var(--danger); text-shadow: 0 0 30px rgba(255, 0, 110, 0.5); animation: shake 0.1s infinite; }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-2px); }
+      75% { transform: translateX(2px); }
+    }
+
+    .round-display {
+      font-size: 1.2rem;
+      color: #666;
+      margin-top: 1rem;
+    }
+
+    .players-list {
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    .player-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.75rem;
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+      background: rgba(0, 0, 0, 0.2);
+      transition: all 0.3s ease;
+    }
+
+    .player-row:hover {
+      background: rgba(0, 0, 0, 0.4);
+    }
+
+    .player-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .player-name {
+      flex: 1;
+      font-weight: 500;
+    }
+
+    .player-clicks {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.2rem;
+      color: var(--primary);
+    }
+
+    .btn-kick {
+      padding: 0.3rem 0.6rem;
+      font-size: 0.75rem;
+      background: var(--danger);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      opacity: 0.7;
+    }
+
+    .btn-kick:hover {
+      opacity: 1;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 2rem;
+      color: #666;
+    }
+
+    .winner-display {
+      text-align: center;
+      padding: 1rem;
+    }
+
+    .winner-label {
+      font-size: 1rem;
+      color: var(--warning);
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      margin-bottom: 0.5rem;
+    }
+
+    .winner-name {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.5rem;
+      color: var(--primary);
+    }
+
+    .winner-clicks {
+      font-size: 1rem;
+      color: #888;
+      margin-top: 0.5rem;
+    }
+
+    .qr-section {
+      text-align: center;
+    }
+
+    .join-url {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 1rem;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 0.9rem;
+      color: var(--primary);
+      word-break: break-all;
+      margin-top: 1rem;
+    }
+
+    .all-time-stats-host {
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .all-time-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem;
+      border-radius: 6px;
+      margin-bottom: 0.25rem;
+      background: rgba(255, 190, 11, 0.05);
+      font-size: 0.9rem;
+    }
+
+    .all-time-row .rank {
+      font-family: 'Orbitron', sans-serif;
+      color: var(--warning);
+      width: 25px;
+    }
+
+    .all-time-row .name {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .all-time-row .wins {
+      color: var(--warning);
+      font-weight: 600;
+    }
+
+    .btn-danger {
+      background: var(--danger) !important;
+    }
+
+    @media (max-width: 1000px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg"></div>
+
+  <header>
+    <div class="logo">🎛️ HOST CONTROL</div>
+    <div class="status-indicator">
+      <span class="status-dot"></span>
+      <span id="playerCount">0 Players Connected</span>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="grid">
+      <div>
+        <div class="card">
+          <h2>⚙️ Auction Settings</h2>
+          <div class="control-panel">
+            <div class="setting-row">
+              <label>Auction Duration (seconds)</label>
+              <input type="number" id="duration" value="10" min="5" max="60">
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-start" id="startBtn" onclick="startAuction()">
+                🚀 Start Auction
+              </button>
+              <button class="btn btn-reset" id="resetBtn" onclick="resetAuction()">
+                🔄 Reset
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>📊 Game Status</h2>
+          <div class="game-status">
+            <div class="status-badge status-waiting" id="statusBadge">Waiting</div>
+            <div class="timer-display" id="timerDisplay">--</div>
+            <div class="round-display" id="roundDisplay">Round 0</div>
+          </div>
+          
+          <div class="winner-display" id="winnerDisplay" style="display: none;">
+            <div class="winner-label">🏆 Winner</div>
+            <div class="winner-name" id="winnerName"></div>
+            <div class="winner-clicks" id="winnerClicks"></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <h2>👥 Players</h2>
+          <div class="players-list" id="playersList">
+            <div class="empty-state">No players yet. Share the link!</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>🔗 Join Link</h2>
+          <div class="qr-section">
+            <p>Share this link with players:</p>
+            <div class="join-url" id="joinUrl"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>🏅 All-Time Stats</h2>
+          <div class="all-time-stats-host" id="allTimeStatsHost">
+            <div class="empty-state">Loading stats...</div>
+          </div>
+          <button class="btn btn-danger" style="margin-top: 1rem; background: linear-gradient(135deg, var(--danger), #cc0055); flex: none; min-width: auto; padding: 0.5rem 1rem; font-size: 0.8rem;" onclick="resetAllTimeStats()">
+            🗑️ Reset All Stats
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    // Set join URL
+    document.getElementById('joinUrl').textContent = window.location.origin + '/play';
+
+    function startAuction() {
+      const duration = parseInt(document.getElementById('duration').value) || 10;
+      socket.emit('startAuction', { duration });
+    }
+
+    function resetAuction() {
+      socket.emit('resetAuction');
+    }
+
+    function kickPlayer(playerId) {
+      if (confirm('Kick this player?')) {
+        socket.emit('kickPlayer', playerId);
+      }
+    }
+
+    function updateUI(state) {
+      // Update player count
+      document.getElementById('playerCount').textContent = `${state.playerCount} Players Connected`;
+
+      // Update status badge
+      const badge = document.getElementById('statusBadge');
+      badge.className = 'status-badge status-' + state.status;
+      badge.textContent = state.status.charAt(0).toUpperCase() + state.status.slice(1);
+
+      // Update timer
+      const timer = document.getElementById('timerDisplay');
+      if (state.status === 'waiting') {
+        timer.textContent = '--';
+        timer.className = 'timer-display';
+      } else {
+        timer.textContent = state.timeRemaining;
+        timer.className = 'timer-display' + 
+          (state.status === 'countdown' ? ' countdown' : '') +
+          (state.status === 'bidding' && state.timeRemaining <= 3 ? ' urgent' : '');
+      }
+
+      // Update round
+      document.getElementById('roundDisplay').textContent = `Round ${state.round}`;
+
+      // Update buttons
+      document.getElementById('startBtn').disabled = state.status === 'countdown' || state.status === 'bidding';
+      document.getElementById('resetBtn').disabled = state.status === 'countdown' || state.status === 'bidding';
+
+      // Update players list
+      const playersList = document.getElementById('playersList');
+      if (state.leaderboard.length === 0) {
+        playersList.innerHTML = '<div class="empty-state">No players yet. Share the link!</div>';
+      } else {
+        playersList.innerHTML = state.leaderboard.map(player => `
+          <div class="player-row">
+            <div class="player-color" style="background: ${player.color}"></div>
+            <div class="player-name">${escapeHtml(player.name)}</div>
+            <div class="player-clicks">${player.clicks}</div>
+            <button class="btn-kick" onclick="kickPlayer('${player.id}')">✕</button>
+          </div>
+        `).join('');
+      }
+
+      // Update winner display
+      const winnerDisplay = document.getElementById('winnerDisplay');
+      if (state.status === 'finished' && state.winner) {
+        winnerDisplay.style.display = 'block';
+        document.getElementById('winnerName').textContent = state.winner.name;
+        document.getElementById('winnerClicks').textContent = `${state.winner.clicks} clicks`;
+      } else {
+        winnerDisplay.style.display = 'none';
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    socket.on('gameState', (state) => {
+      updateUI(state);
+      updateAllTimeStats(state.allTimeLeaderboard || []);
+    });
+    
+    socket.on('clickUpdate', (data) => {
+      // Update individual player's clicks in real-time
+      const playersList = document.getElementById('playersList');
+      const rows = playersList.querySelectorAll('.player-row');
+      // The full state update will handle reordering
+    });
+
+    function updateAllTimeStats(allTime) {
+      const container = document.getElementById('allTimeStatsHost');
+      if (allTime.length === 0) {
+        container.innerHTML = '<div class="empty-state" style="padding: 1rem;">No stats yet</div>';
+        return;
+      }
+      
+      container.innerHTML = allTime.slice(0, 10).map((player, i) => `
+        <div class="all-time-row">
+          <span class="rank">${i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}</span>
+          <span class="name">${escapeHtml(player.name)}</span>
+          <span class="wins">🏆 ${player.wins}</span>
+        </div>
+      `).join('');
+    }
+
+    function resetAllTimeStats() {
+      if (confirm('⚠️ This will permanently delete ALL player stats. Are you sure?')) {
+        socket.emit('resetAllTimeStats');
+        alert('Stats have been reset!');
+      }
+    }
+  </script>
+</body>
+</html>
+

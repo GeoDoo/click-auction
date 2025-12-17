@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Display - Click Auction</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #00f5d4;
+      --secondary: #7b2cbf;
+      --accent: #f15bb5;
+      --success: #00ff88;
+      --warning: #ffbe0b;
+      --danger: #ff006e;
+      --dark: #0a0a0f;
+      --darker: #050508;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Rajdhani', sans-serif;
+      background: var(--darker);
+      color: #e0e0e0;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    .bg {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: -2;
+      background: 
+        radial-gradient(ellipse at 20% 80%, rgba(123, 44, 191, 0.2) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(0, 245, 212, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(241, 91, 181, 0.1) 0%, transparent 70%),
+        var(--darker);
+      transition: background 0.5s ease;
+    }
+
+    .bg.bidding {
+      background: 
+        radial-gradient(ellipse at 50% 50%, rgba(0, 255, 136, 0.25) 0%, transparent 50%),
+        var(--darker);
+    }
+
+    .grid-overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: -1;
+      background-image: 
+        linear-gradient(rgba(0, 245, 212, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 245, 212, 0.03) 1px, transparent 1px);
+      background-size: 80px 80px;
+    }
+
+    .container {
+      height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      padding: 2rem;
+      gap: 2rem;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 2.5rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .status-section {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+    }
+
+    .round-badge {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1rem;
+      color: #666;
+    }
+
+    .status-badge {
+      padding: 0.75rem 2rem;
+      border-radius: 50px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .status-waiting { background: rgba(255, 190, 11, 0.2); color: var(--warning); border: 2px solid var(--warning); }
+    .status-countdown { background: rgba(241, 91, 181, 0.2); color: var(--accent); border: 2px solid var(--accent); animation: pulse 0.5s infinite; }
+    .status-bidding { background: rgba(0, 255, 136, 0.2); color: var(--success); border: 2px solid var(--success); animation: pulse 0.3s infinite; }
+    .status-finished { background: rgba(0, 245, 212, 0.2); color: var(--primary); border: 2px solid var(--primary); }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    /* Main Content */
+    .main-content {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 2rem;
+    }
+
+    /* Timer Section */
+    .timer-section {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+
+    .timer-circle {
+      width: 400px;
+      height: 400px;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.3);
+      border: 4px solid rgba(0, 245, 212, 0.3);
+      position: relative;
+    }
+
+    .timer-circle::before {
+      content: '';
+      position: absolute;
+      top: -4px; left: -4px; right: -4px; bottom: -4px;
+      border-radius: 50%;
+      border: 4px solid transparent;
+      border-top-color: var(--primary);
+      animation: spin 2s linear infinite;
+    }
+
+    .timer-circle.countdown::before { border-top-color: var(--accent); }
+    .timer-circle.bidding::before { border-top-color: var(--success); animation-duration: 0.5s; }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .timer-label {
+      font-size: 1.2rem;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.3em;
+      margin-bottom: 0.5rem;
+    }
+
+    .timer-value {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 10rem;
+      font-weight: 900;
+      line-height: 1;
+      color: var(--primary);
+      text-shadow: 0 0 50px rgba(0, 245, 212, 0.5);
+    }
+
+    .timer-value.countdown { color: var(--accent); text-shadow: 0 0 50px rgba(241, 91, 181, 0.5); }
+    .timer-value.urgent { color: var(--danger); animation: shake 0.1s infinite; }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+
+    .message-display {
+      position: absolute;
+      bottom: -60px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 2rem;
+      color: var(--warning);
+      text-transform: uppercase;
+      animation: float 2s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    /* Leaderboard */
+    .leaderboard {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(0, 245, 212, 0.2);
+      border-radius: 20px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .leaderboard-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.2rem;
+      color: var(--primary);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .leaderboard-list {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .leaderboard-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      margin-bottom: 0.5rem;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 12px;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .leaderboard-item:first-child {
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.05));
+      border: 1px solid rgba(255, 215, 0, 0.3);
+    }
+
+    .leaderboard-item:nth-child(2) {
+      background: linear-gradient(135deg, rgba(192, 192, 192, 0.1), rgba(192, 192, 192, 0.05));
+      border: 1px solid rgba(192, 192, 192, 0.2);
+    }
+
+    .leaderboard-item:nth-child(3) {
+      background: linear-gradient(135deg, rgba(205, 127, 50, 0.1), rgba(205, 127, 50, 0.05));
+      border: 1px solid rgba(205, 127, 50, 0.2);
+    }
+
+    .rank {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 900;
+      width: 50px;
+      text-align: center;
+    }
+
+    .rank-1 { color: #ffd700; }
+    .rank-2 { color: #c0c0c0; }
+    .rank-3 { color: #cd7f32; }
+
+    .player-color {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .player-name {
+      flex: 1;
+      font-size: 1.2rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .player-clicks {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--success);
+      min-width: 80px;
+      text-align: right;
+    }
+
+    .click-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 3px;
+      background: var(--success);
+      transition: width 0.2s ease;
+    }
+
+    .empty-leaderboard {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: #555;
+      text-align: center;
+    }
+
+    .empty-leaderboard .icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+    }
+
+    /* Footer */
+    footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #555;
+    }
+
+    .join-info {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .join-url {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.5rem;
+      color: var(--primary);
+      padding: 0.5rem 1.5rem;
+      background: rgba(0, 245, 212, 0.1);
+      border: 1px solid rgba(0, 245, 212, 0.3);
+      border-radius: 8px;
+    }
+
+    .player-count {
+      font-size: 1.2rem;
+    }
+
+    /* Winner Screen */
+    .winner-screen {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: var(--darker);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      text-align: center;
+    }
+
+    .winner-screen.active { display: flex; }
+
+    .winner-bg {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: 
+        radial-gradient(ellipse at 50% 30%, rgba(255, 215, 0, 0.3) 0%, transparent 50%),
+        var(--darker);
+    }
+
+    .winner-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .confetti {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      opacity: 0;
+    }
+
+    .trophy-big {
+      font-size: 12rem;
+      animation: trophy-bounce 1s ease infinite;
+    }
+
+    @keyframes trophy-bounce {
+      0%, 100% { transform: translateY(0) rotate(-5deg); }
+      50% { transform: translateY(-30px) rotate(5deg); }
+    }
+
+    .winner-label {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 3rem;
+      color: var(--warning);
+      text-transform: uppercase;
+      letter-spacing: 0.3em;
+      margin-bottom: 1rem;
+      animation: glow 1s ease-in-out infinite alternate;
+    }
+
+    @keyframes glow {
+      from { text-shadow: 0 0 20px rgba(255, 190, 11, 0.5); }
+      to { text-shadow: 0 0 40px rgba(255, 190, 11, 0.8), 0 0 60px rgba(255, 190, 11, 0.5); }
+    }
+
+    .winner-name-huge {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 6rem;
+      font-weight: 900;
+      color: var(--primary);
+      text-shadow: 0 0 60px rgba(0, 245, 212, 0.6);
+      margin-bottom: 1rem;
+    }
+
+    .winner-ad {
+      font-size: 2.5rem;
+      color: white;
+      margin: 2rem 0;
+      padding: 1.5rem 3rem;
+      background: linear-gradient(135deg, var(--secondary), var(--accent));
+      border-radius: 20px;
+      max-width: 80%;
+      animation: ad-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes ad-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+    }
+
+    .winner-clicks-huge {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 3rem;
+      color: var(--success);
+    }
+
+    .winner-ad-image {
+      max-width: 90%;
+      max-height: 50vh;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      margin: 2rem 0;
+      animation: ad-float 3s ease-in-out infinite;
+    }
+
+    @keyframes ad-float {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-10px) scale(1.02); }
+    }
+
+    .ad-canvas {
+      display: none;
+    }
+
+    /* Results Screen with Podium */
+    .results-screen {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: var(--darker);
+      z-index: 100;
+      overflow-y: auto;
+    }
+
+    .results-screen.active { display: block; }
+
+    .results-bg {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: 
+        radial-gradient(ellipse at 30% 20%, rgba(255, 215, 0, 0.2) 0%, transparent 40%),
+        radial-gradient(ellipse at 70% 80%, rgba(0, 245, 212, 0.15) 0%, transparent 40%),
+        var(--darker);
+      z-index: -1;
+    }
+
+    .results-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .results-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .results-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 3rem;
+      background: linear-gradient(135deg, var(--warning), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+    }
+
+    .results-subtitle {
+      color: #888;
+      font-size: 1.2rem;
+    }
+
+    /* Podium Section */
+    .podium-section {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 1rem;
+      margin: 3rem 0;
+      min-height: 400px;
+    }
+
+    .podium-place {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      animation: podium-rise 0.8s ease-out forwards;
+      opacity: 0;
+      transform: translateY(100px);
+    }
+
+    .podium-place:nth-child(1) { animation-delay: 0.4s; }
+    .podium-place:nth-child(2) { animation-delay: 0s; }
+    .podium-place:nth-child(3) { animation-delay: 0.6s; }
+
+    @keyframes podium-rise {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .podium-avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .podium-name {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.1rem;
+      color: white;
+      margin-bottom: 0.5rem;
+      max-width: 150px;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .podium-clicks {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 900;
+      margin-bottom: 1rem;
+    }
+
+    .podium-stand {
+      width: 160px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: 1.5rem;
+      border-radius: 10px 10px 0 0;
+      position: relative;
+    }
+
+    .podium-rank {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 3rem;
+      font-weight: 900;
+      opacity: 0.3;
+    }
+
+    /* 1st Place - Gold */
+    .place-1 .podium-avatar { background: linear-gradient(135deg, #ffd700, #ffaa00); border: 4px solid #fff; }
+    .place-1 .podium-clicks { color: #ffd700; }
+    .place-1 .podium-stand { 
+      height: 200px; 
+      background: linear-gradient(180deg, rgba(255, 215, 0, 0.3), rgba(255, 215, 0, 0.1));
+      border: 2px solid rgba(255, 215, 0, 0.5);
+      border-bottom: none;
+    }
+    .place-1 .podium-rank { color: #ffd700; }
+
+    /* 2nd Place - Silver */
+    .place-2 .podium-avatar { background: linear-gradient(135deg, #c0c0c0, #a0a0a0); border: 4px solid #e0e0e0; }
+    .place-2 .podium-clicks { color: #c0c0c0; }
+    .place-2 .podium-stand { 
+      height: 150px; 
+      background: linear-gradient(180deg, rgba(192, 192, 192, 0.3), rgba(192, 192, 192, 0.1));
+      border: 2px solid rgba(192, 192, 192, 0.5);
+      border-bottom: none;
+    }
+    .place-2 .podium-rank { color: #c0c0c0; }
+
+    /* 3rd Place - Bronze */
+    .place-3 .podium-avatar { background: linear-gradient(135deg, #cd7f32, #a0522d); border: 4px solid #dda15e; }
+    .place-3 .podium-clicks { color: #cd7f32; }
+    .place-3 .podium-stand { 
+      height: 100px; 
+      background: linear-gradient(180deg, rgba(205, 127, 50, 0.3), rgba(205, 127, 50, 0.1));
+      border: 2px solid rgba(205, 127, 50, 0.5);
+      border-bottom: none;
+    }
+    .place-3 .podium-rank { color: #cd7f32; }
+
+    .empty-place {
+      opacity: 0.3;
+    }
+
+    .empty-place .podium-avatar {
+      background: rgba(255, 255, 255, 0.1);
+      border: 4px dashed rgba(255, 255, 255, 0.3);
+    }
+
+    /* Winner Ad Section */
+    .winner-ad-section {
+      display: flex;
+      justify-content: center;
+      margin: 2rem 0;
+    }
+
+    .winner-ad-container {
+      text-align: center;
+    }
+
+    .winner-ad-label {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1rem;
+      color: var(--warning);
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      margin-bottom: 1rem;
+    }
+
+    .results-ad-image {
+      max-width: 600px;
+      width: 100%;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      animation: ad-float 3s ease-in-out infinite;
+    }
+
+    /* Full Leaderboard */
+    .full-leaderboard {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(0, 245, 212, 0.2);
+      border-radius: 20px;
+      padding: 2rem;
+      margin-top: 2rem;
+    }
+
+    .leaderboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .leaderboard-header h2 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.5rem;
+      color: var(--primary);
+    }
+
+    .total-players {
+      color: #888;
+      font-size: 1rem;
+    }
+
+    .full-leaderboard-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .leaderboard-entry {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 12px;
+      transition: all 0.3s ease;
+    }
+
+    .leaderboard-entry:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .entry-rank {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 900;
+      width: 40px;
+      text-align: center;
+      color: #666;
+    }
+
+    .entry-rank.top-3 { color: var(--warning); }
+
+    .entry-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .entry-name {
+      flex: 1;
+      font-size: 1.1rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .entry-clicks {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--success);
+    }
+
+    /* All-Time Leaderboard */
+    .all-time-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 0.75rem;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .all-time-entry {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: rgba(255, 190, 11, 0.05);
+      border: 1px solid rgba(255, 190, 11, 0.1);
+      border-radius: 10px;
+      transition: all 0.3s ease;
+    }
+
+    .all-time-entry:hover {
+      background: rgba(255, 190, 11, 0.1);
+    }
+
+    .all-time-rank {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      width: 30px;
+      color: var(--warning);
+    }
+
+    .all-time-name {
+      flex: 1;
+      font-size: 1rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .all-time-stats {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.85rem;
+    }
+
+    .stat-wins {
+      color: var(--warning);
+      font-weight: 700;
+    }
+
+    .stat-clicks {
+      color: var(--success);
+    }
+
+    .stat-rounds {
+      color: #888;
+    }
+
+    /* Countdown overlay */
+    .countdown-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 50;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .countdown-overlay.active { display: flex; }
+
+    .countdown-number {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 20rem;
+      font-weight: 900;
+      color: var(--accent);
+      text-shadow: 0 0 100px rgba(241, 91, 181, 0.8);
+      animation: countdown-pop 1s ease-out;
+    }
+
+    @keyframes countdown-pop {
+      0% { transform: scale(2); opacity: 0; }
+      50% { transform: scale(0.9); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg" id="bg"></div>
+  <div class="grid-overlay"></div>
+
+  <div class="container">
+    <header>
+      <div class="logo">🎯 CLICK AUCTION</div>
+      <div class="status-section">
+        <div class="round-badge" id="roundBadge">Round 0</div>
+        <div class="status-badge status-waiting" id="statusBadge">Waiting</div>
+      </div>
+    </header>
+
+    <div class="main-content">
+      <div class="timer-section">
+        <div class="timer-circle" id="timerCircle">
+          <div class="timer-label" id="timerLabel">Waiting for players</div>
+          <div class="timer-value" id="timerValue">--</div>
+        </div>
+        <div class="message-display" id="messageDisplay" style="display: none;"></div>
+      </div>
+
+      <div class="leaderboard">
+        <div class="leaderboard-title">📊 Live Bids</div>
+        <div class="leaderboard-list" id="leaderboardList">
+          <div class="empty-leaderboard">
+            <div class="icon">👥</div>
+            <div>Waiting for DSPs to join...</div>
+            <div style="margin-top: 0.5rem; font-size: 0.9rem;">Share the link below!</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <div class="join-info">
+        <span>Join at:</span>
+        <span class="join-url" id="joinUrl"></span>
+      </div>
+      <div class="player-count" id="playerCount">0 DSPs connected</div>
+    </footer>
+  </div>
+
+  <!-- Countdown Overlay -->
+  <div class="countdown-overlay" id="countdownOverlay">
+    <div class="countdown-number" id="countdownNumber">3</div>
+  </div>
+
+  <!-- Results Screen with Podium -->
+  <div class="results-screen" id="resultsScreen">
+    <div class="results-bg"></div>
+    <div class="results-container">
+      <div class="results-header">
+        <h1 class="results-title">🏆 AUCTION COMPLETE!</h1>
+        <p class="results-subtitle" id="resultsSubtitle">Round 1 Results</p>
+      </div>
+
+      <!-- Podium -->
+      <div class="podium-section">
+        <!-- 2nd Place (left) -->
+        <div class="podium-place place-2" id="place2">
+          <div class="podium-avatar">🥈</div>
+          <div class="podium-name" id="name2">-</div>
+          <div class="podium-clicks" id="clicks2">0</div>
+          <div class="podium-stand">
+            <div class="podium-rank">2</div>
+          </div>
+        </div>
+
+        <!-- 1st Place (center) -->
+        <div class="podium-place place-1" id="place1">
+          <div class="podium-avatar">🥇</div>
+          <div class="podium-name" id="name1">-</div>
+          <div class="podium-clicks" id="clicks1">0</div>
+          <div class="podium-stand">
+            <div class="podium-rank">1</div>
+          </div>
+        </div>
+
+        <!-- 3rd Place (right) -->
+        <div class="podium-place place-3" id="place3">
+          <div class="podium-avatar">🥉</div>
+          <div class="podium-name" id="name3">-</div>
+          <div class="podium-clicks" id="clicks3">0</div>
+          <div class="podium-stand">
+            <div class="podium-rank">3</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Winner's Ad -->
+      <div class="winner-ad-section" id="winnerAdSection">
+        <div class="winner-ad-container">
+          <div class="winner-ad-label">🎯 Winning Ad Placement</div>
+          <img class="results-ad-image" id="resultsAdImage" alt="Winner's Ad">
+        </div>
+      </div>
+
+      <!-- Full Leaderboard -->
+      <div class="full-leaderboard">
+        <div class="leaderboard-header">
+          <h2>📊 Round Leaderboard</h2>
+          <span class="total-players" id="totalPlayers">0 participants</span>
+        </div>
+        <div class="full-leaderboard-list" id="fullLeaderboardList">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- All-Time Leaderboard -->
+      <div class="full-leaderboard" style="border-color: rgba(255, 190, 11, 0.3); margin-top: 2rem;">
+        <div class="leaderboard-header">
+          <h2 style="color: var(--warning);">🏅 All-Time Champions</h2>
+          <span class="total-players" id="allTimePlayers">0 players</span>
+        </div>
+        <div class="all-time-list" id="allTimeList">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Hidden canvas for ad generation -->
+  <canvas class="ad-canvas" id="adCanvas"></canvas>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/ad-generator.js"></script>
+  <script>
+    const socket = io();
+    let maxClicks = 1;
+    const adGenerator = new AdGenerator(800, 500);
+
+    // Set join URL
+    document.getElementById('joinUrl').textContent = window.location.origin + '/play';
+
+    function updateUI(state) {
+      // Update background
+      document.getElementById('bg').className = 'bg' + (state.status === 'bidding' ? ' bidding' : '');
+
+      // Update round
+      document.getElementById('roundBadge').textContent = `Round ${state.round}`;
+
+      // Update status badge
+      const badge = document.getElementById('statusBadge');
+      badge.className = 'status-badge status-' + state.status;
+      const statusTexts = {
+        waiting: 'Waiting',
+        countdown: 'Starting...',
+        bidding: 'LIVE!',
+        finished: 'Complete'
+      };
+      badge.textContent = statusTexts[state.status] || state.status;
+
+      // Update timer
+      const timerCircle = document.getElementById('timerCircle');
+      const timerLabel = document.getElementById('timerLabel');
+      const timerValue = document.getElementById('timerValue');
+      const countdownOverlay = document.getElementById('countdownOverlay');
+      const countdownNumber = document.getElementById('countdownNumber');
+      
+      timerCircle.className = 'timer-circle' + (state.status === 'countdown' ? ' countdown' : '') + (state.status === 'bidding' ? ' bidding' : '');
+
+      if (state.status === 'waiting') {
+        timerLabel.textContent = 'Waiting for host';
+        timerValue.textContent = '--';
+        timerValue.className = 'timer-value';
+        countdownOverlay.className = 'countdown-overlay';
+      } else if (state.status === 'countdown') {
+        timerLabel.textContent = 'Get Ready!';
+        timerValue.textContent = state.timeRemaining;
+        timerValue.className = 'timer-value countdown';
+        countdownOverlay.className = 'countdown-overlay active';
+        countdownNumber.textContent = state.timeRemaining;
+        countdownNumber.style.animation = 'none';
+        countdownNumber.offsetHeight; // Trigger reflow
+        countdownNumber.style.animation = 'countdown-pop 1s ease-out';
+      } else if (state.status === 'bidding') {
+        timerLabel.textContent = 'Time Remaining';
+        timerValue.textContent = state.timeRemaining;
+        timerValue.className = 'timer-value' + (state.timeRemaining <= 3 ? ' urgent' : '');
+        countdownOverlay.className = 'countdown-overlay';
+      } else if (state.status === 'finished') {
+        timerLabel.textContent = 'Auction Complete';
+        timerValue.textContent = '✓';
+        timerValue.className = 'timer-value';
+        countdownOverlay.className = 'countdown-overlay';
+      }
+
+      // Update player count
+      document.getElementById('playerCount').textContent = `${state.playerCount} DSPs connected`;
+
+      // Update max clicks for bar scaling
+      if (state.leaderboard.length > 0) {
+        maxClicks = Math.max(maxClicks, state.leaderboard[0].clicks);
+      }
+
+      // Update leaderboard
+      const list = document.getElementById('leaderboardList');
+      if (state.leaderboard.length === 0) {
+        list.innerHTML = `
+          <div class="empty-leaderboard">
+            <div class="icon">👥</div>
+            <div>Waiting for DSPs to join...</div>
+            <div style="margin-top: 0.5rem; font-size: 0.9rem;">Share the link below!</div>
+          </div>
+        `;
+      } else {
+        list.innerHTML = state.leaderboard.map((player, index) => `
+          <div class="leaderboard-item">
+            <div class="rank rank-${index + 1}">${index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}</div>
+            <div class="player-color" style="background: ${player.color}"></div>
+            <div class="player-name">${escapeHtml(player.name)}</div>
+            <div class="player-clicks">${player.clicks}</div>
+            <div class="click-bar" style="width: ${maxClicks > 0 ? (player.clicks / maxClicks) * 100 : 0}%; background: ${player.color}"></div>
+          </div>
+        `).join('');
+      }
+
+      // Show results screen with podium
+      const resultsScreen = document.getElementById('resultsScreen');
+      if (state.status === 'finished' && state.leaderboard.length > 0) {
+        showResultsScreen(state);
+        resultsScreen.className = 'results-screen active';
+        createConfetti();
+      } else {
+        resultsScreen.className = 'results-screen';
+      }
+    }
+
+    function showResultsScreen(state) {
+      // Update subtitle
+      document.getElementById('resultsSubtitle').textContent = `Round ${state.round} Results`;
+      document.getElementById('totalPlayers').textContent = `${state.leaderboard.length} participants`;
+
+      const leaderboard = state.leaderboard;
+
+      // Update podium
+      for (let i = 1; i <= 3; i++) {
+        const place = document.getElementById(`place${i}`);
+        const name = document.getElementById(`name${i}`);
+        const clicks = document.getElementById(`clicks${i}`);
+        
+        if (leaderboard[i - 1]) {
+          const player = leaderboard[i - 1];
+          place.classList.remove('empty-place');
+          name.textContent = player.name;
+          clicks.textContent = player.clicks;
+        } else {
+          place.classList.add('empty-place');
+          name.textContent = '-';
+          clicks.textContent = '0';
+        }
+      }
+
+      // Generate and show winner's ad
+      if (state.winner) {
+        const canvas = document.getElementById('adCanvas');
+        const adMessage = state.winnerAd || '🎉 We Won! 🎉';
+        const adImageData = adGenerator.generate(canvas, adMessage, state.winner.name);
+        document.getElementById('resultsAdImage').src = adImageData;
+        document.getElementById('winnerAdSection').style.display = 'flex';
+      } else {
+        document.getElementById('winnerAdSection').style.display = 'none';
+      }
+
+      // Populate full leaderboard
+      const fullList = document.getElementById('fullLeaderboardList');
+      fullList.innerHTML = leaderboard.map((player, index) => `
+        <div class="leaderboard-entry">
+          <div class="entry-rank ${index < 3 ? 'top-3' : ''}">${index < 3 ? ['🥇', '🥈', '🥉'][index] : index + 1}</div>
+          <div class="entry-color" style="background: ${player.color}"></div>
+          <div class="entry-name">${escapeHtml(player.name)}</div>
+          <div class="entry-clicks">${player.clicks}</div>
+        </div>
+      `).join('');
+
+      // Populate all-time leaderboard
+      const allTimeList = document.getElementById('allTimeList');
+      const allTime = state.allTimeLeaderboard || [];
+      document.getElementById('allTimePlayers').textContent = `${allTime.length} players`;
+      
+      if (allTime.length === 0) {
+        allTimeList.innerHTML = '<div style="color: #666; text-align: center; padding: 1rem;">No all-time stats yet</div>';
+      } else {
+        allTimeList.innerHTML = allTime.map((player, index) => `
+          <div class="all-time-entry">
+            <div class="all-time-rank">${index < 3 ? ['🥇', '🥈', '🥉'][index] : '#' + (index + 1)}</div>
+            <div class="all-time-name">${escapeHtml(player.name)}</div>
+            <div class="all-time-stats">
+              <span class="stat-wins">🏆 ${player.wins}</span>
+              <span class="stat-clicks">👆 ${player.totalClicks}</span>
+              <span class="stat-rounds">📊 ${player.roundsPlayed}</span>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function createConfetti() {
+      const colors = ['#00f5d4', '#f15bb5', '#7b2cbf', '#ffbe0b', '#00ff88', '#ff006e', '#ffd700', '#c0c0c0', '#cd7f32'];
+      const container = document.querySelector('.results-screen');
+      if (!container) return;
+      
+      // Clear old confetti
+      container.querySelectorAll('.confetti').forEach(c => c.remove());
+      
+      for (let i = 0; i < 150; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        confetti.style.cssText = `
+          position: fixed;
+          width: ${Math.random() * 12 + 5}px;
+          height: ${Math.random() * 12 + 5}px;
+          background: ${colors[Math.floor(Math.random() * colors.length)]};
+          left: ${Math.random() * 100}%;
+          top: -20px;
+          opacity: 1;
+          transform: rotate(${Math.random() * 360}deg);
+          animation: confetti-fall ${Math.random() * 3 + 2}s linear forwards;
+          animation-delay: ${Math.random() * 2}s;
+          z-index: 1000;
+          pointer-events: none;
+        `;
+        container.appendChild(confetti);
+        
+        // Clean up after animation
+        setTimeout(() => confetti.remove(), 6000);
+      }
+    }
+
+    // Add confetti animation
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes confetti-fall {
+        to {
+          top: 100%;
+          opacity: 0;
+          transform: rotate(720deg) translateX(${Math.random() * 200 - 100}px);
+        }
+      }
+    `;
+    document.head.appendChild(style);
+
+    socket.on('gameState', updateUI);
+
+    // Real-time click updates for smoother animation
+    socket.on('clickUpdate', (data) => {
+      maxClicks = Math.max(maxClicks, data.clicks);
+    });
+  </script>
+</body>
+</html>
+

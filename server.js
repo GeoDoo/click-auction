@@ -1,0 +1,378 @@
+const express = require('express');
+const { Server } = require('socket.io');
+const http = require('http');
+const path = require('path');
+const fs = require('fs');
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+// Serve static files
+app.use(express.static(path.join(__dirname, 'public')));
+
+// ============================================
+// PERSISTENT SCORES (survives server restarts)
+// ============================================
+const SCORES_FILE = path.join(__dirname, 'scores.json');
+
+// All-time stats structure: { "PlayerName": { wins, totalClicks, roundsPlayed, bestRound, lastPlayed } }
+let allTimeStats = {};
+
+function loadScores() {
+  try {
+    if (fs.existsSync(SCORES_FILE)) {
+      const data = fs.readFileSync(SCORES_FILE, 'utf8');
+      allTimeStats = JSON.parse(data);
+      console.log(`📊 Loaded ${Object.keys(allTimeStats).length} player records from scores.json`);
+    }
+  } catch (err) {
+    console.error('Error loading scores:', err);
+    allTimeStats = {};
+  }
+}
+
+function saveScores() {
+  try {
+    fs.writeFileSync(SCORES_FILE, JSON.stringify(allTimeStats, null, 2));
+    console.log('💾 Scores saved to scores.json');
+  } catch (err) {
+    console.error('Error saving scores:', err);
+  }
+}
+
+function updatePlayerStats(name, clicks, isWinner) {
+  if (!allTimeStats[name]) {
+    allTimeStats[name] = {
+      wins: 0,
+      totalClicks: 0,
+      roundsPlayed: 0,
+      bestRound: 0,
+      lastPlayed: null
+    };
+  }
+  
+  allTimeStats[name].totalClicks += clicks;
+  allTimeStats[name].roundsPlayed += 1;
+  allTimeStats[name].bestRound = Math.max(allTimeStats[name].bestRound, clicks);
+  allTimeStats[name].lastPlayed = new Date().toISOString();
+  
+  if (isWinner) {
+    allTimeStats[name].wins += 1;
+  }
+}
+
+function getAllTimeLeaderboard() {
+  return Object.entries(allTimeStats)
+    .map(([name, stats]) => ({
+      name,
+      ...stats
+    }))
+    .sort((a, b) => b.wins - a.wins || b.totalClicks - a.totalClicks);
+}
+
+// Load scores on startup
+loadScores();
+
+// ============================================
+// GAME STATE (per session)
+// ============================================
+let gameState = {
+  status: 'waiting', // waiting, countdown, bidding, finished
+  players: {}, // { socketId: { name, clicks, color } }
+  auctionDuration: 10, // seconds
+  countdownDuration: 3, // seconds before auction starts
+  timeRemaining: 0,
+  winner: null,
+  winnerAd: null,
+  round: 0,
+  finalLeaderboard: [] // Saved when auction ends so disconnects don't affect results
+};
+
+// Vibrant colors for DSPs
+const DSP_COLORS = [
+  '#FF6B6B', '#4ECDC4', '#FFE66D', '#95E1D3', '#F38181',
+  '#AA96DA', '#FCBAD3', '#A8D8EA', '#FF9A8B', '#88D8B0',
+  '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE',
+  '#85C1E9', '#F8B500', '#00CED1', '#FF6347', '#7B68EE'
+];
+
+let colorIndex = 0;
+
+function getNextColor() {
+  const color = DSP_COLORS[colorIndex % DSP_COLORS.length];
+  colorIndex++;
+  return color;
+}
+
+function resetGame() {
+  Object.keys(gameState.players).forEach(id => {
+    gameState.players[id].clicks = 0;
+  });
+  gameState.status = 'waiting';
+  gameState.winner = null;
+  gameState.winnerAd = null;
+  gameState.timeRemaining = 0;
+  gameState.finalLeaderboard = [];
+}
+
+function getLeaderboard() {
+  return Object.entries(gameState.players)
+    .map(([id, player]) => ({
+      id,
+      name: player.name,
+      clicks: player.clicks,
+      color: player.color
+    }))
+    .sort((a, b) => b.clicks - a.clicks);
+}
+
+function broadcastState() {
+  // Use finalLeaderboard when auction is finished (so disconnects don't affect results)
+  const leaderboard = gameState.status === 'finished' && gameState.finalLeaderboard.length > 0
+    ? gameState.finalLeaderboard
+    : getLeaderboard();
+  
+  io.emit('gameState', {
+    status: gameState.status,
+    timeRemaining: gameState.timeRemaining,
+    leaderboard: leaderboard,
+    winner: gameState.winner,
+    winnerAd: gameState.winnerAd,
+    round: gameState.round,
+    playerCount: Object.keys(gameState.players).length,
+    allTimeLeaderboard: getAllTimeLeaderboard().slice(0, 20) // Top 20 all-time
+  });
+}
+
+io.on('connection', (socket) => {
+  console.log(`Client connected: ${socket.id}`);
+
+  // Send current state to new connection (including all-time stats!)
+  socket.emit('gameState', {
+    status: gameState.status,
+    timeRemaining: gameState.timeRemaining,
+    leaderboard: gameState.status === 'finished' && gameState.finalLeaderboard.length > 0
+      ? gameState.finalLeaderboard
+      : getLeaderboard(),
+    winner: gameState.winner,
+    winnerAd: gameState.winnerAd,
+    round: gameState.round,
+    playerCount: Object.keys(gameState.players).length,
+    allTimeLeaderboard: getAllTimeLeaderboard().slice(0, 20)
+  });
+
+  // Player joins the game
+  socket.on('joinGame', (data) => {
+    const { name, adContent } = data;
+    gameState.players[socket.id] = {
+      name: name || `DSP-${socket.id.substr(0, 4)}`,
+      clicks: 0,
+      color: getNextColor(),
+      adContent: adContent || `${name || 'Anonymous'} wins! 🎉`
+    };
+    console.log(`Player joined: ${gameState.players[socket.id].name}`);
+    broadcastState();
+  });
+
+  // Player clicks
+  socket.on('click', () => {
+    if (gameState.status === 'bidding' && gameState.players[socket.id]) {
+      gameState.players[socket.id].clicks++;
+      // Emit to all clients for real-time leaderboard updates
+      io.emit('clickUpdate', {
+        playerId: socket.id,
+        playerName: gameState.players[socket.id].name,
+        clicks: gameState.players[socket.id].clicks,
+        color: gameState.players[socket.id].color
+      });
+    }
+  });
+
+  // Host controls
+  socket.on('startAuction', (settings) => {
+    if (settings) {
+      gameState.auctionDuration = settings.duration || 10;
+    }
+    
+    resetGame();
+    gameState.round++;
+    gameState.status = 'countdown';
+    gameState.timeRemaining = gameState.countdownDuration;
+    
+    broadcastState();
+    
+    // Countdown timer
+    const countdownInterval = setInterval(() => {
+      gameState.timeRemaining--;
+      broadcastState();
+      
+      if (gameState.timeRemaining <= 0) {
+        clearInterval(countdownInterval);
+        startBidding();
+      }
+    }, 1000);
+  });
+
+  socket.on('resetAuction', () => {
+    resetGame();
+    broadcastState();
+  });
+
+  socket.on('kickPlayer', (playerId) => {
+    if (gameState.players[playerId]) {
+      delete gameState.players[playerId];
+      io.to(playerId).emit('kicked');
+      broadcastState();
+    }
+  });
+
+  socket.on('resetAllTimeStats', () => {
+    allTimeStats = {};
+    saveScores();
+    console.log('🗑️ All-time stats reset by host');
+    broadcastState();
+  });
+
+  socket.on('getStats', () => {
+    socket.emit('statsUpdate', {
+      allTime: getAllTimeLeaderboard(),
+      totalRounds: gameState.round
+    });
+  });
+
+  socket.on('disconnect', () => {
+    if (gameState.players[socket.id]) {
+      console.log(`Player disconnected: ${gameState.players[socket.id].name}`);
+      delete gameState.players[socket.id];
+      broadcastState();
+    }
+  });
+});
+
+function startBidding() {
+  gameState.status = 'bidding';
+  gameState.timeRemaining = gameState.auctionDuration;
+  
+  broadcastState();
+  
+  const biddingInterval = setInterval(() => {
+    gameState.timeRemaining--;
+    broadcastState();
+    
+    if (gameState.timeRemaining <= 0) {
+      clearInterval(biddingInterval);
+      endAuction();
+    }
+  }, 1000);
+}
+
+function endAuction() {
+  gameState.status = 'finished';
+  
+  // Save the final leaderboard NOW before any disconnects
+  const leaderboard = getLeaderboard();
+  gameState.finalLeaderboard = leaderboard;
+  
+  // Determine winner
+  let winnerName = null;
+  if (leaderboard.length > 0 && leaderboard[0].clicks > 0) {
+    const winnerId = leaderboard[0].id;
+    gameState.winner = {
+      ...gameState.players[winnerId],
+      id: winnerId
+    };
+    gameState.winnerAd = gameState.players[winnerId].adContent;
+    winnerName = gameState.winner.name;
+  }
+  
+  // Update all-time stats for all participants
+  leaderboard.forEach(player => {
+    updatePlayerStats(player.name, player.clicks, player.name === winnerName);
+  });
+  
+  // Save to disk
+  saveScores();
+  
+  console.log(`Auction ended! ${leaderboard.length} participants. Winner: ${winnerName || 'None'}`);
+  
+  broadcastState();
+}
+
+// Routes
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/play', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'player.html'));
+});
+
+app.get('/host', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'host.html'));
+});
+
+app.get('/display', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'display.html'));
+});
+
+// API endpoints for stats
+app.get('/api/stats', (req, res) => {
+  res.json({
+    allTime: getAllTimeLeaderboard(),
+    totalRounds: gameState.round,
+    totalPlayers: Object.keys(allTimeStats).length
+  });
+});
+
+app.post('/api/stats/reset', (req, res) => {
+  allTimeStats = {};
+  saveScores();
+  console.log('🗑️ All-time stats reset');
+  broadcastState();
+  res.json({ success: true, message: 'Stats reset' });
+});
+
+const PORT = process.env.PORT || 3000;
+const HOST = '0.0.0.0'; // Listen on all network interfaces
+
+// Get local IP address for display
+function getLocalIP() {
+  const { networkInterfaces } = require('os');
+  const nets = networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]) {
+      if (net.family === 'IPv4' && !net.internal) {
+        return net.address;
+      }
+    }
+  }
+  return 'localhost';
+}
+
+server.listen(PORT, HOST, () => {
+  const localIP = getLocalIP();
+  console.log(`
+╔══════════════════════════════════════════════════════════════════╗
+║                      🎯 CLICK AUCTION 🎯                          ║
+╠══════════════════════════════════════════════════════════════════╣
+║                                                                  ║
+║  🖥️  Local:    http://localhost:${PORT}                             ║
+║  📱  Network:  http://${localIP}:${PORT}                        ║
+║                                                                  ║
+╠══════════════════════════════════════════════════════════════════╣
+║  SHARE THIS WITH PLAYERS:                                        ║
+║                                                                  ║
+║     http://${localIP}:${PORT}/play                              ║
+║                                                                  ║
+╠══════════════════════════════════════════════════════════════════╣
+║  Routes:                                                         ║
+║    /        - Landing page                                       ║
+║    /play    - Player page (DSPs join here)                       ║
+║    /host    - Host control panel                                 ║
+║    /display - Big screen display                                 ║
+║                                                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+  `);
+});
+

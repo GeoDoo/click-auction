@@ -1,0 +1,25 @@
+{
+  "name": "click-auction",
+  "version": "1.0.0",
+  "description": "Real-time programmatic auction game - DSPs compete by clicking!",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "jest --detectOpenHandles --forceExit",
+    "test:watch": "jest --watch --detectOpenHandles",
+    "test:coverage": "jest --coverage --detectOpenHandles --forceExit"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "socket.io-client": "^4.7.2"
+  },
+  "keywords": ["auction", "game", "programmatic", "dsp", "real-time"],
+  "author": "",
+  "license": "MIT"
+}
+
