@@ -7,13 +7,21 @@
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --primary: #00f5d4;
-      --secondary: #7b2cbf;
-      --accent: #f15bb5;
-      --dark: #0a0a0f;
-      --darker: #050508;
-      --text: #e0e0e0;
-      --glow: rgba(0, 245, 212, 0.5);
+      /* VIOOH Brand Palette */
+      --viooh-teal: #00C9A7;
+      --viooh-cyan: #00D4D4;
+      --viooh-purple: #6B3FA0;
+      --viooh-magenta: #E91E8C;
+      --viooh-navy: #0A0B1E;
+      --viooh-dark: #060714;
+      
+      --primary: var(--viooh-teal);
+      --secondary: var(--viooh-purple);
+      --accent: var(--viooh-magenta);
+      --dark: var(--viooh-navy);
+      --darker: var(--viooh-dark);
+      --text: #E8E8F0;
+      --glow: rgba(0, 201, 167, 0.5);
     }
 
     * {
@@ -27,7 +35,8 @@
       background: var(--darker);
       color: var(--text);
       min-height: 100vh;
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: auto;
     }
 
     /* Animated background */
@@ -64,8 +73,23 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      padding: 2rem;
+      padding: 2rem 1rem;
+      padding-bottom: 3rem;
       text-align: center;
+      gap: 0;
+    }
+
+    .viooh-badge {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.85rem;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.3em;
+      margin-bottom: 1rem;
+      padding: 0.5rem 1.5rem;
+      border: 1px solid var(--primary);
+      border-radius: 50px;
+      opacity: 0.8;
     }
 
     .logo {
@@ -200,73 +224,75 @@
       font-size: 1rem;
     }
 
-    .player-count {
-      margin-top: 3rem;
-      padding: 0.75rem 2rem;
-      background: rgba(0, 255, 136, 0.1);
-      border: 1px solid rgba(0, 255, 136, 0.3);
-      border-radius: 50px;
-      font-family: 'Orbitron', sans-serif;
-      font-size: 1rem;
-      color: #00ff88;
-    }
 
-    .player-count .count {
-      font-size: 1.3rem;
-      font-weight: 900;
-    }
 
-    .admin-links {
-      position: fixed;
-      bottom: 1.5rem;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 2rem;
-      opacity: 0.6;
-      transition: opacity 0.3s ease;
+    @media (max-width: 768px) {
+      .container {
+        padding: 1.5rem 1rem;
+        padding-bottom: 5rem;
+        justify-content: flex-start;
+        padding-top: 2rem;
+      }
+      
+      .viooh-badge {
+        font-size: 0.7rem;
+        padding: 0.4rem 1rem;
+      }
+      
+      .logo { 
+        font-size: 2rem; 
+      }
+      
+      .tagline {
+        font-size: 1rem;
+        margin-bottom: 2rem;
+      }
+      
+      .scan-label { 
+        font-size: 1.2rem; 
+      }
+      
+      .qr-container { 
+        padding: 0.75rem; 
+      }
+      
+      .qr-container img {
+        width: 200px;
+        height: 200px;
+      }
+      
+      .url-display { 
+        font-size: 0.8rem; 
+        padding: 0.6rem 1rem;
+        max-width: 90vw;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      
+      .instructions { 
+        gap: 1rem; 
+        flex-direction: column;
+        margin-top: 1.5rem;
+      }
+      
+      .instruction {
+        font-size: 1rem;
+      }
+      
+      .instruction-number {
+        width: 30px;
+        height: 30px;
+        font-size: 0.9rem;
+      }
+      
     }
-
-    .admin-links:hover {
-      opacity: 1;
-    }
-
-    .admin-link {
-      color: #666;
-      text-decoration: none;
-      font-size: 0.9rem;
-      padding: 0.5rem 1rem;
-      border: 1px solid #333;
-      border-radius: 8px;
-      transition: all 0.3s ease;
-    }
-
-    .admin-link:hover {
-      color: var(--primary);
-      border-color: var(--primary);
-      background: rgba(0, 245, 212, 0.1);
-    }
-
-    /* Floating emojis */
-    .floating-icon {
-      position: fixed;
-      font-size: 2rem;
-      opacity: 0.3;
-      animation: drift 20s linear infinite;
-      pointer-events: none;
-    }
-
-    @keyframes drift {
-      0% { transform: translateY(100vh) rotate(0deg); }
-      100% { transform: translateY(-100vh) rotate(360deg); }
-    }
-
-    @media (max-width: 600px) {
-      .logo { font-size: 2.2rem; }
-      .scan-label { font-size: 1.3rem; }
-      .qr-container { padding: 1rem; }
-      .instructions { gap: 1.5rem; flex-direction: column; }
-      .url-display { font-size: 0.9rem; padding: 0.75rem 1.5rem; }
+    
+    @media (max-width: 400px) {
+      .logo { font-size: 1.6rem; }
+      .qr-container img {
+        width: 180px;
+        height: 180px;
+      }
     }
   </style>
 </head>
@@ -274,16 +300,10 @@
   <div class="bg-animation"></div>
   <div class="grid-overlay"></div>
 
-  <!-- Floating icons -->
-  <div class="floating-icon" style="left: 10%; animation-delay: 0s;">📱</div>
-  <div class="floating-icon" style="left: 30%; animation-delay: 5s;">🎯</div>
-  <div class="floating-icon" style="left: 50%; animation-delay: 10s;">🏆</div>
-  <div class="floating-icon" style="left: 70%; animation-delay: 15s;">👆</div>
-  <div class="floating-icon" style="left: 90%; animation-delay: 8s;">🎮</div>
-
   <div class="container">
+    <div class="viooh-badge">Powered by VIOOH</div>
     <h1 class="logo">🎯 CLICK AUCTION</h1>
-    <p class="tagline">The Programmatic Bidding Game</p>
+    <p class="tagline">The Programmatic DOOH Bidding Game</p>
 
     <div class="scan-section">
       <div class="scan-label">📱 Scan to Play!</div>
@@ -316,20 +336,9 @@
       </div>
     </div>
 
-    <div class="player-count">
-      <span class="count" id="playerCount">0</span> players ready
-    </div>
   </div>
 
-  <div class="admin-links">
-    <a href="/host" class="admin-link">🎛️ Host Control</a>
-    <a href="/display" class="admin-link">📺 Big Screen</a>
-  </div>
-
-  <script src="/socket.io/socket.io.js"></script>
   <script>
-    const socket = io();
-    
     // Generate QR Code using API
     const playUrl = window.location.origin + '/play';
     document.getElementById('urlDisplay').textContent = playUrl;
@@ -337,11 +346,6 @@
     // Use QR Server API (free, no signup needed)
     const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(playUrl)}&bgcolor=ffffff&color=0a0a0f&margin=10`;
     document.getElementById('qrcode').src = qrApiUrl;
-
-    // Update player count
-    socket.on('gameState', (state) => {
-      document.getElementById('playerCount').textContent = state.playerCount;
-    });
   </script>
 </body>
 </html>

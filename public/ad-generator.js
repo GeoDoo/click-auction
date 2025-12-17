@@ -7,24 +7,35 @@ class AdGenerator {
     this.height = height;
   }
 
-  // Generate a random color palette
+  // Generate a random color palette - VIOOH brand inspired
   generatePalette() {
     const palettes = [
-      { bg: ['#667eea', '#764ba2'], accent: '#fff', text: '#ffffff' },
-      { bg: ['#f093fb', '#f5576c'], accent: '#fff', text: '#ffffff' },
-      { bg: ['#4facfe', '#00f2fe'], accent: '#fff', text: '#003366' },
-      { bg: ['#43e97b', '#38f9d7'], accent: '#fff', text: '#004d40' },
-      { bg: ['#fa709a', '#fee140'], accent: '#fff', text: '#4a0000' },
-      { bg: ['#a8edea', '#fed6e3'], accent: '#ff6b9d', text: '#2d3436' },
-      { bg: ['#ff9a9e', '#fecfef'], accent: '#fff', text: '#4a0072' },
-      { bg: ['#ffecd2', '#fcb69f'], accent: '#ff6b35', text: '#3d1e00' },
-      { bg: ['#a18cd1', '#fbc2eb'], accent: '#fff', text: '#4a0072' },
-      { bg: ['#fad0c4', '#ffd1ff'], accent: '#ff6b9d', text: '#4a004a' },
-      { bg: ['#1a1a2e', '#16213e'], accent: '#00f5d4', text: '#ffffff' },
-      { bg: ['#0f0c29', '#302b63'], accent: '#f15bb5', text: '#ffffff' },
-      { bg: ['#232526', '#414345'], accent: '#ffbe0b', text: '#ffffff' },
-      { bg: ['#000428', '#004e92'], accent: '#00f5d4', text: '#ffffff' },
-      { bg: ['#200122', '#6f0000'], accent: '#ff6b6b', text: '#ffffff' },
+      // VIOOH Primary - Teal gradients
+      { bg: ['#00C9A7', '#00A389'], accent: '#ffffff', text: '#ffffff' },
+      { bg: ['#00C9A7', '#006B5A'], accent: '#E91E8C', text: '#ffffff' },
+      { bg: ['#00D4D4', '#00C9A7'], accent: '#ffffff', text: '#0A0B1E' },
+      
+      // VIOOH Purple/Magenta
+      { bg: ['#6B3FA0', '#4A2875'], accent: '#00C9A7', text: '#ffffff' },
+      { bg: ['#E91E8C', '#6B3FA0'], accent: '#ffffff', text: '#ffffff' },
+      { bg: ['#6B3FA0', '#E91E8C'], accent: '#00C9A7', text: '#ffffff' },
+      
+      // VIOOH Dark/Premium
+      { bg: ['#0A0B1E', '#1A1B3E'], accent: '#00C9A7', text: '#ffffff' },
+      { bg: ['#060714', '#0A0B1E'], accent: '#E91E8C', text: '#ffffff' },
+      { bg: ['#1A1B3E', '#2A2B4E'], accent: '#00D4D4', text: '#ffffff' },
+      
+      // VIOOH Mixed
+      { bg: ['#0A0B1E', '#6B3FA0'], accent: '#00C9A7', text: '#ffffff' },
+      { bg: ['#00C9A7', '#E91E8C'], accent: '#ffffff', text: '#ffffff' },
+      { bg: ['#6B3FA0', '#00C9A7'], accent: '#E91E8C', text: '#ffffff' },
+      
+      // Teal to Navy
+      { bg: ['#00C9A7', '#0A0B1E'], accent: '#E91E8C', text: '#ffffff' },
+      { bg: ['#0A0B1E', '#00C9A7'], accent: '#FFB800', text: '#ffffff' },
+      
+      // Vibrant variations
+      { bg: ['#00E896', '#00C9A7'], accent: '#6B3FA0', text: '#0A0B1E' },
     ];
     return palettes[Math.floor(Math.random() * palettes.length)];
   }

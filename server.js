@@ -89,12 +89,28 @@ let gameState = {
   finalLeaderboard: [] // Saved when auction ends so disconnects don't affect results
 };
 
-// Vibrant colors for DSPs
+// VIOOH-inspired DSP colors
 const DSP_COLORS = [
-  '#FF6B6B', '#4ECDC4', '#FFE66D', '#95E1D3', '#F38181',
-  '#AA96DA', '#FCBAD3', '#A8D8EA', '#FF9A8B', '#88D8B0',
-  '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE',
-  '#85C1E9', '#F8B500', '#00CED1', '#FF6347', '#7B68EE'
+  '#00C9A7', // VIOOH Teal
+  '#E91E8C', // VIOOH Magenta
+  '#6B3FA0', // VIOOH Purple
+  '#00D4D4', // VIOOH Cyan
+  '#FFB800', // Gold
+  '#00E896', // Bright Green
+  '#FF6B9D', // Pink
+  '#4ECDC4', // Aqua
+  '#9B59B6', // Violet
+  '#3498DB', // Blue
+  '#F39C12', // Orange
+  '#1ABC9C', // Turquoise
+  '#E74C8C', // Rose
+  '#00BCD4', // Light Cyan
+  '#8E44AD', // Deep Purple
+  '#2ECC71', // Emerald
+  '#E91E63', // Fuchsia
+  '#00ACC1', // Teal Light
+  '#AB47BC', // Orchid
+  '#26A69A'  // Sea Green
 ];
 
 let colorIndex = 0;

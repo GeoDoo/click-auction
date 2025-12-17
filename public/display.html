@@ -7,14 +7,22 @@
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --primary: #00f5d4;
-      --secondary: #7b2cbf;
-      --accent: #f15bb5;
-      --success: #00ff88;
-      --warning: #ffbe0b;
-      --danger: #ff006e;
-      --dark: #0a0a0f;
-      --darker: #050508;
+      /* VIOOH Brand Palette */
+      --viooh-teal: #00C9A7;
+      --viooh-cyan: #00D4D4;
+      --viooh-purple: #6B3FA0;
+      --viooh-magenta: #E91E8C;
+      --viooh-navy: #0A0B1E;
+      --viooh-dark: #060714;
+      
+      --primary: var(--viooh-teal);
+      --secondary: var(--viooh-purple);
+      --accent: var(--viooh-magenta);
+      --success: #00E896;
+      --warning: #FFB800;
+      --danger: #FF3366;
+      --dark: var(--viooh-navy);
+      --darker: var(--viooh-dark);
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -24,7 +32,8 @@
       background: var(--darker);
       color: #e0e0e0;
       min-height: 100vh;
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: auto;
     }
 
     .bg {
@@ -318,27 +327,67 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      color: #555;
+      color: #888;
+      background: rgba(0, 0, 0, 0.3);
+      margin: -2rem;
+      margin-top: 0;
+      padding: 1.5rem 2rem;
+      border-top: 1px solid rgba(0, 201, 167, 0.2);
     }
 
     .join-info {
       display: flex;
       align-items: center;
-      gap: 1rem;
+      gap: 1.5rem;
+    }
+
+    .join-qr {
+      background: white;
+      padding: 8px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .join-qr img {
+      width: 80px;
+      height: 80px;
+      display: block;
+    }
+
+    .join-text {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .join-label {
+      font-size: 0.9rem;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
     }
 
     .join-url {
       font-family: 'Orbitron', sans-serif;
-      font-size: 1.5rem;
+      font-size: 1.3rem;
       color: var(--primary);
-      padding: 0.5rem 1.5rem;
-      background: rgba(0, 245, 212, 0.1);
-      border: 1px solid rgba(0, 245, 212, 0.3);
-      border-radius: 8px;
     }
 
     .player-count {
-      font-size: 1.2rem;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.1rem;
+      color: var(--primary);
+      padding: 0.75rem 1.5rem;
+      background: rgba(0, 201, 167, 0.1);
+      border: 1px solid rgba(0, 201, 167, 0.3);
+      border-radius: 50px;
+    }
+
+    .player-count .count {
+      font-weight: 900;
+      font-size: 1.3rem;
     }
 
     /* Winner Screen */
@@ -828,7 +877,10 @@
 
   <div class="container">
     <header>
-      <div class="logo">🎯 CLICK AUCTION</div>
+      <div class="logo">
+        <span style="font-size: 0.5em; color: var(--primary); letter-spacing: 0.2em; display: block; margin-bottom: 0.25rem;">VIOOH</span>
+        🎯 CLICK AUCTION
+      </div>
       <div class="status-section">
         <div class="round-badge" id="roundBadge">Round 0</div>
         <div class="status-badge status-waiting" id="statusBadge">Waiting</div>
@@ -858,10 +910,15 @@
 
     <footer>
       <div class="join-info">
-        <span>Join at:</span>
-        <span class="join-url" id="joinUrl"></span>
+        <div class="join-qr">
+          <img id="joinQr" alt="Scan to join">
+        </div>
+        <div class="join-text">
+          <span class="join-label">📱 Scan to Play</span>
+          <span class="join-url" id="joinUrl"></span>
+        </div>
       </div>
-      <div class="player-count" id="playerCount">0 DSPs connected</div>
+      <div class="player-count"><span class="count" id="playerCount">0</span> DSPs connected</div>
     </footer>
   </div>
 
@@ -875,6 +932,7 @@
     <div class="results-bg"></div>
     <div class="results-container">
       <div class="results-header">
+        <div style="font-size: 1rem; color: var(--primary); letter-spacing: 0.3em; margin-bottom: 0.5rem; font-family: 'Orbitron', sans-serif;">VIOOH prDOOH</div>
         <h1 class="results-title">🏆 AUCTION COMPLETE!</h1>
         <p class="results-subtitle" id="resultsSubtitle">Round 1 Results</p>
       </div>
@@ -954,8 +1012,13 @@
     let maxClicks = 1;
     const adGenerator = new AdGenerator(800, 500);
 
-    // Set join URL
-    document.getElementById('joinUrl').textContent = window.location.origin + '/play';
+    // Set join URL and QR code
+    const playUrl = window.location.origin + '/play';
+    document.getElementById('joinUrl').textContent = playUrl;
+    
+    // Generate QR code
+    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(playUrl)}&bgcolor=ffffff&color=0a0b1e&margin=5`;
+    document.getElementById('joinQr').src = qrApiUrl;
 
     function updateUI(state) {
       // Update background
@@ -1011,7 +1074,7 @@
       }
 
       // Update player count
-      document.getElementById('playerCount').textContent = `${state.playerCount} DSPs connected`;
+      document.getElementById('playerCount').textContent = state.playerCount;
 
       // Update max clicks for bar scaling
       if (state.leaderboard.length > 0) {
