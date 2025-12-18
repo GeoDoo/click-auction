@@ -23,7 +23,7 @@ const terserOptions = {
     unused: true,
   },
   mangle: {
-    reserved: ['SoundManager', 'Haptics', 'Logger', 'Utils'], // Preserve global names
+    reserved: ['SoundManager', 'Logger', 'Utils'], // Preserve global names
   },
   format: {
     comments: false,

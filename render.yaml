@@ -2,7 +2,7 @@ services:
   - type: web
     name: click-auction
     runtime: node
-    buildCommand: npm ci && npm test
+    buildCommand: npm ci && npm test && npm run build
     startCommand: node server.js
     envVars:
       - key: NODE_ENV

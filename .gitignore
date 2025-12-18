@@ -26,7 +26,7 @@ npm-debug.log*
 .env.local
 
 # Build artifacts
-dist/
 build/
+# Note: public/js/dist/ is NOT ignored - we commit minified files
 
 

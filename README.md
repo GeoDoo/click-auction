@@ -74,21 +74,20 @@ For the event organizer:
 3. **Bidding** - TAP! TAP! TAP!
 4. **Winner** - Celebration with dynamically generated ad
 
-## 🔊 Sound & Haptic Feedback
+## 🔊 Sound Effects
 
-The game includes immersive audio and vibration feedback (works on mobile!):
+The game includes immersive audio feedback (works on all devices!):
 
-| Event | Sound | Haptic |
-|-------|-------|--------|
-| **Countdown** | Tick beep | Short buzz |
-| **GO!** | Rising tone | Double buzz |
-| **Each tap** | Click sound | Quick buzz |
-| **Winner** | Fanfare arpeggio | Celebration pattern |
-| **Not winner** | Low tone | Single buzz |
+| Event | Sound |
+|-------|-------|
+| **Countdown** | Tick beep |
+| **GO!** | Rising tone |
+| **Each tap** | Click sound |
+| **Winner** | Fanfare arpeggio |
+| **Not winner** | Low tone |
 
 - 🔊 **Mute button** available in player UI
-- 📳 **Haptic feedback** on Android & iOS (if supported)
-- Works with Web Audio API (no files to load)
+- Works with Web Audio API (no files to load, synthesized sounds)
 
 ## 🔧 Environment Variables
 
