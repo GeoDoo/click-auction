@@ -128,11 +128,17 @@ function getNextColor() {
 }
 
 function resetGame() {
+  // Remove disconnected players (they stayed during active auction for leaderboard)
+  const connectedSockets = new Set([...io.sockets.sockets.keys()]);
   Object.keys(gameState.players).forEach((id) => {
-    gameState.players[id].clicks = 0;
-    gameState.players[id].suspicious = false;
-    gameState.players[id].suspicionReason = null;
-    botDetection.resetBotDetectionData(id);
+    if (!connectedSockets.has(id)) {
+      delete gameState.players[id];
+    } else {
+      gameState.players[id].clicks = 0;
+      gameState.players[id].suspicious = false;
+      gameState.players[id].suspicionReason = null;
+      botDetection.resetBotDetectionData(id);
+    }
   });
   gameState.status = 'waiting';
   gameState.winner = null;
@@ -352,6 +358,12 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // Reset clicks if rejoining in a different round (prevent carrying over old clicks)
+    const sessionData = session.getSessionByToken(token);
+    if (sessionData && sessionData.disconnectedRound !== undefined && sessionData.disconnectedRound !== gameState.round) {
+      playerData.clicks = 0;
+    }
+
     gameState.players[socket.id] = { ...playerData };
 
     socket.emit('rejoinSuccess', {
@@ -444,6 +456,7 @@ io.on('connection', (socket) => {
 
     if (gameState.players[socket.id]) {
       const playerName = gameState.players[socket.id].name;
+      const isActiveAuction = gameState.status === 'countdown' || gameState.status === 'bidding';
 
       const token = session.markSessionDisconnected(socket.id);
 
@@ -451,13 +464,18 @@ io.on('connection', (socket) => {
         const sessionData = session.getSessionByToken(token);
         if (sessionData) {
           sessionData.playerData = { ...gameState.players[socket.id] };
+          sessionData.disconnectedRound = gameState.round; // Track which round they disconnected in
         }
         Logger.playerAction('disconnected (grace period)', playerName);
       } else {
         Logger.playerAction('disconnected', playerName);
       }
 
-      delete gameState.players[socket.id];
+      // During active auction, keep player in leaderboard (their clicks count!)
+      // Only remove from gameState.players when game is idle
+      if (!isActiveAuction) {
+        delete gameState.players[socket.id];
+      }
       broadcastState();
     }
   });

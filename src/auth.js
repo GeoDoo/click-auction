@@ -2,6 +2,7 @@
 // HOST AUTHENTICATION (PIN Protection)
 // ============================================
 
+const crypto = require('crypto');
 const config = require('./config');
 
 const hostAuthTokens = {}; // { token: { createdAt, expiresAt } }
@@ -51,6 +52,19 @@ function cleanupExpiredHostTokens() {
 }
 
 /**
+ * Constant-time string comparison to prevent timing attacks
+ */
+function safeCompare(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  if (a.length !== b.length) {
+    // Still do a comparison to maintain constant time even for length mismatch
+    crypto.timingSafeEqual(Buffer.from(a), Buffer.from(a));
+    return false;
+  }
+  return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
+
+/**
  * Verify PIN and create token if valid
  */
 function verifyPinAndCreateToken(pin) {
@@ -58,7 +72,7 @@ function verifyPinAndCreateToken(pin) {
     return { success: true, token: null, message: 'No PIN required' };
   }
 
-  if (!pin || pin !== config.HOST_PIN) {
+  if (!pin || !safeCompare(pin, config.HOST_PIN)) {
     return { success: false, token: null, message: 'Invalid PIN' };
   }
 
