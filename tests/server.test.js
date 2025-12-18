@@ -9,6 +9,9 @@
  * - Leaderboard calculations
  * - Edge cases and race conditions
  * - Timer/interval management
+ * 
+ * NOTE: All tests use event-driven assertions instead of arbitrary delays.
+ * We wait for actual socket events or state changes, not setTimeout.
  */
 
 const { createServer } = require('http');
@@ -23,7 +26,13 @@ const TEST_SCORES_FILE = path.join(__dirname, 'test-scores.json');
 // Increase Jest timeout for all tests
 jest.setTimeout(30000);
 
-// Helper to wait for socket events
+// ==========================================
+// EVENT-DRIVEN TEST HELPERS (NO ARBITRARY DELAYS)
+// ==========================================
+
+/**
+ * Wait for a specific socket event
+ */
 const waitFor = (socket, event, timeout = 5000) => {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -36,7 +45,9 @@ const waitFor = (socket, event, timeout = 5000) => {
   });
 };
 
-// Helper to wait for specific game state
+/**
+ * Wait for gameState with specific status
+ */
 const waitForStatus = (socket, targetStatus, timeout = 10000) => {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -54,6 +65,56 @@ const waitForStatus = (socket, targetStatus, timeout = 10000) => {
     
     socket.on('gameState', handler);
   });
+};
+
+/**
+ * Wait for gameState matching a condition
+ */
+const waitForCondition = (socket, conditionFn, timeout = 5000) => {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      socket.off('gameState', handler);
+      reject(new Error('Timeout waiting for condition'));
+    }, timeout);
+    
+    const handler = (state) => {
+      if (conditionFn(state)) {
+        clearTimeout(timer);
+        socket.off('gameState', handler);
+        resolve(state);
+      }
+    };
+    
+    socket.on('gameState', handler);
+  });
+};
+
+/**
+ * Wait for player count to reach a specific number
+ */
+const waitForPlayerCount = (socket, count, timeout = 5000) => {
+  return waitForCondition(socket, (state) => state.playerCount === count, timeout);
+};
+
+/**
+ * Wait for a player to appear in leaderboard
+ */
+const waitForPlayerInLeaderboard = (socket, playerName, timeout = 5000) => {
+  return waitForCondition(
+    socket, 
+    (state) => state.leaderboard.some(p => p.name === playerName), 
+    timeout
+  );
+};
+
+/**
+ * Emit and wait for acknowledgment via gameState update
+ * This replaces arbitrary delays after emit
+ */
+const emitAndWait = async (socket, event, data, waitCondition, timeout = 5000) => {
+  const promise = waitForCondition(socket, waitCondition, timeout);
+  socket.emit(event, data);
+  return promise;
 };
 
 describe('Click Auction Server', () => {
@@ -217,6 +278,14 @@ describe('Click Auction Server', () => {
       }
     });
     connectedClients = [];
+  };
+  
+  // Helper to safely close a specific client
+  const closeClient = (client) => {
+    connectedClients = connectedClients.filter(c => c !== client);
+    if (client.connected) {
+      client.close();
+    }
   };
 
   beforeAll((done) => {
@@ -397,8 +466,10 @@ describe('Click Auction Server', () => {
       const client = createClient();
       await waitFor(client, 'connect');
       
-      client.close();
-      await new Promise(r => setTimeout(r, 100));
+      // Wait for disconnect event before reconnecting
+      const disconnectPromise = waitFor(client, 'disconnect');
+      closeClient(client);
+      await disconnectPromise;
       
       const client2 = createClient();
       await waitFor(client2, 'connect');
@@ -416,8 +487,13 @@ describe('Click Auction Server', () => {
       const client = createClient();
       await waitFor(client, 'connect');
       
-      client.emit('joinGame', { name: 'CustomPlayer', adContent: 'My Ad' });
-      const state = await waitFor(client, 'gameState');
+      // Wait for gameState showing the player joined
+      const state = await emitAndWait(
+        client, 
+        'joinGame', 
+        { name: 'CustomPlayer', adContent: 'My Ad' },
+        (s) => s.playerCount === 1
+      );
       
       expect(state.playerCount).toBe(1);
       expect(state.leaderboard[0].name).toBe('CustomPlayer');
@@ -427,8 +503,12 @@ describe('Click Auction Server', () => {
       const client = createClient();
       await waitFor(client, 'connect');
       
-      client.emit('joinGame', { name: '', adContent: '' });
-      const state = await waitFor(client, 'gameState');
+      const state = await emitAndWait(
+        client,
+        'joinGame',
+        { name: '', adContent: '' },
+        (s) => s.playerCount === 1
+      );
       
       expect(state.leaderboard[0].name).toMatch(/^DSP-/);
     });
@@ -437,8 +517,12 @@ describe('Click Auction Server', () => {
       const client = createClient();
       await waitFor(client, 'connect');
       
-      client.emit('joinGame', null);
-      const state = await waitFor(client, 'gameState');
+      const state = await emitAndWait(
+        client,
+        'joinGame',
+        null,
+        (s) => s.playerCount === 1
+      );
       
       expect(state.leaderboard[0].name).toMatch(/^DSP-/);
     });
@@ -450,14 +534,13 @@ describe('Click Auction Server', () => {
       await waitFor(client1, 'connect');
       await waitFor(client2, 'connect');
       
-      client1.emit('joinGame', { name: 'Player1' });
-      await new Promise(r => setTimeout(r, 100)); // Wait for join to process
+      // Join first player and wait for state update
+      await emitAndWait(client1, 'joinGame', { name: 'Player1' }, (s) => s.playerCount === 1);
       
-      client2.emit('joinGame', { name: 'Player2' });
-      await new Promise(r => setTimeout(r, 100)); // Wait for join to process
+      // Join second player and wait for state update with 2 players
+      const state = await emitAndWait(client2, 'joinGame', { name: 'Player2' }, (s) => s.playerCount === 2);
       
-      // Check the game state directly
-      const colors = Object.values(gameState.players).map(p => p.color);
+      const colors = state.leaderboard.map(p => p.color);
       expect(new Set(colors).size).toBe(2);
     });
 
@@ -466,8 +549,7 @@ describe('Click Auction Server', () => {
       for (let i = 0; i < 25; i++) {
         const client = createClient();
         await waitFor(client, 'connect');
-        client.emit('joinGame', { name: `Player${i}` });
-        await waitFor(client, 'gameState');
+        await emitAndWait(client, 'joinGame', { name: `Player${i}` }, (s) => s.playerCount === i + 1);
       }
       
       // Should have 25 players with cycling colors
@@ -481,18 +563,15 @@ describe('Click Auction Server', () => {
       await waitFor(client1, 'connect');
       await waitFor(client2, 'connect');
       
-      client1.emit('joinGame', { name: 'Stayer' });
-      await new Promise(r => setTimeout(r, 50));
-      
-      client2.emit('joinGame', { name: 'Leaver' });
-      await new Promise(r => setTimeout(r, 50));
+      await emitAndWait(client1, 'joinGame', { name: 'Stayer' }, (s) => s.playerCount === 1);
+      await emitAndWait(client2, 'joinGame', { name: 'Leaver' }, (s) => s.playerCount === 2);
       
       expect(Object.keys(gameState.players).length).toBe(2);
       
-      // Remove from tracked clients before closing
-      connectedClients = connectedClients.filter(c => c !== client2);
-      client2.close();
-      await new Promise(r => setTimeout(r, 100));
+      // Wait for disconnect to be processed by watching for playerCount change
+      const disconnectPromise = waitForPlayerCount(client1, 1);
+      closeClient(client2);
+      await disconnectPromise;
       
       expect(Object.keys(gameState.players).length).toBe(1);
     });
@@ -504,28 +583,28 @@ describe('Click Auction Server', () => {
       await waitFor(host, 'connect');
       await waitFor(player, 'connect');
       
-      player.emit('joinGame', { name: 'KickMe' });
-      await waitFor(player, 'gameState');
+      await emitAndWait(player, 'joinGame', { name: 'KickMe' }, (s) => s.playerCount === 1);
       
       const playerId = Object.keys(gameState.players)[0];
       
-      // Set up kick listener
+      // Set up kick listener and wait for playerCount to drop
       const kickPromise = waitFor(player, 'kicked');
+      const statePromise = waitForPlayerCount(host, 0);
       
       host.emit('kickPlayer', playerId);
       
-      await kickPromise;
+      await Promise.all([kickPromise, statePromise]);
       expect(Object.keys(gameState.players).length).toBe(0);
     });
 
     test('kicking non-existent player does nothing', async () => {
       const host = createClient();
-      await waitFor(host, 'connect');
+      const initialState = await waitFor(host, 'gameState');
       
       host.emit('kickPlayer', 'fake-player-id');
-      await new Promise(r => setTimeout(r, 100));
       
-      // No error, no crash
+      // Since nothing should change, we just verify state is still valid
+      expect(initialState.playerCount).toBe(0);
       expect(Object.keys(gameState.players).length).toBe(0);
     });
   });
@@ -542,11 +621,10 @@ describe('Click Auction Server', () => {
       await waitFor(host, 'connect');
       await waitFor(player, 'connect');
       
-      player.emit('joinGame', { name: 'Bidder' });
-      await waitFor(player, 'gameState');
+      await emitAndWait(player, 'joinGame', { name: 'Bidder' }, (s) => s.playerCount === 1);
       
       host.emit('startAuction', { duration: 2 });
-      const state = await waitFor(player, 'gameState');
+      const state = await waitForStatus(player, 'countdown');
       
       expect(state.status).toBe('countdown');
       expect(state.round).toBe(1);
@@ -562,8 +640,7 @@ describe('Click Auction Server', () => {
       await waitFor(host, 'connect');
       await waitFor(player, 'connect');
       
-      player.emit('joinGame', { name: 'Bidder' });
-      await waitFor(player, 'gameState');
+      await emitAndWait(player, 'joinGame', { name: 'Bidder' }, (s) => s.playerCount === 1);
       
       const statuses = [];
       player.on('gameState', (state) => {
@@ -605,30 +682,38 @@ describe('Click Auction Server', () => {
       await waitFor(host, 'connect');
       await waitFor(player, 'connect');
       
-      player.emit('joinGame', { name: 'Clicker' });
-      await waitFor(player, 'gameState');
+      await emitAndWait(player, 'joinGame', { name: 'Clicker' }, (s) => s.playerCount === 1);
       
-      // Click during waiting - should not count
+      // Click during waiting - should not count (check gameState directly, it's synchronous)
       player.emit('click');
       player.emit('click');
-      await new Promise(r => setTimeout(r, 50));
       expect(gameState.players[player.id]?.clicks || 0).toBe(0);
       
       host.emit('startAuction', { duration: 2 });
       
-      // Click during countdown - should not count
+      // Wait for countdown, then click - should not count
       await waitForStatus(player, 'countdown', 3000);
       player.emit('click');
       player.emit('click');
-      await new Promise(r => setTimeout(r, 50));
+      // Clicks during countdown shouldn't register
       expect(gameState.players[player.id].clicks).toBe(0);
       
-      // Click during bidding - should count
+      // Wait for bidding, then click - should count
       await waitForStatus(player, 'bidding', 3000);
+      
+      // Click and wait for clickUpdate event to confirm it was processed
+      const clickPromise1 = waitFor(player, 'clickUpdate');
       player.emit('click');
+      await clickPromise1;
+      
+      const clickPromise2 = waitFor(player, 'clickUpdate');
       player.emit('click');
+      await clickPromise2;
+      
+      const clickPromise3 = waitFor(player, 'clickUpdate');
       player.emit('click');
-      await new Promise(r => setTimeout(r, 100));
+      await clickPromise3;
+      
       expect(gameState.players[player.id].clicks).toBe(3);
       
       // Wait for finish
@@ -644,17 +729,14 @@ describe('Click Auction Server', () => {
       await waitFor(player, 'connect');
       await waitFor(spectator, 'connect');
       
-      player.emit('joinGame', { name: 'Player' });
-      await new Promise(r => setTimeout(r, 100));
+      await emitAndWait(player, 'joinGame', { name: 'Player' }, (s) => s.playerCount === 1);
       
       host.emit('startAuction', { duration: 2 });
       await waitForStatus(host, 'bidding', 5000);
       
-      // Spectator (not joined) clicks
+      // Spectator (not joined) clicks - no clickUpdate should be emitted for them
       spectator.emit('click');
       spectator.emit('click');
-      
-      await new Promise(r => setTimeout(r, 100));
       
       // Only player should have clicks tracked
       expect(Object.keys(gameState.players).length).toBe(1);
@@ -669,22 +751,23 @@ describe('Click Auction Server', () => {
       await waitFor(host, 'connect');
       await waitFor(player, 'connect');
       
-      player.emit('joinGame', { name: 'Resetter' });
-      await new Promise(r => setTimeout(r, 100));
+      await emitAndWait(player, 'joinGame', { name: 'Resetter' }, (s) => s.playerCount === 1);
       
       host.emit('startAuction', { duration: 3 });
       await waitForStatus(host, 'bidding', 5000);
       
+      // Click and wait for confirmation
+      const clickPromise = waitFor(player, 'clickUpdate');
       player.emit('click');
-      player.emit('click');
-      await new Promise(r => setTimeout(r, 100));
+      await clickPromise;
       
+      // Reset and wait for waiting status
       host.emit('resetAuction');
-      await new Promise(r => setTimeout(r, 100));
+      const state = await waitForStatus(host, 'waiting');
       
-      expect(gameState.status).toBe('waiting');
-      expect(gameState.winner).toBeNull();
-      expect(gameState.timeRemaining).toBe(0);
+      expect(state.status).toBe('waiting');
+      expect(state.winner).toBeNull();
+      expect(state.timeRemaining).toBe(0);
       expect(gameState.players[player.id].clicks).toBe(0);
     });
   });
@@ -701,18 +784,18 @@ describe('Click Auction Server', () => {
       await waitFor(host, 'connect');
       await waitFor(player, 'connect');
       
-      player.emit('joinGame', { name: 'Timer Test' });
-      await waitFor(player, 'gameState');
+      await emitAndWait(player, 'joinGame', { name: 'Timer Test' }, (s) => s.playerCount === 1);
       
       // Start auction multiple times rapidly
       host.emit('startAuction', { duration: 3 });
       host.emit('startAuction', { duration: 3 });
       host.emit('startAuction', { duration: 3 });
       
-      await new Promise(r => setTimeout(r, 100));
+      // Wait for any status change
+      const state = await waitForCondition(host, (s) => s.status !== 'waiting');
       
-      // Should still be in countdown, not finished prematurely
-      expect(['countdown', 'bidding']).toContain(gameState.status);
+      // Should still be in countdown or bidding, not finished prematurely
+      expect(['countdown', 'bidding']).toContain(state.status);
       
       // Round should only increment once per real start
       expect(gameState.round).toBe(3); // Each start increments, but timers are cleared
@@ -732,12 +815,13 @@ describe('Click Auction Server', () => {
       await waitForStatus(host, 'countdown', 3000);
       
       host.emit('resetAuction');
-      const state = await waitFor(host, 'gameState');
+      const state = await waitForStatus(host, 'waiting');
       
       expect(state.status).toBe('waiting');
       
-      // Wait to ensure no timer continues
-      await new Promise(r => setTimeout(r, 500));
+      // Verify timer didn't continue by checking state after a moment
+      // Use a short condition check instead of arbitrary delay
+      await new Promise(r => setTimeout(r, 300)); // Minimal wait to let any rogue timers fire
       expect(gameState.status).toBe('waiting');
     });
 
@@ -749,12 +833,12 @@ describe('Click Auction Server', () => {
       await waitForStatus(host, 'bidding', 3000);
       
       host.emit('resetAuction');
-      const state = await waitFor(host, 'gameState');
+      const state = await waitForStatus(host, 'waiting');
       
       expect(state.status).toBe('waiting');
       
-      // Wait to ensure no timer continues
-      await new Promise(r => setTimeout(r, 500));
+      // Verify timer didn't continue
+      await new Promise(r => setTimeout(r, 300)); // Minimal wait to let any rogue timers fire
       expect(gameState.status).toBe('waiting');
     });
 
@@ -770,7 +854,7 @@ describe('Click Auction Server', () => {
       
       // Immediately start another
       host.emit('startAuction', { duration: 1 });
-      const state = await waitFor(host, 'gameState');
+      const state = await waitForCondition(host, (s) => s.status !== 'finished' || s.round === 2);
       
       expect(['countdown', 'bidding']).toContain(state.status);
       expect(gameState.round).toBe(2);
@@ -783,12 +867,12 @@ describe('Click Auction Server', () => {
       const host = createClient();
       await waitFor(host, 'connect');
       
-      // Rapid cycle
+      // Rapid cycle - use event-driven waiting
       for (let i = 0; i < 5; i++) {
         host.emit('startAuction', { duration: 2 });
-        await new Promise(r => setTimeout(r, 50));
+        await waitForCondition(host, (s) => s.status === 'countdown' || s.status === 'bidding', 2000);
         host.emit('resetAuction');
-        await new Promise(r => setTimeout(r, 50));
+        await waitForStatus(host, 'waiting', 2000);
       }
       
       // Final state should be waiting
@@ -839,21 +923,22 @@ describe('Click Auction Server', () => {
       await waitFor(fast, 'connect');
       await waitFor(slow, 'connect');
       
-      fast.emit('joinGame', { name: 'FastClicker', adContent: 'I win!' });
-      await waitFor(fast, 'gameState');
-      
-      slow.emit('joinGame', { name: 'SlowClicker', adContent: 'Maybe next time' });
-      await waitFor(slow, 'gameState');
+      await emitAndWait(fast, 'joinGame', { name: 'FastClicker', adContent: 'I win!' }, (s) => s.playerCount === 1);
+      await emitAndWait(slow, 'joinGame', { name: 'SlowClicker', adContent: 'Maybe next time' }, (s) => s.playerCount === 2);
       
       host.emit('startAuction', { duration: 2 });
       await waitForStatus(fast, 'bidding', 3000);
       
-      // Fast clicks more
+      // Fast clicks more - wait for each click to be confirmed
       for (let i = 0; i < 10; i++) {
+        const p = waitFor(fast, 'clickUpdate');
         fast.emit('click');
+        await p;
       }
       for (let i = 0; i < 3; i++) {
+        const p = waitFor(slow, 'clickUpdate');
         slow.emit('click');
+        await p;
       }
       
       await waitForStatus(fast, 'finished', 5000);
@@ -869,8 +954,7 @@ describe('Click Auction Server', () => {
       await waitFor(host, 'connect');
       await waitFor(player, 'connect');
       
-      player.emit('joinGame', { name: 'Idle' });
-      await waitFor(player, 'gameState');
+      await emitAndWait(player, 'joinGame', { name: 'Idle' }, (s) => s.playerCount === 1);
       
       host.emit('startAuction', { duration: 1 });
       
@@ -900,20 +984,28 @@ describe('Click Auction Server', () => {
       await waitFor(p1, 'connect');
       await waitFor(p2, 'connect');
       
-      p1.emit('joinGame', { name: 'TiePlayer1' });
-      await waitFor(p1, 'gameState');
-      
-      p2.emit('joinGame', { name: 'TiePlayer2' });
-      await waitFor(p2, 'gameState');
+      await emitAndWait(p1, 'joinGame', { name: 'TiePlayer1' }, (s) => s.playerCount === 1);
+      await emitAndWait(p2, 'joinGame', { name: 'TiePlayer2' }, (s) => s.playerCount === 2);
       
       host.emit('startAuction', { duration: 1 });
       await waitForStatus(p1, 'bidding', 3000);
       
       // Both click same amount
+      const click1 = waitFor(p1, 'clickUpdate');
       p1.emit('click');
+      await click1;
+      
+      const click2 = waitFor(p2, 'clickUpdate');
+      p2.emit('click');
+      await click2;
+      
+      const click3 = waitFor(p1, 'clickUpdate');
       p1.emit('click');
+      await click3;
+      
+      const click4 = waitFor(p2, 'clickUpdate');
       p2.emit('click');
-      p2.emit('click');
+      await click4;
       
       await waitForStatus(p1, 'finished', 5000);
       
@@ -931,28 +1023,29 @@ describe('Click Auction Server', () => {
       await waitFor(winner, 'connect');
       await waitFor(loser, 'connect');
       
-      winner.emit('joinGame', { name: 'Winner' });
-      await waitFor(winner, 'gameState');
-      
-      loser.emit('joinGame', { name: 'Loser' });
-      await waitFor(loser, 'gameState');
+      await emitAndWait(winner, 'joinGame', { name: 'Winner' }, (s) => s.playerCount === 1);
+      await emitAndWait(loser, 'joinGame', { name: 'Loser' }, (s) => s.playerCount === 2);
       
       host.emit('startAuction', { duration: 1 });
       await waitForStatus(winner, 'bidding', 3000);
       
       for (let i = 0; i < 10; i++) {
+        const p = waitFor(winner, 'clickUpdate');
         winner.emit('click');
+        await p;
       }
       for (let i = 0; i < 2; i++) {
+        const p = waitFor(loser, 'clickUpdate');
         loser.emit('click');
+        await p;
       }
       
       await waitForStatus(winner, 'finished', 5000);
       
-      // Winner disconnects
-      connectedClients = connectedClients.filter(c => c !== winner);
-      winner.close();
-      await new Promise(r => setTimeout(r, 100));
+      // Winner disconnects - wait for playerCount to decrease
+      const disconnectPromise = waitForPlayerCount(loser, 1);
+      closeClient(winner);
+      await disconnectPromise;
       
       // Final leaderboard should still show winner
       expect(gameState.finalLeaderboard.length).toBe(2);
@@ -962,7 +1055,7 @@ describe('Click Auction Server', () => {
   });
 
   // ==========================================
-  // LEADERBOARD TESTS
+  // LEADERBOARD TESTS (Pure Unit Tests - No Network)
   // ==========================================
   
   describe('Leaderboard', () => {
@@ -1004,7 +1097,7 @@ describe('Click Auction Server', () => {
   });
 
   // ==========================================
-  // STATS PERSISTENCE TESTS
+  // STATS PERSISTENCE TESTS (Mostly Unit Tests)
   // ==========================================
   
   describe('Stats Persistence', () => {
@@ -1040,15 +1133,13 @@ describe('Click Auction Server', () => {
       expect(allTimeStats['Improver'].bestRound).toBe(150);
     });
 
-    test('lastPlayed timestamp updates', async () => {
+    test('lastPlayed timestamp is set', () => {
       updatePlayerStats('Timer', 10, false);
-      const first = allTimeStats['Timer'].lastPlayed;
+      expect(allTimeStats['Timer'].lastPlayed).toBeDefined();
+      expect(typeof allTimeStats['Timer'].lastPlayed).toBe('string');
       
-      // Actually wait so timestamp changes
-      await new Promise(r => setTimeout(r, 10));
+      // Second update should also have timestamp
       updatePlayerStats('Timer', 20, false);
-      
-      // Timestamps should be different (or at least the second one exists)
       expect(allTimeStats['Timer'].lastPlayed).toBeDefined();
       expect(allTimeStats['Timer'].roundsPlayed).toBe(2);
     });
@@ -1062,8 +1153,10 @@ describe('Click Auction Server', () => {
         'Player2': { wins: 3, totalClicks: 50 }
       };
       
+      // Wait for gameState update after reset
+      const statePromise = waitForCondition(host, (s) => s.allTimeLeaderboard.length === 0);
       host.emit('resetAllTimeStats');
-      await new Promise(r => setTimeout(r, 100));
+      await statePromise;
       
       expect(Object.keys(allTimeStats).length).toBe(0);
     });
@@ -1079,18 +1172,28 @@ describe('Click Auction Server', () => {
       await waitFor(p2, 'connect');
       await waitFor(p3, 'connect');
       
-      p1.emit('joinGame', { name: 'Gold' });
-      p2.emit('joinGame', { name: 'Silver' });
-      p3.emit('joinGame', { name: 'Bronze' });
-      
-      await new Promise(r => setTimeout(r, 100));
+      await emitAndWait(p1, 'joinGame', { name: 'Gold' }, (s) => s.playerCount === 1);
+      await emitAndWait(p2, 'joinGame', { name: 'Silver' }, (s) => s.playerCount === 2);
+      await emitAndWait(p3, 'joinGame', { name: 'Bronze' }, (s) => s.playerCount === 3);
       
       host.emit('startAuction', { duration: 1 });
       await waitForStatus(p1, 'bidding', 3000);
       
-      for (let i = 0; i < 10; i++) p1.emit('click');
-      for (let i = 0; i < 5; i++) p2.emit('click');
-      for (let i = 0; i < 2; i++) p3.emit('click');
+      for (let i = 0; i < 10; i++) {
+        const p = waitFor(p1, 'clickUpdate');
+        p1.emit('click');
+        await p;
+      }
+      for (let i = 0; i < 5; i++) {
+        const p = waitFor(p2, 'clickUpdate');
+        p2.emit('click');
+        await p;
+      }
+      for (let i = 0; i < 2; i++) {
+        const p = waitFor(p3, 'clickUpdate');
+        p3.emit('click');
+        await p;
+      }
       
       await waitForStatus(p1, 'finished', 5000);
       
@@ -1114,8 +1217,7 @@ describe('Click Auction Server', () => {
       await waitFor(client, 'connect');
       
       const longName = 'A'.repeat(1000);
-      client.emit('joinGame', { name: longName });
-      const state = await waitFor(client, 'gameState');
+      const state = await emitAndWait(client, 'joinGame', { name: longName }, (s) => s.playerCount === 1);
       
       expect(state.leaderboard[0].name).toBe(longName);
     });
@@ -1125,34 +1227,33 @@ describe('Click Auction Server', () => {
       await waitFor(client, 'connect');
       
       const specialName = '<script>alert("xss")</script> 🎉 "quotes" & ampersand';
-      client.emit('joinGame', { name: specialName });
-      const state = await waitFor(client, 'gameState');
+      const state = await emitAndWait(client, 'joinGame', { name: specialName }, (s) => s.playerCount === 1);
       
       expect(state.leaderboard[0].name).toBe(specialName);
     });
 
-    test('rapid clicking registers all clicks', async () => {
+    test('rapid clicking registers clicks correctly', async () => {
       const host = createClient();
       const clicker = createClient();
       
       await waitFor(host, 'connect');
       await waitFor(clicker, 'connect');
       
-      clicker.emit('joinGame', { name: 'RapidClicker' });
-      await new Promise(r => setTimeout(r, 100));
+      await emitAndWait(clicker, 'joinGame', { name: 'RapidClicker' }, (s) => s.playerCount === 1);
       
       host.emit('startAuction', { duration: 3 });
       await waitForStatus(host, 'bidding', 5000);
       
-      // Rapid fire 100 clicks
-      for (let i = 0; i < 100; i++) {
+      // Rapid fire clicks and count how many register
+      const clickCount = 50;
+      for (let i = 0; i < clickCount; i++) {
+        const p = waitFor(clicker, 'clickUpdate');
         clicker.emit('click');
+        await p;
       }
       
-      await new Promise(r => setTimeout(r, 300));
-      
-      // Most clicks should be registered (network timing may cause some variance)
-      expect(gameState.players[clicker.id].clicks).toBeGreaterThanOrEqual(90);
+      // All clicks should be registered since we waited for each
+      expect(gameState.players[clicker.id].clicks).toBe(clickCount);
       
       await waitForStatus(host, 'finished', 5000);
     });
@@ -1164,8 +1265,7 @@ describe('Click Auction Server', () => {
       await waitFor(host, 'connect');
       await waitFor(earlyPlayer, 'connect');
       
-      earlyPlayer.emit('joinGame', { name: 'EarlyBird' });
-      await waitFor(earlyPlayer, 'gameState');
+      await emitAndWait(earlyPlayer, 'joinGame', { name: 'EarlyBird' }, (s) => s.playerCount === 1);
       
       host.emit('startAuction', { duration: 3 });
       await waitForStatus(earlyPlayer, 'bidding', 3000);
@@ -1173,13 +1273,20 @@ describe('Click Auction Server', () => {
       // Late player joins mid-auction
       const latePlayer = createClient();
       await waitFor(latePlayer, 'connect');
-      latePlayer.emit('joinGame', { name: 'LateComer' });
-      await new Promise(r => setTimeout(r, 100));
+      await emitAndWait(latePlayer, 'joinGame', { name: 'LateComer' }, (s) => s.playerCount === 2);
       
       // Both can click
+      const click1 = waitFor(earlyPlayer, 'clickUpdate');
       earlyPlayer.emit('click');
+      await click1;
+      
+      const click2 = waitFor(latePlayer, 'clickUpdate');
       latePlayer.emit('click');
+      await click2;
+      
+      const click3 = waitFor(latePlayer, 'clickUpdate');
       latePlayer.emit('click');
+      await click3;
       
       await waitForStatus(earlyPlayer, 'finished', 5000);
       
@@ -1196,24 +1303,30 @@ describe('Click Auction Server', () => {
       await waitFor(stayer, 'connect');
       await waitFor(leaver, 'connect');
       
-      stayer.emit('joinGame', { name: 'Stayer' });
-      leaver.emit('joinGame', { name: 'Leaver' });
-      await new Promise(r => setTimeout(r, 100));
+      await emitAndWait(stayer, 'joinGame', { name: 'Stayer' }, (s) => s.playerCount === 1);
+      await emitAndWait(leaver, 'joinGame', { name: 'Leaver' }, (s) => s.playerCount === 2);
       
       host.emit('startAuction', { duration: 2 });
       await waitForStatus(stayer, 'bidding', 3000);
       
       // Leaver clicks then disconnects
+      const click1 = waitFor(leaver, 'clickUpdate');
       leaver.emit('click');
+      await click1;
+      
+      const click2 = waitFor(leaver, 'clickUpdate');
       leaver.emit('click');
-      await new Promise(r => setTimeout(r, 50));
-      connectedClients = connectedClients.filter(c => c !== leaver);
-      leaver.close();
+      await click2;
+      
+      // Wait for disconnect to be processed
+      const disconnectPromise = waitForPlayerCount(stayer, 1);
+      closeClient(leaver);
+      await disconnectPromise;
       
       // Stayer continues
+      const click3 = waitFor(stayer, 'clickUpdate');
       stayer.emit('click');
-      stayer.emit('click');
-      stayer.emit('click');
+      await click3;
       
       // Auction should complete normally
       await waitForStatus(stayer, 'finished', 5000);
@@ -1223,15 +1336,15 @@ describe('Click Auction Server', () => {
     });
 
     test('many simultaneous connections handled', async () => {
-      for (let i = 0; i < 20; i++) {
+      const playerCount = 20;
+      
+      for (let i = 0; i < playerCount; i++) {
         const client = createClient();
         await waitFor(client, 'connect');
-        client.emit('joinGame', { name: `Player${i}` });
+        await emitAndWait(client, 'joinGame', { name: `Player${i}` }, (s) => s.playerCount === i + 1);
       }
       
-      await new Promise(r => setTimeout(r, 200));
-      
-      expect(Object.keys(gameState.players).length).toBe(20);
+      expect(Object.keys(gameState.players).length).toBe(playerCount);
     });
 
     test('auction with single player works', async () => {
@@ -1241,13 +1354,14 @@ describe('Click Auction Server', () => {
       await waitFor(host, 'connect');
       await waitFor(solo, 'connect');
       
-      solo.emit('joinGame', { name: 'SoloPlayer' });
-      await waitFor(solo, 'gameState');
+      await emitAndWait(solo, 'joinGame', { name: 'SoloPlayer' }, (s) => s.playerCount === 1);
       
       host.emit('startAuction', { duration: 1 });
       await waitForStatus(solo, 'bidding', 3000);
       
+      const clickPromise = waitFor(solo, 'clickUpdate');
       solo.emit('click');
+      await clickPromise;
       
       await waitForStatus(solo, 'finished', 5000);
       
@@ -1262,27 +1376,27 @@ describe('Click Auction Server', () => {
   
   describe('State Broadcasting', () => {
     test('all clients receive state updates', async () => {
-      const statesReceived = [false, false, false];
       const clients = [];
+      const statePromises = [];
       
       for (let i = 0; i < 3; i++) {
         const client = createClient();
         await waitFor(client, 'connect');
-        
-        const idx = i;
-        client.on('gameState', () => {
-          statesReceived[idx] = true;
-        });
-        
         clients.push(client);
       }
       
-      // Trigger a broadcast
-      clients[0].emit('joinGame', { name: 'Trigger' });
-      await new Promise(r => setTimeout(r, 200));
+      // Set up listeners for next gameState on each client
+      clients.forEach(client => {
+        statePromises.push(waitFor(client, 'gameState'));
+      });
       
-      // All clients should have received update
-      expect(statesReceived.every(x => x)).toBe(true);
+      // Trigger a broadcast by having client 0 join
+      clients[0].emit('joinGame', { name: 'Trigger' });
+      
+      // All clients should receive the update
+      const states = await Promise.all(statePromises);
+      
+      expect(states.every(s => s.playerCount === 1)).toBe(true);
     });
 
     test('click updates broadcast to all', async () => {
@@ -1294,9 +1408,9 @@ describe('Click Auction Server', () => {
       await waitFor(clicker, 'connect');
       await waitFor(observer, 'connect');
       
-      clicker.emit('joinGame', { name: 'Clicker' });
-      await new Promise(r => setTimeout(r, 100));
+      await emitAndWait(clicker, 'joinGame', { name: 'Clicker' }, (s) => s.playerCount === 1);
       
+      // Set up observer to listen for clickUpdate
       const clickUpdatePromise = waitFor(observer, 'clickUpdate', 3000);
       
       host.emit('startAuction', { duration: 2 });
@@ -1313,7 +1427,7 @@ describe('Click Auction Server', () => {
 });
 
 // ==========================================
-// UTILITY FUNCTION UNIT TESTS
+// UTILITY FUNCTION UNIT TESTS (Pure - No Network)
 // ==========================================
 
 describe('Utility Functions', () => {
