@@ -31,10 +31,14 @@ let allTimeStats = {};
 async function loadScores() {
   try {
     if (redis) {
+      Logger.info('🔍 Attempting to load scores from Redis...');
       const data = await redis.get(config.REDIS_KEY);
+      Logger.info(`🔍 Redis returned: ${data ? 'data found' : 'null/empty'}, type: ${typeof data}`);
       if (data) {
         allTimeStats = typeof data === 'string' ? JSON.parse(data) : data;
         Logger.info(`📊 Loaded ${Object.keys(allTimeStats).length} player records from Redis`);
+      } else {
+        Logger.warn('⚠️ No data found in Redis (key may not exist yet)');
       }
     } else if (fs.existsSync(SCORES_FILE)) {
       const data = fs.readFileSync(SCORES_FILE, 'utf8');
@@ -55,7 +59,8 @@ async function loadScores() {
       }
     }
   } catch (err) {
-    Logger.error('Error loading scores:', err);
+    Logger.error('❌ CRITICAL: Error loading scores:', err.message);
+    Logger.error('❌ Stack:', err.stack);
     allTimeStats = {};
   }
 }
@@ -66,8 +71,10 @@ async function loadScores() {
 async function saveScores() {
   try {
     if (redis) {
-      await redis.set(config.REDIS_KEY, JSON.stringify(allTimeStats));
-      Logger.debug('💾 Scores saved to Redis');
+      const dataToSave = JSON.stringify(allTimeStats);
+      Logger.info(`💾 Saving ${Object.keys(allTimeStats).length} player records to Redis...`);
+      await redis.set(config.REDIS_KEY, dataToSave);
+      Logger.info('💾 Scores saved to Redis successfully');
     } else {
       fs.writeFileSync(SCORES_FILE, JSON.stringify(allTimeStats, null, 2));
       Logger.debug('💾 Scores saved to scores.json');
