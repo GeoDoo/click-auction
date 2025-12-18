@@ -117,6 +117,26 @@ The game includes immersive audio and vibration feedback (works on mobile!):
 
 Without Redis, scores persist locally but reset on redeploy.
 
+## 🛡️ Security & Protections
+
+The game includes several layers of protection against abuse:
+
+| Protection | Description |
+|------------|-------------|
+| **Input Validation** | Player names and ad content are sanitized and truncated |
+| **Duration Limits** | Auction duration clamped to 5-60 seconds |
+| **Rate Limiting** | Max 20 clicks/second per player (prevents spamming) |
+| **Bot Detection** | Statistical analysis of click timing patterns |
+| **File Corruption** | Automatic recovery from corrupt `scores.json` |
+
+### 🤖 Bot Detection
+
+The game analyzes click timing to detect automated/scripted clicking:
+- Measures **Coefficient of Variation (CV)** of click intervals
+- Human clicks: naturally vary in timing (high CV)
+- Bot clicks: unnaturally consistent timing (low CV < 15%)
+- Suspicious players are flagged with 🤖 in the host panel
+
 ## 🛠 Tech Stack
 
 - **Backend:** Node.js + Express

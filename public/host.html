@@ -296,6 +296,17 @@
       opacity: 1;
     }
 
+    .bot-badge {
+      font-size: 1rem;
+      cursor: help;
+      animation: botPulse 1s infinite;
+    }
+
+    @keyframes botPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
     .empty-state {
       text-align: center;
       padding: 2rem;
@@ -607,7 +618,7 @@
         playersList.innerHTML = state.leaderboard.map(player => `
           <div class="player-row">
             <div class="player-color" style="background: ${player.color}"></div>
-            <div class="player-name">${escapeHtml(player.name)}</div>
+            <div class="player-name">${escapeHtml(player.name)}${player.suspicious ? ' <span class="bot-badge" title="Suspicious click pattern detected">🤖</span>' : ''}</div>
             <div class="player-clicks">${player.clicks}</div>
             <button class="btn-kick" onclick="kickPlayer('${player.id}')">✕</button>
           </div>
