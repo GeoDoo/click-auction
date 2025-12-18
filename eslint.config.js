@@ -36,7 +36,6 @@ module.exports = [
         // Shared modules (loaded via script tags)
         Logger: 'readonly',
         SoundManager: 'readonly',
-        Haptics: 'readonly',
         Utils: 'readonly',
         // Jest globals
         describe: 'readonly',

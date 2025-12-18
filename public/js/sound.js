@@ -150,60 +150,10 @@ const SoundManager = {
   },
 };
 
-/**
- * Haptic feedback patterns
- * Uses navigator.vibrate where available
- */
-const Haptics = {
-  /**
-   * Check if haptics are supported
-   * @returns {boolean}
-   */
-  isSupported() {
-    return 'vibrate' in navigator;
-  },
-
-  /**
-   * Short tap vibration
-   */
-  tap() {
-    if (this.isSupported()) navigator.vibrate(15);
-  },
-
-  /**
-   * Countdown tick vibration
-   */
-  countdown() {
-    if (this.isSupported()) navigator.vibrate(30);
-  },
-
-  /**
-   * GO! vibration - buzz-pause-buzz
-   */
-  go() {
-    if (this.isSupported()) navigator.vibrate([50, 30, 50]);
-  },
-
-  /**
-   * Winner celebration pattern
-   */
-  winner() {
-    if (this.isSupported()) navigator.vibrate([100, 50, 100, 50, 200]);
-  },
-
-  /**
-   * Loser/end vibration
-   */
-  loser() {
-    if (this.isSupported()) navigator.vibrate(100);
-  },
-};
-
 // Auto-initialize on user interaction
 document.addEventListener('click', () => SoundManager.init(), { once: false });
 document.addEventListener('touchstart', () => SoundManager.init(), { once: false });
 
 // Export for use in other modules
 window.SoundManager = SoundManager;
-window.Haptics = Haptics;
 

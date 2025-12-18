@@ -131,7 +131,7 @@ function showReconnectMessage(message) {
   }
 }
 
-// SoundManager and Haptics are loaded from /js/sound.js
+// SoundManager loaded from /js/sound.js
 
 // Toggle sound on/off
 function toggleSound() {
@@ -198,14 +198,7 @@ function handleBid(e) {
   ripple.style.width = ripple.style.height = Math.max(rect.width, rect.height) + 'px';
   bidButton.appendChild(ripple);
   setTimeout(() => ripple.remove(), 400);
-
-  // Haptic feedback if available
-  if (navigator.vibrate) {
-    navigator.vibrate(15);
-  }
 }
-
-// Haptics loaded from /js/sound.js
 
 bidButton.addEventListener('click', handleBid);
 bidButton.addEventListener('touchstart', (e) => {
@@ -227,18 +220,16 @@ function updateUI(state) {
   badge.className = 'game-status-badge status-' + state.status;
   badge.textContent = state.status.charAt(0).toUpperCase() + state.status.slice(1);
 
-  // Play sounds/haptics for state changes
+  // Play sounds for state changes
   if (state.status === 'countdown') {
     if (lastCountdown !== state.timeRemaining) {
       lastCountdown = state.timeRemaining;
       SoundManager.countdownTick();
-      Haptics.countdown();
     }
   } else if (state.status === 'bidding') {
-    // Play GO sound + haptic when bidding starts
+    // Play GO sound when bidding starts
     if (gameStatus !== 'bidding') {
       SoundManager.go();
-      Haptics.go();
     }
   }
 
@@ -288,13 +279,11 @@ function updateUI(state) {
 
       overlay.className = 'winner-overlay active' + (isWinner ? ' you-won' : '');
 
-      // Play sound + haptic based on result
+      // Play sound based on result
       if (isWinner) {
         SoundManager.winner();
-        Haptics.winner();
       } else {
         SoundManager.end();
-        Haptics.loser();
       }
 
       // Different display based on rank
