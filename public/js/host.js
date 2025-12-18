@@ -7,7 +7,7 @@ let isAuthenticated = false;
 
 // Get auth token from cookie
 function getAuthToken() {
-  const match = document.cookie.match(/host_auth=([^;]+)/);
+  const match = document.cookie.match(/hostAuth=([^;]+)/);
   return match ? match[1] : null;
 }
 
