@@ -301,6 +301,50 @@ describe('Click Auction Server', () => {
     // Initialize state
     resetGameState();
     allTimeStats = {};
+    
+    // Session management for reconnection
+    const playerSessions = {};
+    const socketToSession = {};
+    
+    function generateSessionToken() {
+      return 'sess_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+    }
+    
+    function createSession(socketId, playerData) {
+      const token = generateSessionToken();
+      playerSessions[token] = {
+        playerId: socketId,
+        playerData: { ...playerData },
+        disconnectedAt: null
+      };
+      socketToSession[socketId] = token;
+      return token;
+    }
+    
+    function markSessionDisconnected(socketId) {
+      const token = socketToSession[socketId];
+      if (!token || !playerSessions[token]) return null;
+      
+      // Update session with latest player data before marking disconnected
+      if (gameState.players[socketId]) {
+        playerSessions[token].playerData = { ...gameState.players[socketId] };
+      }
+      
+      playerSessions[token].disconnectedAt = Date.now();
+      playerSessions[token].playerId = null;
+      delete socketToSession[socketId];
+      return token;
+    }
+    
+    function restoreSession(token, newSocketId) {
+      const session = playerSessions[token];
+      if (!session) return null;
+      
+      session.playerId = newSocketId;
+      session.disconnectedAt = null;
+      socketToSession[newSocketId] = token;
+      return session.playerData;
+    }
 
     // Set up socket handlers
     io.on('connection', (socket) => {
@@ -318,12 +362,58 @@ describe('Click Auction Server', () => {
 
       socket.on('joinGame', (data) => {
         const { name, adContent } = data || {};
-        gameState.players[socket.id] = {
+        const playerData = {
           name: name || `DSP-${socket.id.substr(0, 4)}`,
           clicks: 0,
           color: getNextColor(),
           adContent: adContent || `${name || 'Anonymous'} wins!`
         };
+        gameState.players[socket.id] = playerData;
+        
+        // Create session and emit token
+        const token = createSession(socket.id, playerData);
+        socket.emit('sessionCreated', { token });
+        
+        broadcastState();
+      });
+      
+      socket.on('rejoinGame', (data) => {
+        const safeData = data && typeof data === 'object' ? data : {};
+        const token = safeData.token;
+        
+        if (!token || typeof token !== 'string') {
+          socket.emit('rejoinError', { message: 'Invalid session token' });
+          return;
+        }
+        
+        const session = playerSessions[token];
+        if (!session) {
+          socket.emit('rejoinError', { message: 'Session expired or not found' });
+          return;
+        }
+        
+        if (session.playerId && session.playerId !== socket.id) {
+          socket.emit('rejoinError', { message: 'Session already in use' });
+          return;
+        }
+        
+        const playerData = restoreSession(token, socket.id);
+        if (!playerData) {
+          socket.emit('rejoinError', { message: 'Failed to restore session' });
+          return;
+        }
+        
+        gameState.players[socket.id] = { ...playerData };
+        
+        socket.emit('rejoinSuccess', {
+          token,
+          playerData: {
+            name: playerData.name,
+            clicks: playerData.clicks,
+            color: playerData.color
+          }
+        });
+        
         broadcastState();
       });
 
@@ -392,6 +482,8 @@ describe('Click Auction Server', () => {
 
       socket.on('disconnect', () => {
         if (gameState.players[socket.id]) {
+          // Mark session as disconnected (gives player time to reconnect)
+          markSessionDisconnected(socket.id);
           delete gameState.players[socket.id];
           broadcastState();
         }
@@ -1011,6 +1103,221 @@ describe('Click Auction Server', () => {
       expect(gameState.finalLeaderboard.length).toBe(2);
       expect(gameState.finalLeaderboard[0].name).toBe('Winner');
       expect(gameState.winner.name).toBe('Winner');
+    });
+  });
+
+  // ==========================================
+  // SESSION/RECONNECTION INTEGRATION TESTS
+  // ==========================================
+  
+  describe('Session & Reconnection', () => {
+    test('player receives session token on join', async () => {
+      const player = createClient();
+      await waitFor(player, 'connect');
+      
+      const sessionPromise = waitFor(player, 'sessionCreated');
+      player.emit('joinGame', { name: 'SessionPlayer' });
+      
+      const sessionData = await sessionPromise;
+      
+      expect(sessionData.token).toBeDefined();
+      expect(sessionData.token).toMatch(/^sess_/);
+    });
+
+    test('player can rejoin with valid session token', async () => {
+      const player = createClient();
+      await waitFor(player, 'connect');
+      
+      // Join and get session token
+      const sessionPromise = waitFor(player, 'sessionCreated');
+      await emitAndWait(player, 'joinGame', { name: 'RejoinerTest' }, (s) => s.playerCount === 1);
+      const sessionData = await sessionPromise;
+      const token = sessionData.token;
+      
+      // Disconnect
+      closeClient(player);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Reconnect with new socket
+      const player2 = createClient();
+      await waitFor(player2, 'connect');
+      
+      const rejoinPromise = waitFor(player2, 'rejoinSuccess');
+      player2.emit('rejoinGame', { token });
+      
+      const rejoinData = await rejoinPromise;
+      
+      expect(rejoinData.playerData.name).toBe('RejoinerTest');
+      expect(rejoinData.token).toBe(token);
+    });
+
+    test('click count preserved during reconnection', async () => {
+      const host = createClient();
+      const player = createClient();
+      
+      await waitFor(host, 'connect');
+      await waitFor(player, 'connect');
+      
+      // Join and get session token
+      const sessionPromise = waitFor(player, 'sessionCreated');
+      await emitAndWait(player, 'joinGame', { name: 'ClickPreserver' }, (s) => s.playerCount === 1);
+      const sessionData = await sessionPromise;
+      const token = sessionData.token;
+      
+      // Start auction
+      host.emit('startAuction', { duration: 5 });
+      await waitForStatus(player, 'bidding', 3000);
+      
+      // Make some clicks
+      for (let i = 0; i < 5; i++) {
+        const clickPromise = waitFor(player, 'clickUpdate');
+        player.emit('click');
+        await clickPromise;
+      }
+      
+      // Verify clicks are recorded
+      let state = await waitFor(player, 'gameState');
+      const playerEntry = state.leaderboard.find(p => p.name === 'ClickPreserver');
+      expect(playerEntry.clicks).toBe(5);
+      
+      // Disconnect
+      closeClient(player);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Reconnect with new socket
+      const player2 = createClient();
+      await waitFor(player2, 'connect');
+      
+      const rejoinPromise = waitFor(player2, 'rejoinSuccess');
+      player2.emit('rejoinGame', { token });
+      
+      const rejoinData = await rejoinPromise;
+      
+      // Clicks should be preserved
+      expect(rejoinData.playerData.clicks).toBe(5);
+      expect(rejoinData.playerData.name).toBe('ClickPreserver');
+    });
+
+    test('rejoin fails with invalid token', async () => {
+      const player = createClient();
+      await waitFor(player, 'connect');
+      
+      const errorPromise = waitFor(player, 'rejoinError');
+      player.emit('rejoinGame', { token: 'sess_invalid_token_12345' });
+      
+      const errorData = await errorPromise;
+      
+      expect(errorData.message).toContain('expired or not found');
+    });
+
+    test('rejoin fails with missing token', async () => {
+      const player = createClient();
+      await waitFor(player, 'connect');
+      
+      const errorPromise = waitFor(player, 'rejoinError');
+      player.emit('rejoinGame', {});
+      
+      const errorData = await errorPromise;
+      
+      expect(errorData.message).toContain('Invalid session token');
+    });
+
+    test('rejoin fails with null data', async () => {
+      const player = createClient();
+      await waitFor(player, 'connect');
+      
+      const errorPromise = waitFor(player, 'rejoinError');
+      player.emit('rejoinGame', null);
+      
+      const errorData = await errorPromise;
+      
+      expect(errorData.message).toContain('Invalid session token');
+    });
+
+    test('player appears in leaderboard after reconnection', async () => {
+      const player = createClient();
+      
+      await waitFor(player, 'connect');
+      
+      // Join and get session token
+      const sessionPromise = waitFor(player, 'sessionCreated');
+      await emitAndWait(player, 'joinGame', { name: 'LeaderboardRejoiner' }, (s) => s.playerCount === 1);
+      const sessionData = await sessionPromise;
+      const token = sessionData.token;
+      
+      // Verify player count
+      expect(Object.keys(gameState.players).length).toBe(1);
+      
+      // Disconnect - player should be removed
+      closeClient(player);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      expect(Object.keys(gameState.players).length).toBe(0);
+      
+      // Reconnect with new socket
+      const player2 = createClient();
+      await waitFor(player2, 'connect');
+      
+      const rejoinPromise = waitFor(player2, 'rejoinSuccess');
+      player2.emit('rejoinGame', { token });
+      const rejoinData = await rejoinPromise;
+      
+      // Player should be back in game
+      expect(rejoinData.playerData.name).toBe('LeaderboardRejoiner');
+      expect(Object.keys(gameState.players).length).toBe(1);
+      
+      // Verify leaderboard shows player
+      const leaderboard = getLeaderboard();
+      expect(leaderboard.find(p => p.name === 'LeaderboardRejoiner')).toBeDefined();
+    });
+
+    test('can continue clicking after reconnection', async () => {
+      const host = createClient();
+      const player = createClient();
+      
+      await waitFor(host, 'connect');
+      await waitFor(player, 'connect');
+      
+      // Join and get session token
+      const sessionPromise = waitFor(player, 'sessionCreated');
+      await emitAndWait(player, 'joinGame', { name: 'ClickContinuer' }, (s) => s.playerCount === 1);
+      const sessionData = await sessionPromise;
+      const token = sessionData.token;
+      
+      // Start auction
+      host.emit('startAuction', { duration: 10 });
+      await waitForStatus(player, 'bidding', 3000);
+      
+      // Make 3 clicks
+      for (let i = 0; i < 3; i++) {
+        const clickPromise = waitFor(player, 'clickUpdate');
+        player.emit('click');
+        await clickPromise;
+      }
+      
+      // Disconnect during auction
+      closeClient(player);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Reconnect
+      const player2 = createClient();
+      await waitFor(player2, 'connect');
+      
+      const rejoinPromise = waitFor(player2, 'rejoinSuccess');
+      player2.emit('rejoinGame', { token });
+      await rejoinPromise;
+      
+      // Continue clicking - should add to existing count
+      for (let i = 0; i < 2; i++) {
+        const clickPromise = waitFor(player2, 'clickUpdate');
+        player2.emit('click');
+        await clickPromise;
+      }
+      
+      // Should now have 5 total clicks
+      const state = await waitFor(player2, 'gameState');
+      const playerEntry = state.leaderboard.find(p => p.name === 'ClickContinuer');
+      expect(playerEntry.clicks).toBe(5);
     });
   });
 
