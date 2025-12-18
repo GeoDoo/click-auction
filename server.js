@@ -940,16 +940,6 @@ io.on('connection', (socket) => {
     broadcastState();
   });
 
-  socket.on('kickPlayer', (playerId) => {
-    // Validate playerId
-    if (!isValidSocketId(playerId)) return;
-    
-    if (gameState.players[playerId]) {
-      delete gameState.players[playerId];
-      io.to(playerId).emit('kicked');
-      broadcastState();
-    }
-  });
 
   socket.on('resetAllTimeStats', () => {
     allTimeStats = {};

@@ -131,48 +131,9 @@
     .content-area {
       display: flex;
       flex-direction: column;
-      gap: 1.5rem;
-    }
-
-    /* Timer Section */
-    .timer-section {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      background: rgba(10, 11, 30, 0.6);
-      border-radius: 20px;
-      border: 1px solid rgba(0, 201, 167, 0.2);
-      position: relative;
-      min-height: 280px;
-    }
-
-    .timer-label {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 1rem;
-      color: #666;
-      text-transform: uppercase;
-      letter-spacing: 0.2em;
-      margin-bottom: 0.5rem;
-    }
-
-    .timer-value {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 10rem;
-      font-weight: 900;
-      line-height: 1;
-      color: var(--primary);
-      text-shadow: 0 0 60px rgba(0, 201, 167, 0.5);
-    }
-
-    .timer-value.countdown { color: var(--accent); text-shadow: 0 0 60px rgba(233, 30, 140, 0.5); }
-    .timer-value.urgent { color: var(--danger); animation: shake 0.1s infinite; }
-
-    @keyframes shake {
-      0%, 100% { transform: translateX(0); }
-      25% { transform: translateX(-5px); }
-      75% { transform: translateX(5px); }
+      min-height: 0;
+      height: 100%;
+      gap: 1rem;
     }
 
     /* Leaderboard */
@@ -185,6 +146,7 @@
       display: flex;
       flex-direction: column;
       min-height: 0;
+      overflow: hidden;
     }
 
     .leaderboard-title {
@@ -258,6 +220,22 @@
       font-size: 1.2rem;
       font-weight: 700;
       color: var(--success);
+    }
+
+    .player-stats {
+      display: flex;
+      gap: 1rem;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.85rem;
+    }
+
+    .player-stats .wins {
+      color: var(--warning);
+      font-weight: 700;
+    }
+
+    .player-stats .best {
+      color: var(--primary);
     }
 
     .click-bar {
@@ -468,8 +446,6 @@
       0%, 100% { transform: translateY(0); }
       50% { transform: translateY(-10px); }
     }
-
-    .winner-details {}
 
     .winner-label {
       font-family: 'Orbitron', sans-serif;
@@ -940,11 +916,16 @@
     </header>
 
     <div class="content-area">
-      <div class="timer-section">
-        <div class="timer-label" id="timerLabel">Waiting for host</div>
-        <div class="timer-value" id="timerValue">--</div>
+      <div class="leaderboard">
+        <div class="leaderboard-title">🏆 ALL-TIME CHAMPIONS</div>
+        <div class="leaderboard-list" id="allTimeList">
+          <div class="empty-leaderboard">
+            <div class="icon">🏆</div>
+            <div>No champions yet...</div>
+          </div>
+        </div>
       </div>
-
+      
       <div class="leaderboard">
         <div class="leaderboard-title">📊 LIVE BIDS</div>
         <div class="leaderboard-list" id="leaderboardList">
@@ -1191,6 +1172,35 @@
         document.getElementById('joinQr').src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(playUrl)}&bgcolor=ffffff&color=0a0b1e&margin=5`;
       });
 
+    // Fetch and display all-time stats
+    function loadAllTimeStats() {
+      fetch('/api/stats')
+        .then(res => res.json())
+        .then(data => {
+          const list = document.getElementById('allTimeList');
+          if (!data.allTime || data.allTime.length === 0) {
+            list.innerHTML = `<div class="empty-leaderboard"><div class="icon">🏆</div><div>No champions yet...</div></div>`;
+            return;
+          }
+          
+          list.innerHTML = data.allTime.slice(0, 8).map((player, index) => `
+            <div class="leaderboard-item">
+              <div class="rank">${index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}</div>
+              <div class="player-name">${escapeHtml(player.name)}</div>
+              <div class="player-stats">
+                <span class="wins">${player.wins} 🏆</span>
+                <span class="best">Best: ${player.bestRound}</span>
+              </div>
+            </div>
+          `).join('');
+        })
+        .catch(err => console.log('Could not load all-time stats:', err));
+    }
+
+    // Load stats initially and refresh after each auction
+    loadAllTimeStats();
+    setInterval(loadAllTimeStats, 10000); // Refresh every 10 seconds
+
     function escapeHtml(text) {
       const div = document.createElement('div');
       div.textContent = text;
@@ -1206,20 +1216,12 @@
       const statusTexts = { waiting: 'Waiting', countdown: 'Starting...', bidding: 'LIVE!', finished: 'Complete' };
       badge.textContent = statusTexts[state.status] || state.status;
 
-      const timerLabel = document.getElementById('timerLabel');
-      const timerValue = document.getElementById('timerValue');
       const countdownOverlay = document.getElementById('countdownOverlay');
       const countdownNumber = document.getElementById('countdownNumber');
 
       if (state.status === 'waiting') {
-        timerLabel.textContent = 'Waiting for host';
-        timerValue.textContent = '--';
-        timerValue.className = 'timer-value';
         countdownOverlay.className = 'countdown-overlay';
       } else if (state.status === 'countdown') {
-        timerLabel.textContent = 'GET READY!';
-        timerValue.textContent = state.timeRemaining;
-        timerValue.className = 'timer-value countdown';
         countdownOverlay.className = 'countdown-overlay active';
         countdownNumber.textContent = state.timeRemaining;
         if (lastCountdown !== state.timeRemaining) {
@@ -1230,15 +1232,9 @@
           countdownNumber.style.animation = 'countdown-pop 1s ease-out';
         }
       } else if (state.status === 'bidding') {
-        timerLabel.textContent = 'Time Remaining';
-        timerValue.textContent = state.timeRemaining;
-        timerValue.className = 'timer-value' + (state.timeRemaining <= 3 ? ' urgent' : '');
         countdownOverlay.className = 'countdown-overlay';
         if (lastStatus !== 'bidding') SoundManager.go();
       } else if (state.status === 'finished') {
-        timerLabel.textContent = 'Auction Complete';
-        timerValue.textContent = '✓';
-        timerValue.className = 'timer-value';
         countdownOverlay.className = 'countdown-overlay';
       }
 
@@ -1269,7 +1265,11 @@
         showWinnerScreen(state);
         winnerScreen.className = 'winner-screen active';
         createConfetti();
-        if (lastStatus !== 'finished') SoundManager.winner();
+        if (lastStatus !== 'finished') {
+          SoundManager.winner();
+          // Refresh all-time stats after auction ends
+          setTimeout(loadAllTimeStats, 1000);
+        }
       } else {
         winnerScreen.className = 'winner-screen';
       }

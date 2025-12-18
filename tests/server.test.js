@@ -385,14 +385,6 @@ describe('Click Auction Server', () => {
         broadcastState();
       });
 
-      socket.on('kickPlayer', (playerId) => {
-        if (gameState.players[playerId]) {
-          delete gameState.players[playerId];
-          io.to(playerId).emit('kicked');
-          broadcastState();
-        }
-      });
-
       socket.on('resetAllTimeStats', () => {
         allTimeStats = {};
         broadcastState();
@@ -574,38 +566,6 @@ describe('Click Auction Server', () => {
       await disconnectPromise;
       
       expect(Object.keys(gameState.players).length).toBe(1);
-    });
-
-    test('kicking player removes them', async () => {
-      const host = createClient();
-      const player = createClient();
-      
-      await waitFor(host, 'connect');
-      await waitFor(player, 'connect');
-      
-      await emitAndWait(player, 'joinGame', { name: 'KickMe' }, (s) => s.playerCount === 1);
-      
-      const playerId = Object.keys(gameState.players)[0];
-      
-      // Set up kick listener and wait for playerCount to drop
-      const kickPromise = waitFor(player, 'kicked');
-      const statePromise = waitForPlayerCount(host, 0);
-      
-      host.emit('kickPlayer', playerId);
-      
-      await Promise.all([kickPromise, statePromise]);
-      expect(Object.keys(gameState.players).length).toBe(0);
-    });
-
-    test('kicking non-existent player does nothing', async () => {
-      const host = createClient();
-      const initialState = await waitFor(host, 'gameState');
-      
-      host.emit('kickPlayer', 'fake-player-id');
-      
-      // Since nothing should change, we just verify state is still valid
-      expect(initialState.playerCount).toBe(0);
-      expect(Object.keys(gameState.players).length).toBe(0);
     });
   });
 
@@ -2539,17 +2499,6 @@ describe('Input Validation Integration', () => {
         io.emit('auctionStarted', { duration: gameState.auctionDuration });
       });
       
-      socket.on('kickPlayer', (playerId) => {
-        if (!isValidSocketId(playerId)) {
-          socket.emit('error', { message: 'Invalid player ID' });
-          return;
-        }
-        if (gameState.players[playerId]) {
-          delete gameState.players[playerId];
-          io.to(playerId).emit('kicked');
-        }
-      });
-      
       socket.on('disconnect', () => {
         delete gameState.players[socket.id];
       });
@@ -2643,27 +2592,5 @@ describe('Input Validation Integration', () => {
     const result = await waitFor(client, 'auctionStarted');
     
     expect(result.duration).toBe(MIN_AUCTION_DURATION);
-  });
-  
-  test('rejects invalid kickPlayer ID', async () => {
-    const client = createClient();
-    await waitFor(client, 'connect');
-    
-    const errorPromise = waitFor(client, 'error');
-    client.emit('kickPlayer', null);
-    
-    const error = await errorPromise;
-    expect(error.message).toBe('Invalid player ID');
-  });
-  
-  test('ignores kickPlayer with empty string', async () => {
-    const client = createClient();
-    await waitFor(client, 'connect');
-    
-    const errorPromise = waitFor(client, 'error');
-    client.emit('kickPlayer', '');
-    
-    const error = await errorPromise;
-    expect(error.message).toBe('Invalid player ID');
   });
 });

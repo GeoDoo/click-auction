@@ -256,36 +256,6 @@
       gap: 2rem;
     }
 
-    .timer-section {
-      text-align: center;
-    }
-
-    .timer-label {
-      font-size: 1rem;
-      color: #666;
-      text-transform: uppercase;
-      letter-spacing: 0.2em;
-      margin-bottom: 0.5rem;
-    }
-
-    .timer-value {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 6rem;
-      font-weight: 900;
-      color: var(--primary);
-      text-shadow: 0 0 40px rgba(0, 245, 212, 0.5);
-      line-height: 1;
-    }
-
-    .timer-value.countdown { color: var(--accent); text-shadow: 0 0 40px rgba(241, 91, 181, 0.5); }
-    .timer-value.urgent { color: var(--danger); animation: shake 0.1s infinite; }
-
-    @keyframes shake {
-      0%, 100% { transform: translateX(0); }
-      25% { transform: translateX(-4px); }
-      75% { transform: translateX(4px); }
-    }
-
     .click-section {
       width: 100%;
       max-width: 400px;
@@ -452,8 +422,8 @@
       color: var(--accent);
     }
 
-    /* Kicked overlay */
-    .kicked-overlay {
+    /* Error overlay */
+    .error-overlay {
       display: none;
       position: fixed;
       top: 0; left: 0;
@@ -465,12 +435,14 @@
       flex-direction: column;
     }
 
-    .kicked-overlay.active { display: flex; }
+    .error-overlay.active { display: flex; }
 
-    .kicked-text {
+    .error-text {
       font-family: 'Orbitron', sans-serif;
       font-size: 2rem;
       color: var(--danger);
+      text-align: center;
+      padding: 2rem;
     }
 
     @media (max-width: 600px) {
@@ -521,14 +493,6 @@
         padding: 0.3rem 0.75rem;
       }
       
-      .timer-value { 
-        font-size: 3.5rem; 
-      }
-      
-      .timer-label {
-        font-size: 0.9rem;
-      }
-      
       .click-counter { 
         font-size: 2.5rem; 
       }
@@ -569,10 +533,6 @@
         width: 160px; 
         height: 160px; 
         font-size: 1rem; 
-      }
-      
-      .timer-value { 
-        font-size: 3rem; 
       }
     }
     
@@ -626,11 +586,6 @@
     </div>
 
     <div class="game-main">
-      <div class="timer-section">
-        <div class="timer-label" id="timerLabel">Waiting for host</div>
-        <div class="timer-value" id="timerValue">--</div>
-      </div>
-
       <div class="click-section">
         <div class="click-counter" id="clickCounter">0</div>
         <div class="click-label">Your Bids</div>
@@ -654,9 +609,9 @@
     </div>
   </div>
 
-  <!-- Kicked Overlay -->
-  <div class="kicked-overlay" id="kickedOverlay">
-    <div class="kicked-text">You've been removed from the game</div>
+  <!-- Error Overlay -->
+  <div class="error-overlay" id="errorOverlay">
+    <div class="error-text" id="errorText">An error occurred</div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
@@ -704,13 +659,16 @@
       document.getElementById('joinScreen').classList.add('hidden');
       document.getElementById('gameScreen').classList.add('active');
       document.getElementById('playerNameDisplay').textContent = myName;
-      document.getElementById('clickCount').textContent = myClicks;
+      document.getElementById('clickCounter').textContent = myClicks;
+      
+      // Clear any error overlays on successful rejoin
+      document.getElementById('errorOverlay').classList.remove('active');
       
       isReconnecting = false;
       console.log('♻️ Session restored!');
       
-      // Show reconnection success message
-      showReconnectMessage('Reconnected! Your progress was saved.');
+      // Show reconnection success message briefly
+      showReconnectMessage('Reconnected!');
     });
 
     // Handle rejoin failure
@@ -1015,53 +973,40 @@
       badge.className = 'game-status-badge status-' + state.status;
       badge.textContent = state.status.charAt(0).toUpperCase() + state.status.slice(1);
 
-      // Update timer
-      const timerLabel = document.getElementById('timerLabel');
-      const timerValue = document.getElementById('timerValue');
-      
-      if (state.status === 'waiting') {
-        timerLabel.textContent = 'Waiting for host';
-        timerValue.textContent = '--';
-        timerValue.className = 'timer-value';
-      } else if (state.status === 'countdown') {
-        timerLabel.textContent = 'Get Ready!';
-        timerValue.textContent = state.timeRemaining;
-        timerValue.className = 'timer-value countdown';
-        // Play countdown tick sound + haptic
+      // Play sounds/haptics for state changes
+      if (state.status === 'countdown') {
         if (lastCountdown !== state.timeRemaining) {
           lastCountdown = state.timeRemaining;
           SoundManager.countdownTick();
           Haptics.countdown();
         }
       } else if (state.status === 'bidding') {
-        timerLabel.textContent = 'BID NOW!';
-        timerValue.textContent = state.timeRemaining;
-        timerValue.className = 'timer-value' + (state.timeRemaining <= 3 ? ' urgent' : '');
         // Play GO sound + haptic when bidding starts
         if (gameStatus !== 'bidding') {
           SoundManager.go();
           Haptics.go();
         }
-      } else if (state.status === 'finished') {
-        timerLabel.textContent = 'Auction Complete';
-        timerValue.textContent = '✓';
-        timerValue.className = 'timer-value';
       }
 
+      // Clear error overlay on receiving valid state (connection working)
+      document.getElementById('errorOverlay').classList.remove('active');
+      
       // Update bid button
       if (state.status === 'waiting') {
         bidButton.className = 'bid-button waiting';
-        bidButton.textContent = 'Wait...';
+        bidButton.textContent = 'Waiting...';
         bidButton.disabled = true;
       } else if (state.status === 'countdown') {
         bidButton.className = 'bid-button countdown-state';
-        bidButton.textContent = 'Get Ready!';
+        bidButton.innerHTML = `<span style="font-size: 3rem;">${state.timeRemaining}</span><br>GET READY`;
         bidButton.disabled = true;
         myClicks = 0;
         document.getElementById('clickCounter').textContent = '0';
       } else if (state.status === 'bidding') {
         bidButton.className = 'bid-button ready';
-        bidButton.textContent = 'BID!';
+        bidButton.innerHTML = state.timeRemaining <= 3 
+          ? `<span style="font-size: 2rem; color: #ff3366;">${state.timeRemaining}s</span><br>BID!`
+          : 'BID!';
         bidButton.disabled = false;
       } else if (state.status === 'finished') {
         bidButton.className = 'bid-button disabled';
@@ -1130,14 +1075,9 @@
 
     socket.on('gameState', updateUI);
 
-    socket.on('kicked', () => {
-      document.getElementById('kickedOverlay').classList.add('active');
-    });
-
     socket.on('joinError', (data) => {
-      const overlay = document.getElementById('kickedOverlay');
-      overlay.querySelector('.kicked-text').textContent = data.message || 'Could not join the game';
-      overlay.classList.add('active');
+      document.getElementById('errorText').textContent = data.message || 'Could not join the game';
+      document.getElementById('errorOverlay').classList.add('active');
     });
 
     // Focus name input on load
