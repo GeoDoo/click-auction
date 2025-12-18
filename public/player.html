@@ -864,9 +864,18 @@
       
       // Haptic feedback if available
       if (navigator.vibrate) {
-        navigator.vibrate(10);
+        navigator.vibrate(15);
       }
     }
+
+    // Haptic patterns for different events
+    const Haptics = {
+      tap: () => navigator.vibrate && navigator.vibrate(15),
+      countdown: () => navigator.vibrate && navigator.vibrate(30),
+      go: () => navigator.vibrate && navigator.vibrate([50, 30, 50]), // buzz-pause-buzz
+      winner: () => navigator.vibrate && navigator.vibrate([100, 50, 100, 50, 200]), // celebration pattern
+      loser: () => navigator.vibrate && navigator.vibrate(100)
+    };
 
     bidButton.addEventListener('click', handleBid);
     bidButton.addEventListener('touchstart', (e) => {
@@ -900,18 +909,20 @@
         timerLabel.textContent = 'Get Ready!';
         timerValue.textContent = state.timeRemaining;
         timerValue.className = 'timer-value countdown';
-        // Play countdown tick sound
+        // Play countdown tick sound + haptic
         if (lastCountdown !== state.timeRemaining) {
           lastCountdown = state.timeRemaining;
           SoundManager.countdownTick();
+          Haptics.countdown();
         }
       } else if (state.status === 'bidding') {
         timerLabel.textContent = 'BID NOW!';
         timerValue.textContent = state.timeRemaining;
         timerValue.className = 'timer-value' + (state.timeRemaining <= 3 ? ' urgent' : '');
-        // Play GO sound when bidding starts
+        // Play GO sound + haptic when bidding starts
         if (gameStatus !== 'bidding') {
           SoundManager.go();
+          Haptics.go();
         }
       } else if (state.status === 'finished') {
         timerLabel.textContent = 'Auction Complete';
@@ -960,11 +971,13 @@
           
           overlay.className = 'winner-overlay active' + (isWinner ? ' you-won' : '');
           
-          // Play sound based on result
+          // Play sound + haptic based on result
           if (isWinner) {
             SoundManager.winner();
+            Haptics.winner();
           } else {
             SoundManager.end();
+            Haptics.loser();
           }
           
           // Different display based on rank
