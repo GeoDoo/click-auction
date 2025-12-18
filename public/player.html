@@ -1016,6 +1016,12 @@
       document.getElementById('kickedOverlay').classList.add('active');
     });
 
+    socket.on('joinError', (data) => {
+      const overlay = document.getElementById('kickedOverlay');
+      overlay.querySelector('.kicked-text').textContent = data.message || 'Could not join the game';
+      overlay.classList.add('active');
+    });
+
     // Focus name input on load
     document.getElementById('playerName').focus();
   </script>

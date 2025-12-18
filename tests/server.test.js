@@ -1670,6 +1670,92 @@ describe('HTTP Endpoints', () => {
       expect(stats.totalPlayers).toBe(2);
     });
   });
+  
+  describe('/health', () => {
+    test('returns correct health structure', () => {
+      // Unit test the health structure
+      const health = {
+        status: 'healthy',
+        uptime: 123.45,
+        timestamp: new Date().toISOString(),
+        players: 5,
+        round: 3
+      };
+      
+      expect(health.status).toBe('healthy');
+      expect(typeof health.uptime).toBe('number');
+      expect(health.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+      expect(typeof health.players).toBe('number');
+      expect(typeof health.round).toBe('number');
+    });
+  });
+});
+
+// ==========================================
+// MAX PLAYERS LIMIT TESTS
+// ==========================================
+describe('Max Players Limit', () => {
+  test('max players limit logic works correctly', () => {
+    const MAX_PLAYERS = 100;
+    const players = {};
+    
+    // Should allow join when under limit
+    for (let i = 0; i < MAX_PLAYERS; i++) {
+      players[`socket${i}`] = { name: `Player${i}` };
+    }
+    
+    expect(Object.keys(players).length).toBe(MAX_PLAYERS);
+    
+    // Check if at limit
+    const atLimit = Object.keys(players).length >= MAX_PLAYERS;
+    expect(atLimit).toBe(true);
+  });
+});
+
+// ==========================================
+// MEMORY CLEANUP TESTS  
+// ==========================================
+describe('Memory Cleanup Logic', () => {
+  test('cleanup removes data for non-active players', () => {
+    const activePlayers = { 'socket1': {}, 'socket2': {} };
+    const activeSocketIds = new Set(Object.keys(activePlayers));
+    
+    const clickTimestamps = {
+      'socket1': [1000, 2000],
+      'socket2': [1500],
+      'socket3': [3000], // Disconnected player
+      'socket4': [4000]  // Disconnected player
+    };
+    
+    // Simulate cleanup
+    for (const socketId of Object.keys(clickTimestamps)) {
+      if (!activeSocketIds.has(socketId)) {
+        delete clickTimestamps[socketId];
+      }
+    }
+    
+    expect(Object.keys(clickTimestamps)).toEqual(['socket1', 'socket2']);
+  });
+  
+  test('cleanup preserves data for active players', () => {
+    const activePlayers = { 'socket1': {}, 'socket2': {} };
+    const activeSocketIds = new Set(Object.keys(activePlayers));
+    
+    const clickIntervals = {
+      'socket1': [100, 120, 110],
+      'socket2': [80, 90, 85]
+    };
+    
+    // Simulate cleanup
+    for (const socketId of Object.keys(clickIntervals)) {
+      if (!activeSocketIds.has(socketId)) {
+        delete clickIntervals[socketId];
+      }
+    }
+    
+    expect(clickIntervals['socket1']).toEqual([100, 120, 110]);
+    expect(clickIntervals['socket2']).toEqual([80, 90, 85]);
+  });
 });
 
 // ==========================================

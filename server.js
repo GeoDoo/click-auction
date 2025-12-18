@@ -13,6 +13,18 @@ const io = new Server(server);
 // CONFIGURATION
 // ============================================
 const PORT = process.env.PORT || 3000;
+const MAX_PLAYERS = 100; // Prevent server overload
+
+// Health check endpoint (for monitoring / Render)
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+    players: Object.keys(gameState?.players || {}).length,
+    round: gameState?.round || 0
+  });
+});
 
 // API endpoint for clients to get the base URL
 // Uses the request's host header - works automatically in both local and production
@@ -282,6 +294,70 @@ function cleanupRateLimitData(socketId) {
 }
 
 // ============================================
+// MEMORY CLEANUP (Periodic stale data removal)
+// ============================================
+const CLEANUP_INTERVAL_MS = 60 * 1000; // Run every minute
+const STALE_DATA_THRESHOLD_MS = 5 * 60 * 1000; // Data older than 5 minutes
+
+function cleanupStaleData() {
+  const now = Date.now();
+  let cleanedCount = 0;
+  
+  // Get active socket IDs
+  const activeSocketIds = new Set(Object.keys(gameState.players));
+  
+  // Clean up clickTimestamps for disconnected players
+  for (const socketId of Object.keys(clickTimestamps)) {
+    if (!activeSocketIds.has(socketId)) {
+      delete clickTimestamps[socketId];
+      cleanedCount++;
+    }
+  }
+  
+  // Clean up clickIntervals for disconnected players
+  for (const socketId of Object.keys(clickIntervals)) {
+    if (!activeSocketIds.has(socketId)) {
+      delete clickIntervals[socketId];
+      cleanedCount++;
+    }
+  }
+  
+  // Clean up lastClickTime for disconnected players
+  for (const socketId of Object.keys(lastClickTime)) {
+    if (!activeSocketIds.has(socketId)) {
+      delete lastClickTime[socketId];
+      cleanedCount++;
+    }
+  }
+  
+  if (cleanedCount > 0) {
+    console.log(`🧹 Memory cleanup: removed ${cleanedCount} stale entries`);
+  }
+}
+
+// Start periodic cleanup
+const cleanupIntervalId = setInterval(cleanupStaleData, CLEANUP_INTERVAL_MS);
+
+// Clean up on process exit
+process.on('SIGTERM', () => {
+  console.log('🛑 Received SIGTERM, cleaning up...');
+  clearInterval(cleanupIntervalId);
+  clearAllIntervals();
+  saveScores().then(() => {
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('🛑 Received SIGINT, cleaning up...');
+  clearInterval(cleanupIntervalId);
+  clearAllIntervals();
+  saveScores().then(() => {
+    process.exit(0);
+  });
+});
+
+// ============================================
 // BOT DETECTION (Statistical Outlier Flagging)
 // ============================================
 // Bots click at very consistent intervals (low variance)
@@ -422,6 +498,12 @@ io.on('connection', (socket) => {
 
   // Player joins the game
   socket.on('joinGame', (data) => {
+    // Check max players limit
+    if (Object.keys(gameState.players).length >= MAX_PLAYERS) {
+      socket.emit('joinError', { message: 'Game is full! Maximum players reached.' });
+      return;
+    }
+    
     // Input validation
     const safeData = data && typeof data === 'object' ? data : {};
     const name = sanitizeString(safeData.name, MAX_NAME_LENGTH);
@@ -627,6 +709,7 @@ server.listen(PORT, HOST, () => {
 ║                      🎯 CLICK AUCTION 🎯                          ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║  Server running on port ${String(PORT).padEnd(39)}║
+║  Max players: ${String(MAX_PLAYERS).padEnd(50)}║
 ║  QR codes auto-detect the correct URL from browser               ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║  Routes:                                                         ║
@@ -635,6 +718,7 @@ server.listen(PORT, HOST, () => {
 ║    /host       - Host control panel                              ║
 ║    /display    - Big screen display                              ║
 ║    /api/config - Get current configuration                       ║
+║    /health     - Health check (for monitoring)                   ║
 ╚══════════════════════════════════════════════════════════════════╝
   `);
 });
