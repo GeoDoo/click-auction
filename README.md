@@ -220,17 +220,31 @@ Customize in any HTML file's `:root` CSS variables.
 
 ```
 click-auction/
-├── server.js              # Main server with Socket.io
+├── server.js              # Main Express/Socket.io server
 ├── package.json
 ├── render.yaml            # Render deployment config
 ├── jest.config.js         # Test configuration
+├── eslint.config.js       # ESLint configuration
+├── src/                   # Backend modules
+│   ├── index.js           # Module exports
+│   ├── config.js          # Configuration constants
+│   ├── validation.js      # Input validation & rate limiting
+│   ├── session.js         # Session management (reconnection)
+│   ├── auth.js            # Host PIN authentication
+│   ├── botDetection.js    # Bot detection (CV analysis)
+│   └── persistence.js     # Redis/file score persistence
 ├── tests/
 │   └── server.test.js     # Comprehensive test suite (125+ tests)
 ├── public/
 │   ├── display.html       # Main display (QR, rules, leaderboards, billboard)
 │   ├── play.html          # Player bidding interface
 │   ├── host.html          # Host control panel
-│   └── host-login.html    # PIN login page for host
+│   ├── host-login.html    # PIN login page for host
+│   └── js/                # Extracted frontend JavaScript
+│       ├── play.js        # Player page logic
+│       ├── host.js        # Host control logic
+│       ├── host-login.js  # Login page logic
+│       └── display.js     # Display page logic
 └── scores.json            # Local persistence (auto-created)
 ```
 
