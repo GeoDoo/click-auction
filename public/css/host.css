@@ -1,0 +1,236 @@
+:root {
+  /* VIOOH Brand Palette */
+  --viooh-teal: #00C9A7;
+  --viooh-cyan: #00D4D4;
+  --viooh-purple: #6B3FA0;
+  --viooh-magenta: #E91E8C;
+  --viooh-navy: #0A0B1E;
+  --viooh-dark: #060714;
+  
+  --primary: var(--viooh-teal);
+  --secondary: var(--viooh-purple);
+  --accent: var(--viooh-magenta);
+  --success: #00E896;
+  --warning: #FFB800;
+  --danger: #FF3366;
+  --dark: var(--viooh-navy);
+  --darker: var(--viooh-dark);
+  --card-bg: rgba(10, 11, 30, 0.95);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Rajdhani', sans-serif;
+  background: var(--darker);
+  color: #e0e0e0;
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.bg {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: -1;
+  background: 
+    radial-gradient(ellipse at 0% 0%, rgba(241, 91, 181, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(0, 245, 212, 0.1) 0%, transparent 50%),
+    var(--darker);
+}
+
+header {
+  background: var(--card-bg);
+  border-bottom: 1px solid rgba(0, 245, 212, 0.2);
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.5rem;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--success);
+  animation: blink 2s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.main {
+  padding: 2rem;
+  max-width: 500px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 80px);
+}
+
+.control-center {
+  width: 100%;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid rgba(0, 245, 212, 0.15);
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.card h2 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.2rem;
+  color: var(--primary);
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.control-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.setting-row label {
+  flex: 1;
+  font-size: 1.1rem;
+}
+
+.setting-row input[type="number"] {
+  width: 100px;
+  padding: 0.75rem 1rem;
+  font-size: 1.2rem;
+  font-family: 'Orbitron', sans-serif;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(0, 245, 212, 0.3);
+  border-radius: 8px;
+  color: var(--primary);
+  text-align: center;
+}
+
+.setting-row input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 15px rgba(0, 245, 212, 0.3);
+}
+
+.btn-group {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 1rem 2rem;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex: 1;
+  min-width: 150px;
+}
+
+.btn-start {
+  background: linear-gradient(135deg, var(--success), #00cc6a);
+  color: var(--dark);
+}
+
+.btn-start:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(0, 255, 136, 0.3);
+}
+
+.btn-reset {
+  background: linear-gradient(135deg, var(--warning), #e6aa00);
+  color: var(--dark);
+}
+
+.btn-reset:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(255, 190, 11, 0.3);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  header {
+    padding: 0.75rem 1rem;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .logo {
+    font-size: 1.2rem;
+  }
+  
+  .main {
+    padding: 1rem;
+    min-height: auto;
+  }
+  
+  .card {
+    padding: 1rem;
+  }
+  
+  .card h2 {
+    font-size: 1rem;
+  }
+  
+  .setting-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .setting-row input[type="number"] {
+    width: 100%;
+  }
+  
+  .btn-group {
+    flex-direction: column;
+  }
+  
+  .btn {
+    width: 100%;
+    min-width: auto;
+  }
+}
