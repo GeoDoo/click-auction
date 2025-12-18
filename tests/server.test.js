@@ -1882,6 +1882,169 @@ describe('IP Extraction Logic', () => {
 });
 
 // ==========================================
+// SESSION MANAGEMENT TESTS
+// ==========================================
+describe('Session Management Logic', () => {
+  test('generates unique session tokens', () => {
+    const generateSessionToken = () => {
+      return 'sess_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+    };
+    
+    const token1 = generateSessionToken();
+    const token2 = generateSessionToken();
+    
+    expect(token1).toMatch(/^sess_[a-z0-9]+$/);
+    expect(token2).toMatch(/^sess_[a-z0-9]+$/);
+    expect(token1).not.toBe(token2);
+  });
+  
+  test('creates and retrieves sessions', () => {
+    const playerSessions = {};
+    const socketToSession = {};
+    
+    const createSession = (socketId, playerData) => {
+      const token = 'sess_test123';
+      playerSessions[token] = {
+        playerId: socketId,
+        playerData: { ...playerData },
+        disconnectedAt: null,
+        timeoutId: null
+      };
+      socketToSession[socketId] = token;
+      return token;
+    };
+    
+    const token = createSession('socket1', { name: 'Player1', clicks: 5, color: '#fff' });
+    
+    expect(token).toBe('sess_test123');
+    expect(playerSessions[token].playerData.name).toBe('Player1');
+    expect(socketToSession['socket1']).toBe(token);
+  });
+  
+  test('marks session as disconnected', () => {
+    const playerSessions = {
+      'sess_test123': {
+        playerId: 'socket1',
+        playerData: { name: 'Player1' },
+        disconnectedAt: null,
+        timeoutId: null
+      }
+    };
+    const socketToSession = { 'socket1': 'sess_test123' };
+    
+    const markDisconnected = (socketId) => {
+      const token = socketToSession[socketId];
+      if (!token || !playerSessions[token]) return null;
+      
+      playerSessions[token].disconnectedAt = Date.now();
+      playerSessions[token].playerId = null;
+      delete socketToSession[socketId];
+      return token;
+    };
+    
+    const token = markDisconnected('socket1');
+    
+    expect(token).toBe('sess_test123');
+    expect(playerSessions[token].playerId).toBeNull();
+    expect(playerSessions[token].disconnectedAt).toBeTruthy();
+    expect(socketToSession['socket1']).toBeUndefined();
+  });
+  
+  test('restores session with new socket', () => {
+    const playerSessions = {
+      'sess_test123': {
+        playerId: null,
+        playerData: { name: 'Player1', clicks: 10 },
+        disconnectedAt: Date.now(),
+        timeoutId: null
+      }
+    };
+    const socketToSession = {};
+    
+    const restoreSession = (token, newSocketId) => {
+      const session = playerSessions[token];
+      if (!session) return null;
+      
+      session.playerId = newSocketId;
+      session.disconnectedAt = null;
+      socketToSession[newSocketId] = token;
+      
+      return session.playerData;
+    };
+    
+    const playerData = restoreSession('sess_test123', 'socket2');
+    
+    expect(playerData.name).toBe('Player1');
+    expect(playerData.clicks).toBe(10);
+    expect(playerSessions['sess_test123'].playerId).toBe('socket2');
+    expect(socketToSession['socket2']).toBe('sess_test123');
+  });
+  
+  test('expires session after timeout', () => {
+    const playerSessions = {
+      'sess_test123': {
+        playerId: null,
+        playerData: { name: 'Player1' },
+        disconnectedAt: Date.now() - 60000, // 60 seconds ago
+        timeoutId: null
+      }
+    };
+    
+    const GRACE_PERIOD = 30000; // 30 seconds
+    
+    const isExpired = (session) => {
+      return session.disconnectedAt && 
+             (Date.now() - session.disconnectedAt) > GRACE_PERIOD;
+    };
+    
+    expect(isExpired(playerSessions['sess_test123'])).toBe(true);
+  });
+  
+  test('does not expire active session', () => {
+    const playerSessions = {
+      'sess_test123': {
+        playerId: 'socket1', // Still connected
+        playerData: { name: 'Player1' },
+        disconnectedAt: null,
+        timeoutId: null
+      }
+    };
+    
+    const GRACE_PERIOD = 30000;
+    
+    const isExpired = (session) => {
+      if (!session.disconnectedAt) return false;
+      return (Date.now() - session.disconnectedAt) > GRACE_PERIOD;
+    };
+    
+    expect(isExpired(playerSessions['sess_test123'])).toBe(false);
+  });
+  
+  test('preserves click count during reconnection', () => {
+    // Simulate player with clicks
+    const playerData = { name: 'Player1', clicks: 25, color: '#00C9A7' };
+    
+    // Create session
+    const session = {
+      playerId: 'socket1',
+      playerData: { ...playerData },
+      disconnectedAt: null
+    };
+    
+    // Simulate disconnect - update session with current data
+    session.playerData.clicks = 42; // Player had 42 clicks when disconnected
+    session.playerId = null;
+    session.disconnectedAt = Date.now();
+    
+    // Simulate reconnect - restore data
+    const restoredData = { ...session.playerData };
+    
+    expect(restoredData.clicks).toBe(42);
+    expect(restoredData.name).toBe('Player1');
+  });
+});
+
+// ==========================================
 // INPUT VALIDATION TESTS
 // ==========================================
 

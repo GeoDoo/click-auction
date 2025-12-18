@@ -17,6 +17,8 @@ const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 const MAX_PLAYERS = 100; // Prevent server overload
 const MAX_CONNECTIONS_PER_IP = 10; // Prevent connection flooding
+const RECONNECT_GRACE_PERIOD_MS = 30000; // 30 seconds to reconnect
+const SESSION_CLEANUP_INTERVAL_MS = 10000; // Check for expired sessions every 10s
 
 // ============================================
 // SECURITY MIDDLEWARE
@@ -86,6 +88,92 @@ io.on('connection', (socket) => {
     }
   });
 });
+
+// ============================================
+// SESSION MANAGEMENT (Reconnection Support)
+// ============================================
+const playerSessions = {}; // { sessionToken: { playerId, playerData, disconnectedAt, timeoutId } }
+const socketToSession = {}; // { socketId: sessionToken }
+
+function generateSessionToken() {
+  return 'sess_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+}
+
+function createSession(socketId, playerData) {
+  const token = generateSessionToken();
+  playerSessions[token] = {
+    playerId: socketId,
+    playerData: { ...playerData },
+    disconnectedAt: null,
+    timeoutId: null
+  };
+  socketToSession[socketId] = token;
+  return token;
+}
+
+function markSessionDisconnected(socketId) {
+  const token = socketToSession[socketId];
+  if (!token || !playerSessions[token]) return null;
+  
+  const session = playerSessions[token];
+  session.disconnectedAt = Date.now();
+  session.playerId = null; // No longer connected
+  
+  // Set timeout to expire session after grace period
+  session.timeoutId = setTimeout(() => {
+    expireSession(token);
+  }, RECONNECT_GRACE_PERIOD_MS);
+  
+  delete socketToSession[socketId];
+  return token;
+}
+
+function restoreSession(token, newSocketId) {
+  const session = playerSessions[token];
+  if (!session) return null;
+  
+  // Clear the expiry timeout
+  if (session.timeoutId) {
+    clearTimeout(session.timeoutId);
+    session.timeoutId = null;
+  }
+  
+  // Update session with new socket ID
+  session.playerId = newSocketId;
+  session.disconnectedAt = null;
+  socketToSession[newSocketId] = token;
+  
+  return session.playerData;
+}
+
+function expireSession(token) {
+  const session = playerSessions[token];
+  if (session) {
+    console.log(`🕐 Session expired: ${session.playerData?.name || 'Unknown'}`);
+    if (session.timeoutId) {
+      clearTimeout(session.timeoutId);
+    }
+    // Remove player from game if still marked as disconnected
+    if (session.playerData && !session.playerId) {
+      // Player data was preserved but they didn't reconnect
+      // The player was already removed from gameState.players on disconnect
+    }
+    delete playerSessions[token];
+  }
+}
+
+function getSessionByToken(token) {
+  return playerSessions[token] || null;
+}
+
+function cleanupExpiredSessions() {
+  const now = Date.now();
+  for (const [token, session] of Object.entries(playerSessions)) {
+    if (session.disconnectedAt && (now - session.disconnectedAt) > RECONNECT_GRACE_PERIOD_MS) {
+      expireSession(token);
+    }
+  }
+}
 
 // Health check endpoint (for monitoring / Render)
 app.get('/health', (req, res) => {
@@ -405,6 +493,9 @@ function cleanupStaleData() {
   if (cleanedCount > 0) {
     console.log(`🧹 Memory cleanup: removed ${cleanedCount} stale entries`);
   }
+  
+  // Also cleanup expired sessions
+  cleanupExpiredSessions();
 }
 
 // Start periodic cleanup
@@ -583,13 +674,65 @@ io.on('connection', (socket) => {
     
     const playerName = name || `DSP-${socket.id.substr(0, 4)}`;
     
-    gameState.players[socket.id] = {
+    const playerData = {
       name: playerName,
       clicks: 0,
       color: getNextColor(),
       adContent: adContent || `${playerName} wins! 🎉`
     };
-    console.log(`Player joined: ${gameState.players[socket.id].name}`);
+    
+    gameState.players[socket.id] = playerData;
+    
+    // Create session for reconnection support
+    const sessionToken = createSession(socket.id, playerData);
+    socket.emit('sessionCreated', { token: sessionToken });
+    
+    console.log(`Player joined: ${playerName} (session: ${sessionToken.substr(0, 12)}...)`);
+    broadcastState();
+  });
+
+  // Player reconnects with session token
+  socket.on('rejoinGame', (data) => {
+    const safeData = data && typeof data === 'object' ? data : {};
+    const token = safeData.token;
+    
+    if (!token || typeof token !== 'string') {
+      socket.emit('rejoinError', { message: 'Invalid session token' });
+      return;
+    }
+    
+    const session = getSessionByToken(token);
+    if (!session) {
+      socket.emit('rejoinError', { message: 'Session expired or not found' });
+      return;
+    }
+    
+    // Check if session is disconnected (available to reclaim)
+    if (session.playerId && session.playerId !== socket.id) {
+      socket.emit('rejoinError', { message: 'Session already in use' });
+      return;
+    }
+    
+    // Restore the session
+    const playerData = restoreSession(token, socket.id);
+    if (!playerData) {
+      socket.emit('rejoinError', { message: 'Failed to restore session' });
+      return;
+    }
+    
+    // Restore player to game state
+    gameState.players[socket.id] = { ...playerData };
+    
+    socket.emit('rejoinSuccess', { 
+      token,
+      playerData: {
+        name: playerData.name,
+        clicks: playerData.clicks,
+        color: playerData.color
+      }
+    });
+    
+    console.log(`♻️ Player reconnected: ${playerData.name}`);
     broadcastState();
   });
 
@@ -699,7 +842,23 @@ io.on('connection', (socket) => {
     resetBotDetectionData(socket.id);
     
     if (gameState.players[socket.id]) {
-      console.log(`Player disconnected: ${gameState.players[socket.id].name}`);
+      const playerName = gameState.players[socket.id].name;
+      
+      // Mark session as disconnected (gives player time to reconnect)
+      const token = markSessionDisconnected(socket.id);
+      
+      if (token) {
+        // Update session with current player data (including clicks)
+        const session = getSessionByToken(token);
+        if (session) {
+          session.playerData = { ...gameState.players[socket.id] };
+        }
+        console.log(`⏳ Player disconnected (grace period): ${playerName}`);
+      } else {
+        console.log(`Player disconnected: ${playerName}`);
+      }
+      
+      // Remove from active players (they can rejoin via session)
       delete gameState.players[socket.id];
       broadcastState();
     }
@@ -811,8 +970,10 @@ server.listen(PORT, HOST, () => {
 ║  Server running on port ${String(PORT).padEnd(39)}║
 ║  Max players: ${String(MAX_PLAYERS).padEnd(50)}║
 ║  Max connections per IP: ${String(MAX_CONNECTIONS_PER_IP).padEnd(39)}║
+║  Reconnect grace period: ${String(RECONNECT_GRACE_PERIOD_MS / 1000 + 's').padEnd(39)}║
 ╠══════════════════════════════════════════════════════════════════╣
 ║  Security: Helmet ✓  Compression ✓  Rate Limiting ✓              ║
+║  Features: Reconnection ✓  Session Management ✓                  ║
 ║  QR codes auto-detect the correct URL from browser               ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║  Routes:                                                         ║

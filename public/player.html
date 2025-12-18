@@ -661,12 +661,130 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const socket = io();
+    const socket = io({
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000
+    });
     let myClicks = 0;
     let myColor = '#00f5d4';
     let myName = '';
     let gameStatus = 'waiting';
     let lastCountdown = null;
+    let sessionToken = localStorage.getItem('clickAuctionSession');
+    let isReconnecting = false;
+
+    // ==========================================
+    // SESSION MANAGEMENT
+    // ==========================================
+    function saveSession(token) {
+      sessionToken = token;
+      localStorage.setItem('clickAuctionSession', token);
+    }
+
+    function clearSession() {
+      sessionToken = null;
+      localStorage.removeItem('clickAuctionSession');
+    }
+
+    // Handle session created (new join)
+    socket.on('sessionCreated', (data) => {
+      saveSession(data.token);
+      console.log('🎫 Session created');
+    });
+
+    // Handle successful rejoin
+    socket.on('rejoinSuccess', (data) => {
+      saveSession(data.token);
+      myName = data.playerData.name;
+      myClicks = data.playerData.clicks;
+      myColor = data.playerData.color;
+      
+      document.getElementById('joinScreen').classList.add('hidden');
+      document.getElementById('gameScreen').classList.add('active');
+      document.getElementById('playerNameDisplay').textContent = myName;
+      document.getElementById('clickCount').textContent = myClicks;
+      
+      isReconnecting = false;
+      console.log('♻️ Session restored!');
+      
+      // Show reconnection success message
+      showReconnectMessage('Reconnected! Your progress was saved.');
+    });
+
+    // Handle rejoin failure
+    socket.on('rejoinError', (data) => {
+      console.log('❌ Rejoin failed:', data.message);
+      clearSession();
+      isReconnecting = false;
+      // Show join screen for fresh start
+      document.getElementById('joinScreen').classList.remove('hidden');
+      document.getElementById('gameScreen').classList.remove('active');
+    });
+
+    // Attempt to rejoin on reconnect
+    socket.on('connect', () => {
+      console.log('🔌 Connected to server');
+      
+      // If we have a session and were in the game, try to rejoin
+      if (sessionToken && myName) {
+        isReconnecting = true;
+        socket.emit('rejoinGame', { token: sessionToken });
+      }
+    });
+
+    // Handle disconnection
+    socket.on('disconnect', (reason) => {
+      console.log('📴 Disconnected:', reason);
+      if (myName) {
+        showReconnectMessage('Connection lost. Reconnecting...');
+      }
+    });
+
+    // Show reconnection status message
+    function showReconnectMessage(message) {
+      // Create or update reconnect banner
+      let banner = document.getElementById('reconnectBanner');
+      if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'reconnectBanner';
+        banner.style.cssText = `
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          padding: 0.75rem;
+          background: linear-gradient(135deg, var(--viooh-purple), var(--viooh-magenta));
+          color: white;
+          text-align: center;
+          font-family: 'Orbitron', sans-serif;
+          font-size: 0.9rem;
+          z-index: 9999;
+          animation: slideDown 0.3s ease;
+        `;
+        document.body.prepend(banner);
+        
+        // Add animation
+        const style = document.createElement('style');
+        style.textContent = `
+          @keyframes slideDown {
+            from { transform: translateY(-100%); }
+            to { transform: translateY(0); }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+      banner.textContent = message;
+      
+      // Auto-hide success messages after 3 seconds
+      if (message.includes('Reconnected')) {
+        setTimeout(() => {
+          banner.style.animation = 'slideDown 0.3s ease reverse';
+          setTimeout(() => banner.remove(), 300);
+        }, 3000);
+      }
+    }
 
     // ==========================================
     // SOUND MANAGER - Works on all devices!

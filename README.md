@@ -132,6 +132,7 @@ The game includes enterprise-grade security:
 | **Trust Proxy** | Correct IP detection behind Render/proxies |
 | **Global Error Handling** | Uncaught exceptions won't crash server |
 | **Graceful Shutdown** | Saves data on SIGTERM/SIGINT |
+| **Session Management** | 30-second reconnect grace period |
 
 ### 🤖 Bot Detection
 
@@ -140,6 +141,15 @@ The game analyzes click timing to detect automated/scripted clicking:
 - Human clicks: naturally vary in timing (high CV)
 - Bot clicks: unnaturally consistent timing (low CV < 15%)
 - Suspicious players are flagged with 🤖 in the host panel
+
+### ♻️ Reconnection Support
+
+Players can seamlessly rejoin if their connection drops:
+- **30-second grace period** to reconnect
+- **Click progress preserved** during disconnection
+- **Session tokens** stored in localStorage
+- Automatic reconnection with Socket.io
+- Visual feedback ("Reconnecting..." / "Reconnected!")
 
 ## 🛠 Tech Stack
 
