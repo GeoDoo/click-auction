@@ -200,6 +200,32 @@ function getNextColor() {
   return color;
 }
 
+// ============================================
+// INPUT VALIDATION
+// ============================================
+const MAX_NAME_LENGTH = 50;
+const MAX_AD_CONTENT_LENGTH = 200;
+const MIN_AUCTION_DURATION = 1;
+const MAX_AUCTION_DURATION = 300; // 5 minutes max
+
+function sanitizeString(str, maxLength) {
+  if (typeof str !== 'string') return '';
+  // Trim and limit length
+  return str.trim().slice(0, maxLength);
+}
+
+function validateAuctionDuration(duration) {
+  const num = Number(duration);
+  if (isNaN(num) || num < MIN_AUCTION_DURATION) return MIN_AUCTION_DURATION;
+  if (num > MAX_AUCTION_DURATION) return MAX_AUCTION_DURATION;
+  return Math.floor(num); // Ensure integer
+}
+
+function isValidSocketId(id) {
+  // Socket.io IDs are typically alphanumeric strings
+  return typeof id === 'string' && id.length > 0 && id.length < 50;
+}
+
 function resetGame() {
   Object.keys(gameState.players).forEach(id => {
     gameState.players[id].clicks = 0;
@@ -259,12 +285,18 @@ io.on('connection', (socket) => {
 
   // Player joins the game
   socket.on('joinGame', (data) => {
-    const { name, adContent } = data;
+    // Input validation
+    const safeData = data && typeof data === 'object' ? data : {};
+    const name = sanitizeString(safeData.name, MAX_NAME_LENGTH);
+    const adContent = sanitizeString(safeData.adContent, MAX_AD_CONTENT_LENGTH);
+    
+    const playerName = name || `DSP-${socket.id.substr(0, 4)}`;
+    
     gameState.players[socket.id] = {
-      name: name || `DSP-${socket.id.substr(0, 4)}`,
+      name: playerName,
       clicks: 0,
       color: getNextColor(),
-      adContent: adContent || `${name || 'Anonymous'} wins! 🎉`
+      adContent: adContent || `${playerName} wins! 🎉`
     };
     console.log(`Player joined: ${gameState.players[socket.id].name}`);
     broadcastState();
@@ -289,8 +321,9 @@ io.on('connection', (socket) => {
     // Clear any existing intervals first (prevents multiple timers)
     clearAllIntervals();
     
-    if (settings) {
-      gameState.auctionDuration = settings.duration || 10;
+    // Validate and sanitize settings
+    if (settings && typeof settings === 'object' && settings.duration !== undefined) {
+      gameState.auctionDuration = validateAuctionDuration(settings.duration);
     }
     
     resetGame();
@@ -320,6 +353,9 @@ io.on('connection', (socket) => {
   });
 
   socket.on('kickPlayer', (playerId) => {
+    // Validate playerId
+    if (!isValidSocketId(playerId)) return;
+    
     if (gameState.players[playerId]) {
       delete gameState.players[playerId];
       io.to(playerId).emit('kicked');
