@@ -268,13 +268,6 @@ app.post('/api/host/auth', (req, res) => {
   res.json(result);
 });
 
-app.get('/api/host/status', (req, res) => {
-  res.json({
-    pinRequired: !!config.HOST_PIN,
-    authenticated: auth.isValidHostAuthToken(req.query.token || req.headers.cookie?.match(/hostAuth=([^;]+)/)?.[1]),
-  });
-});
-
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/stats', (_req, res) => {
@@ -283,14 +276,6 @@ app.get('/api/stats', (_req, res) => {
     totalRounds: gameState.round,
     totalPlayers: persistence.getStats() ? Object.keys(persistence.getStats()).length : 0,
   });
-});
-
-app.post('/api/stats/reset', async (_req, res) => {
-  persistence.resetAllStats();
-  await persistence.saveScores();
-  Logger.info('All-time stats reset');
-  broadcastState();
-  res.json({ success: true, message: 'Stats reset' });
 });
 
 // ============================================
@@ -451,13 +436,6 @@ io.on('connection', (socket) => {
     persistence.saveScores();
     Logger.info('All-time stats reset by host');
     broadcastState();
-  });
-
-  socket.on('getStats', () => {
-    socket.emit('statsUpdate', {
-      allTime: persistence.getAllTimeLeaderboard(),
-      totalRounds: gameState.round,
-    });
   });
 
   socket.on('disconnect', () => {
