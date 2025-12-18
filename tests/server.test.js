@@ -1490,6 +1490,99 @@ describe('Utility Functions', () => {
 // HTTP ENDPOINT TESTS
 // ==========================================
 
+// ==========================================
+// FILE CORRUPTION HANDLING TESTS
+// ==========================================
+
+describe('File Corruption Handling', () => {
+  test('handles corrupt JSON gracefully', () => {
+    // Simulate the logic from loadScores
+    const corruptData = '{ invalid json }}}';
+    let allTimeStats = {};
+    let backupCreated = false;
+    
+    try {
+      const parsed = JSON.parse(corruptData);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        allTimeStats = parsed;
+      } else {
+        throw new Error('Invalid scores format');
+      }
+    } catch (parseErr) {
+      // This is what happens on corrupt data
+      backupCreated = true;
+      allTimeStats = {};
+    }
+    
+    expect(backupCreated).toBe(true);
+    expect(allTimeStats).toEqual({});
+  });
+  
+  test('handles array instead of object', () => {
+    const arrayData = '["not", "an", "object"]';
+    let allTimeStats = { existing: true };
+    let rejected = false;
+    
+    try {
+      const parsed = JSON.parse(arrayData);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        allTimeStats = parsed;
+      } else {
+        throw new Error('Invalid scores format');
+      }
+    } catch (parseErr) {
+      rejected = true;
+      allTimeStats = {};
+    }
+    
+    expect(rejected).toBe(true);
+    expect(allTimeStats).toEqual({});
+  });
+  
+  test('accepts valid scores object', () => {
+    const validData = '{"Player1": {"wins": 5, "totalClicks": 100}}';
+    let allTimeStats = {};
+    let accepted = false;
+    
+    try {
+      const parsed = JSON.parse(validData);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        allTimeStats = parsed;
+        accepted = true;
+      } else {
+        throw new Error('Invalid scores format');
+      }
+    } catch (parseErr) {
+      allTimeStats = {};
+    }
+    
+    expect(accepted).toBe(true);
+    expect(allTimeStats).toHaveProperty('Player1');
+    expect(allTimeStats.Player1.wins).toBe(5);
+  });
+  
+  test('handles null parsed value', () => {
+    const nullData = 'null';
+    let allTimeStats = {};
+    let rejected = false;
+    
+    try {
+      const parsed = JSON.parse(nullData);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        allTimeStats = parsed;
+      } else {
+        throw new Error('Invalid scores format');
+      }
+    } catch (parseErr) {
+      rejected = true;
+      allTimeStats = {};
+    }
+    
+    expect(rejected).toBe(true);
+    expect(allTimeStats).toEqual({});
+  });
+});
+
 describe('HTTP Endpoints', () => {
   let server;
   const TEST_PORT = 3098;
@@ -1678,6 +1771,106 @@ describe('Input Validation', () => {
     test('handles string numbers', () => {
       expect(validateAuctionDuration('10')).toBe(10);
       expect(validateAuctionDuration('60')).toBe(60);
+    });
+  });
+  
+  describe('validateCountdownDuration', () => {
+    const MIN_COUNTDOWN_DURATION = 1;
+    const MAX_COUNTDOWN_DURATION = 10;
+    
+    function validateCountdownDuration(duration) {
+      const num = Number(duration);
+      if (isNaN(num) || num < MIN_COUNTDOWN_DURATION) return MIN_COUNTDOWN_DURATION;
+      if (num > MAX_COUNTDOWN_DURATION) return MAX_COUNTDOWN_DURATION;
+      return Math.floor(num);
+    }
+    
+    test('returns MIN for invalid inputs', () => {
+      expect(validateCountdownDuration(null)).toBe(MIN_COUNTDOWN_DURATION);
+      expect(validateCountdownDuration(undefined)).toBe(MIN_COUNTDOWN_DURATION);
+      expect(validateCountdownDuration('not a number')).toBe(MIN_COUNTDOWN_DURATION);
+    });
+    
+    test('returns MIN for zero or negative', () => {
+      expect(validateCountdownDuration(0)).toBe(MIN_COUNTDOWN_DURATION);
+      expect(validateCountdownDuration(-1)).toBe(MIN_COUNTDOWN_DURATION);
+    });
+    
+    test('returns MAX for values over limit', () => {
+      expect(validateCountdownDuration(15)).toBe(MAX_COUNTDOWN_DURATION);
+      expect(validateCountdownDuration(100)).toBe(MAX_COUNTDOWN_DURATION);
+    });
+    
+    test('accepts valid durations', () => {
+      expect(validateCountdownDuration(1)).toBe(1);
+      expect(validateCountdownDuration(3)).toBe(3);
+      expect(validateCountdownDuration(5)).toBe(5);
+      expect(validateCountdownDuration(10)).toBe(10);
+    });
+  });
+  
+  describe('Rate Limiting', () => {
+    const MAX_CLICKS_PER_SECOND = 20;
+    const clickTimestamps = {};
+    
+    function isRateLimited(socketId) {
+      const now = Date.now();
+      const oneSecondAgo = now - 1000;
+      
+      if (!clickTimestamps[socketId]) {
+        clickTimestamps[socketId] = [];
+      }
+      
+      clickTimestamps[socketId] = clickTimestamps[socketId].filter(ts => ts > oneSecondAgo);
+      
+      if (clickTimestamps[socketId].length >= MAX_CLICKS_PER_SECOND) {
+        return true;
+      }
+      
+      clickTimestamps[socketId].push(now);
+      return false;
+    }
+    
+    function cleanupRateLimitData(socketId) {
+      delete clickTimestamps[socketId];
+    }
+    
+    beforeEach(() => {
+      // Clear all rate limit data
+      Object.keys(clickTimestamps).forEach(key => delete clickTimestamps[key]);
+    });
+    
+    test('allows clicks under rate limit', () => {
+      for (let i = 0; i < MAX_CLICKS_PER_SECOND; i++) {
+        expect(isRateLimited('test-socket')).toBe(false);
+      }
+    });
+    
+    test('blocks clicks over rate limit', () => {
+      // Fill up to limit
+      for (let i = 0; i < MAX_CLICKS_PER_SECOND; i++) {
+        isRateLimited('test-socket');
+      }
+      // Next click should be rate limited
+      expect(isRateLimited('test-socket')).toBe(true);
+    });
+    
+    test('different sockets have separate limits', () => {
+      // Fill socket1 to limit
+      for (let i = 0; i < MAX_CLICKS_PER_SECOND; i++) {
+        isRateLimited('socket1');
+      }
+      // socket1 is limited
+      expect(isRateLimited('socket1')).toBe(true);
+      // socket2 is not limited
+      expect(isRateLimited('socket2')).toBe(false);
+    });
+    
+    test('cleanup removes rate limit data', () => {
+      isRateLimited('cleanup-test');
+      expect(clickTimestamps['cleanup-test']).toBeDefined();
+      cleanupRateLimitData('cleanup-test');
+      expect(clickTimestamps['cleanup-test']).toBeUndefined();
     });
   });
   

@@ -80,8 +80,23 @@ async function loadScores() {
     } else if (fs.existsSync(SCORES_FILE)) {
       // Fallback to local file
       const data = fs.readFileSync(SCORES_FILE, 'utf8');
-      allTimeStats = JSON.parse(data);
-      console.log(`📊 Loaded ${Object.keys(allTimeStats).length} player records from scores.json`);
+      try {
+        const parsed = JSON.parse(data);
+        // Validate structure - should be an object
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          allTimeStats = parsed;
+          console.log(`📊 Loaded ${Object.keys(allTimeStats).length} player records from scores.json`);
+        } else {
+          throw new Error('Invalid scores format');
+        }
+      } catch (parseErr) {
+        console.error('⚠️ Corrupt scores.json detected, backing up and starting fresh');
+        // Backup corrupt file
+        const backupPath = `${SCORES_FILE}.corrupt.${Date.now()}`;
+        fs.renameSync(SCORES_FILE, backupPath);
+        console.log(`📁 Corrupt file backed up to: ${backupPath}`);
+        allTimeStats = {};
+      }
     }
   } catch (err) {
     console.error('Error loading scores:', err);
@@ -207,6 +222,12 @@ const MAX_NAME_LENGTH = 50;
 const MAX_AD_CONTENT_LENGTH = 200;
 const MIN_AUCTION_DURATION = 1;
 const MAX_AUCTION_DURATION = 300; // 5 minutes max
+const MIN_COUNTDOWN_DURATION = 1;
+const MAX_COUNTDOWN_DURATION = 10;
+
+// Rate limiting: max clicks per second per player
+const MAX_CLICKS_PER_SECOND = 20;
+const clickTimestamps = {}; // { socketId: [timestamp1, timestamp2, ...] }
 
 function sanitizeString(str, maxLength) {
   if (typeof str !== 'string') return '';
@@ -221,9 +242,42 @@ function validateAuctionDuration(duration) {
   return Math.floor(num); // Ensure integer
 }
 
+function validateCountdownDuration(duration) {
+  const num = Number(duration);
+  if (isNaN(num) || num < MIN_COUNTDOWN_DURATION) return MIN_COUNTDOWN_DURATION;
+  if (num > MAX_COUNTDOWN_DURATION) return MAX_COUNTDOWN_DURATION;
+  return Math.floor(num); // Ensure integer
+}
+
 function isValidSocketId(id) {
   // Socket.io IDs are typically alphanumeric strings
   return typeof id === 'string' && id.length > 0 && id.length < 50;
+}
+
+function isRateLimited(socketId) {
+  const now = Date.now();
+  const oneSecondAgo = now - 1000;
+  
+  // Initialize or clean up old timestamps
+  if (!clickTimestamps[socketId]) {
+    clickTimestamps[socketId] = [];
+  }
+  
+  // Remove timestamps older than 1 second
+  clickTimestamps[socketId] = clickTimestamps[socketId].filter(ts => ts > oneSecondAgo);
+  
+  // Check if rate limited
+  if (clickTimestamps[socketId].length >= MAX_CLICKS_PER_SECOND) {
+    return true;
+  }
+  
+  // Record this click
+  clickTimestamps[socketId].push(now);
+  return false;
+}
+
+function cleanupRateLimitData(socketId) {
+  delete clickTimestamps[socketId];
 }
 
 function resetGame() {
@@ -302,9 +356,14 @@ io.on('connection', (socket) => {
     broadcastState();
   });
 
-  // Player clicks
+  // Player clicks (with rate limiting)
   socket.on('click', () => {
     if (gameState.status === 'bidding' && gameState.players[socket.id]) {
+      // Check rate limit (max 20 clicks/second)
+      if (isRateLimited(socket.id)) {
+        return; // Silently ignore excessive clicks
+      }
+      
       gameState.players[socket.id].clicks++;
       // Emit to all clients for real-time leaderboard updates
       io.emit('clickUpdate', {
@@ -322,9 +381,17 @@ io.on('connection', (socket) => {
     clearAllIntervals();
     
     // Validate and sanitize settings
-    if (settings && typeof settings === 'object' && settings.duration !== undefined) {
-      gameState.auctionDuration = validateAuctionDuration(settings.duration);
+    if (settings && typeof settings === 'object') {
+      if (settings.duration !== undefined) {
+        gameState.auctionDuration = validateAuctionDuration(settings.duration);
+      }
+      if (settings.countdown !== undefined) {
+        gameState.countdownDuration = validateCountdownDuration(settings.countdown);
+      }
     }
+    
+    // Ensure countdownDuration is always valid (in case it was never set properly)
+    gameState.countdownDuration = validateCountdownDuration(gameState.countdownDuration);
     
     resetGame();
     gameState.round++;
@@ -378,6 +445,9 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
+    // Clean up rate limit data for this socket
+    cleanupRateLimitData(socket.id);
+    
     if (gameState.players[socket.id]) {
       console.log(`Player disconnected: ${gameState.players[socket.id].name}`);
       delete gameState.players[socket.id];
