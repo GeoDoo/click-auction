@@ -288,8 +288,26 @@ app.get('/api/stats', (_req, res) => {
 // SOCKET HANDLERS
 // ============================================
 
+// Track authenticated host sockets
+const authenticatedHostSockets = new Set();
+
 io.on('connection', (socket) => {
   Logger.debug(`Client connected: ${socket.id}`);
+
+  // Host authentication via socket
+  socket.on('authenticateHost', (data) => {
+    const token = data && data.token;
+    if (token && auth.isValidHostAuthToken(token)) {
+      authenticatedHostSockets.add(socket.id);
+      socket.emit('hostAuthenticated', { success: true });
+      Logger.debug(`Host socket authenticated: ${socket.id.substr(0, 8)}`);
+    } else {
+      socket.emit('hostAuthenticated', { success: false });
+    }
+  });
+
+  // Helper to check if socket is authenticated host
+  const isAuthenticatedHost = () => authenticatedHostSockets.has(socket.id);
 
   socket.emit('gameState', {
     status: gameState.status,
@@ -405,6 +423,12 @@ io.on('connection', (socket) => {
   });
 
   socket.on('startAuction', (settings) => {
+    // Security: Only authenticated hosts can start auctions
+    if (!isAuthenticatedHost()) {
+      Logger.security('Unauthorized startAuction attempt', socket.id);
+      return;
+    }
+
     clearAllIntervals();
 
     if (settings && typeof settings === 'object') {
@@ -438,12 +462,24 @@ io.on('connection', (socket) => {
   });
 
   socket.on('resetAuction', () => {
+    // Security: Only authenticated hosts can reset auctions
+    if (!isAuthenticatedHost()) {
+      Logger.security('Unauthorized resetAuction attempt', socket.id);
+      return;
+    }
+
     clearAllIntervals();
     resetGame();
     broadcastState();
   });
 
   socket.on('resetAllTimeStats', async () => {
+    // Security: Only authenticated hosts can reset stats
+    if (!isAuthenticatedHost()) {
+      Logger.security('Unauthorized resetAllTimeStats attempt', socket.id);
+      return;
+    }
+
     persistence.resetAllStats();
     await persistence.saveScores();
     Logger.info('All-time stats reset by host');
@@ -453,6 +489,7 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     validation.cleanupRateLimitData(socket.id);
     botDetection.resetBotDetectionData(socket.id);
+    authenticatedHostSockets.delete(socket.id); // Clean up host auth
 
     if (gameState.players[socket.id]) {
       const playerName = gameState.players[socket.id].name;

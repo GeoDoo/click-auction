@@ -34,6 +34,11 @@ function clearSession() {
 socket.on('sessionCreated', (data) => {
   saveSession(data.token);
   Logger.debug('Session created');
+
+  // Now show the game screen (join was successful)
+  document.getElementById('joinScreen').classList.add('hidden');
+  document.getElementById('gameScreen').classList.add('active');
+  document.getElementById('playerNameDisplay').textContent = myName;
 });
 
 // Handle successful rejoin
@@ -153,12 +158,18 @@ function joinGame() {
   // Initialize audio on join (user interaction)
   SoundManager.init();
 
+  // Show loading state
+  const joinBtn = document.getElementById('joinBtn');
+  if (joinBtn) {
+    joinBtn.disabled = true;
+    joinBtn.textContent = 'Joining...';
+  }
+
   myName = name;
   socket.emit('joinGame', { name, adContent });
 
-  document.getElementById('joinScreen').classList.add('hidden');
-  document.getElementById('gameScreen').classList.add('active');
-  document.getElementById('playerNameDisplay').textContent = name;
+  // UI transition happens in sessionCreated handler, not here
+  // This prevents showing game screen if join fails
 }
 
 // Allow Enter key to join
@@ -320,8 +331,17 @@ function updateUI(state) {
 socket.on('gameState', updateUI);
 
 socket.on('joinError', (data) => {
+  // Reset join button
+  const joinBtn = document.getElementById('joinBtn');
+  if (joinBtn) {
+    joinBtn.disabled = false;
+    joinBtn.textContent = 'Join Game';
+  }
+
+  // Show error on join screen (don't show game screen)
   document.getElementById('errorText').textContent = data.message || 'Could not join the game';
   document.getElementById('errorOverlay').classList.add('active');
+  Logger.warn('Join failed:', data.message);
 });
 
 // Focus name input on load
