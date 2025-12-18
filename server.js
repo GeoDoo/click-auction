@@ -153,6 +153,21 @@ let gameState = {
   finalLeaderboard: [] // Saved when auction ends so disconnects don't affect results
 };
 
+// Store interval references to prevent multiple timers running
+let countdownInterval = null;
+let biddingInterval = null;
+
+function clearAllIntervals() {
+  if (countdownInterval) {
+    clearInterval(countdownInterval);
+    countdownInterval = null;
+  }
+  if (biddingInterval) {
+    clearInterval(biddingInterval);
+    biddingInterval = null;
+  }
+}
+
 // VIOOH-inspired DSP colors
 const DSP_COLORS = [
   '#00C9A7', // VIOOH Teal
@@ -271,6 +286,9 @@ io.on('connection', (socket) => {
 
   // Host controls
   socket.on('startAuction', (settings) => {
+    // Clear any existing intervals first (prevents multiple timers)
+    clearAllIntervals();
+    
     if (settings) {
       gameState.auctionDuration = settings.duration || 10;
     }
@@ -283,18 +301,20 @@ io.on('connection', (socket) => {
     broadcastState();
     
     // Countdown timer
-    const countdownInterval = setInterval(() => {
+    countdownInterval = setInterval(() => {
       gameState.timeRemaining--;
       broadcastState();
       
       if (gameState.timeRemaining <= 0) {
         clearInterval(countdownInterval);
+        countdownInterval = null;
         startBidding();
       }
     }, 1000);
   });
 
   socket.on('resetAuction', () => {
+    clearAllIntervals();
     resetGame();
     broadcastState();
   });
@@ -336,12 +356,13 @@ function startBidding() {
   
   broadcastState();
   
-  const biddingInterval = setInterval(() => {
+  biddingInterval = setInterval(() => {
     gameState.timeRemaining--;
     broadcastState();
     
     if (gameState.timeRemaining <= 0) {
       clearInterval(biddingInterval);
+      biddingInterval = null;
       endAuction();
     }
   }, 1000);
