@@ -71,8 +71,14 @@ async function loadScores() {
 async function saveScores() {
   try {
     if (redis) {
+      const recordCount = Object.keys(allTimeStats).length;
+      // Safety check: don't overwrite data with empty object unless explicitly intended
+      if (recordCount === 0) {
+        Logger.warn('⚠️ Skipping save - allTimeStats is empty (prevents accidental data loss)');
+        return;
+      }
       const dataToSave = JSON.stringify(allTimeStats);
-      Logger.info(`💾 Saving ${Object.keys(allTimeStats).length} player records to Redis...`);
+      Logger.info(`💾 Saving ${recordCount} player records to Redis...`);
       await redis.set(config.REDIS_KEY, dataToSave);
       Logger.info('💾 Scores saved to Redis successfully');
     } else {
@@ -121,10 +127,16 @@ function getAllTimeLeaderboard() {
 }
 
 /**
- * Reset all stats
+ * Reset all stats (and force save)
  */
-function resetAllStats() {
+async function resetAllStats() {
+  Logger.warn('🗑️ Resetting ALL stats (intentional)');
   allTimeStats = {};
+  // Force save the empty state
+  if (redis) {
+    await redis.set(config.REDIS_KEY, JSON.stringify(allTimeStats));
+    Logger.info('💾 Stats reset saved to Redis');
+  }
 }
 
 /**

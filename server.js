@@ -479,8 +479,7 @@ io.on('connection', (socket) => {
       return;
     }
 
-    persistence.resetAllStats();
-    await persistence.saveScores();
+    await persistence.resetAllStats();
     Logger.info('All-time stats reset by host');
     broadcastState();
   });
