@@ -11,3 +11,4 @@ services:
         sync: false  # Set this manually in Render dashboard after deploy
     healthCheckPath: /api/config
 
+
