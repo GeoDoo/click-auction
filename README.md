@@ -83,6 +83,22 @@ Project this for everyone to see:
 3. **Bidding** - TAP! TAP! TAP!
 4. **Winner** - Celebration with dynamically generated ad
 
+## 🔊 Sound & Haptic Feedback
+
+The game includes immersive audio and vibration feedback (works on mobile!):
+
+| Event | Sound | Haptic |
+|-------|-------|--------|
+| **Countdown** | Tick beep | Short buzz |
+| **GO!** | Rising tone | Double buzz |
+| **Each tap** | Click sound | Quick buzz |
+| **Winner** | Fanfare arpeggio | Celebration pattern |
+| **Not winner** | Low tone | Single buzz |
+
+- 🔊 **Mute button** available in player UI
+- 📳 **Haptic feedback** on Android & iOS (if supported)
+- Works with Web Audio API (no files to load)
+
 ## 🔧 Environment Variables
 
 | Variable | Required | Description |
@@ -107,6 +123,7 @@ Without Redis, scores persist locally but reset on redeploy.
 - **Real-time:** Socket.io
 - **Persistence:** Upstash Redis (optional) / Local JSON file
 - **Frontend:** Vanilla HTML/CSS/JS
+- **Audio:** Web Audio API (synthesized sounds, no files)
 - **Hosting:** Render (or any Node.js host)
 
 ## 💡 Tips for Running Events
