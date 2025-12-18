@@ -119,15 +119,19 @@ Without Redis, scores persist locally but reset on redeploy.
 
 ## 🛡️ Security & Protections
 
-The game includes several layers of protection against abuse:
+The game includes enterprise-grade security:
 
 | Protection | Description |
 |------------|-------------|
-| **Input Validation** | Player names and ad content are sanitized and truncated |
-| **Duration Limits** | Auction duration clamped to 5-60 seconds |
-| **Rate Limiting** | Max 20 clicks/second per player (prevents spamming) |
-| **Bot Detection** | Statistical analysis of click timing patterns |
-| **File Corruption** | Automatic recovery from corrupt `scores.json` |
+| **Helmet.js** | Security headers (XSS, clickjacking, MIME sniffing) |
+| **Input Validation** | Player names and ad content sanitized/truncated |
+| **Rate Limiting** | Max 20 clicks/second per player |
+| **Connection Limiting** | Max 10 connections per IP (DoS protection) |
+| **Bot Detection** | Statistical analysis of click timing |
+| **Compression** | Gzip for faster responses |
+| **Trust Proxy** | Correct IP detection behind Render/proxies |
+| **Global Error Handling** | Uncaught exceptions won't crash server |
+| **Graceful Shutdown** | Saves data on SIGTERM/SIGINT |
 
 ### 🤖 Bot Detection
 

@@ -4,6 +4,8 @@ const http = require('http');
 const path = require('path');
 const fs = require('fs');
 const { Redis } = require('@upstash/redis');
+const helmet = require('helmet');
+const compression = require('compression');
 
 const app = express();
 const server = http.createServer(app);
@@ -14,6 +16,76 @@ const io = new Server(server);
 // ============================================
 const PORT = process.env.PORT || 3000;
 const MAX_PLAYERS = 100; // Prevent server overload
+const MAX_CONNECTIONS_PER_IP = 10; // Prevent connection flooding
+
+// ============================================
+// SECURITY MIDDLEWARE
+// ============================================
+
+// Trust proxy (for Render/reverse proxies - correct IP detection)
+app.set('trust proxy', 1);
+
+// Helmet.js - Security headers
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"], // Needed for inline scripts in HTML
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https://api.qrserver.com"],
+      connectSrc: ["'self'", "wss:", "ws:"],
+    },
+  },
+  crossOriginEmbedderPolicy: false, // Allow QR code images
+}));
+
+// Compression (gzip)
+app.use(compression());
+
+// ============================================
+// SOCKET CONNECTION LIMITING (per IP)
+// ============================================
+const connectionsByIP = {}; // { ip: count }
+
+function getClientIP(socket) {
+  // Get real IP behind proxy
+  const forwarded = socket.handshake.headers['x-forwarded-for'];
+  if (forwarded) {
+    return forwarded.split(',')[0].trim();
+  }
+  return socket.handshake.address;
+}
+
+io.use((socket, next) => {
+  const ip = getClientIP(socket);
+  
+  if (!connectionsByIP[ip]) {
+    connectionsByIP[ip] = 0;
+  }
+  
+  if (connectionsByIP[ip] >= MAX_CONNECTIONS_PER_IP) {
+    console.log(`🚫 Connection rejected from ${ip} (limit reached: ${MAX_CONNECTIONS_PER_IP})`);
+    return next(new Error('Too many connections from this IP'));
+  }
+  
+  connectionsByIP[ip]++;
+  socket.clientIP = ip;
+  console.log(`🔌 Connection from ${ip} (${connectionsByIP[ip]}/${MAX_CONNECTIONS_PER_IP})`);
+  next();
+});
+
+// Cleanup connection count on disconnect
+io.on('connection', (socket) => {
+  socket.on('disconnect', () => {
+    if (socket.clientIP && connectionsByIP[socket.clientIP]) {
+      connectionsByIP[socket.clientIP]--;
+      if (connectionsByIP[socket.clientIP] <= 0) {
+        delete connectionsByIP[socket.clientIP];
+      }
+    }
+  });
+});
 
 // Health check endpoint (for monitoring / Render)
 app.get('/health', (req, res) => {
@@ -701,6 +773,34 @@ app.post('/api/stats/reset', async (req, res) => {
   res.json({ success: true, message: 'Stats reset' });
 });
 
+// ============================================
+// GLOBAL ERROR HANDLING
+// ============================================
+
+// Express error handler (catches sync errors in routes)
+app.use((err, req, res, next) => {
+  console.error('❌ Express error:', err.message);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
+// Uncaught exception handler (prevents server crash)
+process.on('uncaughtException', (err) => {
+  console.error('❌ Uncaught Exception:', err);
+  // Log but don't exit - keep server running
+  // In production, you might want to restart gracefully
+});
+
+// Unhandled promise rejection handler
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  // Log but don't exit
+});
+
+// Socket.io error handling
+io.engine.on('connection_error', (err) => {
+  console.error('❌ Socket.io connection error:', err.message);
+});
+
 const HOST = '0.0.0.0'; // Listen on all network interfaces
 
 server.listen(PORT, HOST, () => {
@@ -710,6 +810,9 @@ server.listen(PORT, HOST, () => {
 ╠══════════════════════════════════════════════════════════════════╣
 ║  Server running on port ${String(PORT).padEnd(39)}║
 ║  Max players: ${String(MAX_PLAYERS).padEnd(50)}║
+║  Max connections per IP: ${String(MAX_CONNECTIONS_PER_IP).padEnd(39)}║
+╠══════════════════════════════════════════════════════════════════╣
+║  Security: Helmet ✓  Compression ✓  Rate Limiting ✓              ║
 ║  QR codes auto-detect the correct URL from browser               ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║  Routes:                                                         ║

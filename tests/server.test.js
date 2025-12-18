@@ -1759,6 +1759,129 @@ describe('Memory Cleanup Logic', () => {
 });
 
 // ==========================================
+// CONNECTION LIMITING TESTS
+// ==========================================
+describe('Connection Limiting Logic', () => {
+  test('tracks connections by IP correctly', () => {
+    const connectionsByIP = {};
+    const MAX_CONNECTIONS_PER_IP = 10;
+    
+    const ip = '192.168.1.100';
+    
+    // Simulate 5 connections
+    for (let i = 0; i < 5; i++) {
+      if (!connectionsByIP[ip]) connectionsByIP[ip] = 0;
+      connectionsByIP[ip]++;
+    }
+    
+    expect(connectionsByIP[ip]).toBe(5);
+    expect(connectionsByIP[ip] < MAX_CONNECTIONS_PER_IP).toBe(true);
+  });
+  
+  test('blocks connections over limit', () => {
+    const connectionsByIP = {};
+    const MAX_CONNECTIONS_PER_IP = 10;
+    
+    const ip = '192.168.1.100';
+    connectionsByIP[ip] = 10; // At limit
+    
+    const blocked = connectionsByIP[ip] >= MAX_CONNECTIONS_PER_IP;
+    expect(blocked).toBe(true);
+  });
+  
+  test('different IPs have separate limits', () => {
+    const connectionsByIP = {};
+    const MAX_CONNECTIONS_PER_IP = 10;
+    
+    connectionsByIP['192.168.1.100'] = 10; // At limit
+    connectionsByIP['192.168.1.101'] = 5;  // Under limit
+    
+    expect(connectionsByIP['192.168.1.100'] >= MAX_CONNECTIONS_PER_IP).toBe(true);
+    expect(connectionsByIP['192.168.1.101'] >= MAX_CONNECTIONS_PER_IP).toBe(false);
+  });
+  
+  test('cleanup decrements connection count', () => {
+    const connectionsByIP = {};
+    const ip = '192.168.1.100';
+    
+    connectionsByIP[ip] = 5;
+    
+    // Simulate disconnect
+    connectionsByIP[ip]--;
+    if (connectionsByIP[ip] <= 0) {
+      delete connectionsByIP[ip];
+    }
+    
+    expect(connectionsByIP[ip]).toBe(4);
+  });
+  
+  test('cleanup removes IP when count reaches zero', () => {
+    const connectionsByIP = {};
+    const ip = '192.168.1.100';
+    
+    connectionsByIP[ip] = 1;
+    
+    // Simulate disconnect
+    connectionsByIP[ip]--;
+    if (connectionsByIP[ip] <= 0) {
+      delete connectionsByIP[ip];
+    }
+    
+    expect(connectionsByIP[ip]).toBeUndefined();
+  });
+});
+
+// ==========================================
+// IP EXTRACTION TESTS
+// ==========================================
+describe('IP Extraction Logic', () => {
+  test('extracts IP from x-forwarded-for header', () => {
+    const headers = { 'x-forwarded-for': '203.0.113.195, 70.41.3.18, 150.172.238.178' };
+    const address = '127.0.0.1';
+    
+    const getClientIP = () => {
+      const forwarded = headers['x-forwarded-for'];
+      if (forwarded) {
+        return forwarded.split(',')[0].trim();
+      }
+      return address;
+    };
+    
+    expect(getClientIP()).toBe('203.0.113.195');
+  });
+  
+  test('falls back to socket address when no forwarded header', () => {
+    const headers = {};
+    const address = '192.168.1.50';
+    
+    const getClientIP = () => {
+      const forwarded = headers['x-forwarded-for'];
+      if (forwarded) {
+        return forwarded.split(',')[0].trim();
+      }
+      return address;
+    };
+    
+    expect(getClientIP()).toBe('192.168.1.50');
+  });
+  
+  test('handles single IP in forwarded header', () => {
+    const headers = { 'x-forwarded-for': '203.0.113.195' };
+    const address = '127.0.0.1';
+    
+    const getClientIP = () => {
+      const forwarded = headers['x-forwarded-for'];
+      if (forwarded) {
+        return forwarded.split(',')[0].trim();
+      }
+      return address;
+    };
+    
+    expect(getClientIP()).toBe('203.0.113.195');
+  });
+});
+
+// ==========================================
 // INPUT VALIDATION TESTS
 // ==========================================
 
