@@ -228,16 +228,50 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Get local network IP (for QR codes)
+function getLocalIP() {
+  const { networkInterfaces } = require('os');
+  const nets = networkInterfaces();
+  // Prefer 192.168.x.x addresses (typical home/office network)
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]) {
+      if (net.family === 'IPv4' && !net.internal && net.address.startsWith('192.168.')) {
+        return net.address;
+      }
+    }
+  }
+  // Fallback to first non-internal IPv4
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]) {
+      if (net.family === 'IPv4' && !net.internal) {
+        return net.address;
+      }
+    }
+  }
+  return null;
+}
+
 // API endpoint for clients to get the base URL
-// Uses the request's host header - works automatically in both local and production
+// Uses network IP for local development (so QR codes work on phones)
 app.get('/api/config', (req, res) => {
   const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
   const host = req.headers['x-forwarded-host'] || req.headers.host;
-  const baseUrl = `${protocol}://${host}`;
+  const isLocal = host.includes('localhost') || host.match(/^127\./) || host.match(/^\d+\.\d+\.\d+\.\d+:\d+$/);
+  
+  let baseUrl;
+  if (isLocal) {
+    // For local development, use network IP so phones can connect
+    const localIP = getLocalIP();
+    const port = host.split(':')[1] || PORT;
+    baseUrl = localIP ? `http://${localIP}:${port}` : `${protocol}://${host}`;
+  } else {
+    // For production, use the host header
+    baseUrl = `${protocol}://${host}`;
+  }
   
   res.json({
     baseUrl: baseUrl,
-    mode: host.includes('localhost') || host.match(/^\d+\.\d+\.\d+\.\d+/) ? 'local' : 'production'
+    mode: isLocal ? 'local' : 'production'
   });
 });
 
@@ -1055,6 +1089,7 @@ io.engine.on('connection_error', (err) => {
 const HOST = '0.0.0.0'; // Listen on all network interfaces
 
 server.listen(PORT, HOST, () => {
+  const localIP = getLocalIP() || 'localhost';
   console.log(`
 ╔══════════════════════════════════════════════════════════════════╗
 ║                      🎯 CLICK AUCTION 🎯                          ║
@@ -1068,6 +1103,9 @@ server.listen(PORT, HOST, () => {
 ║  Security: Helmet ✓  Compression ✓  Rate Limiting ✓              ║
 ║  Features: Reconnection ✓  Session Management ✓                  ║
 ║  QR codes auto-detect the correct URL from browser               ║
+╠══════════════════════════════════════════════════════════════════╣
+║  Local:    http://localhost:${String(PORT).padEnd(45)}║
+║  Network:  http://${(localIP + ':' + PORT).padEnd(47)}║
 ╠══════════════════════════════════════════════════════════════════╣
 ║  Routes:                                                         ║
 ║    /           - Landing page with QR code                       ║
