@@ -1884,6 +1884,87 @@ describe('IP Extraction Logic', () => {
 // ==========================================
 // SESSION MANAGEMENT TESTS
 // ==========================================
+// ==========================================
+// HOST PIN AUTHENTICATION TESTS
+// ==========================================
+describe('Host PIN Authentication Logic', () => {
+  test('generates unique host auth tokens', () => {
+    const generateHostAuthToken = () => {
+      return 'host_' + Math.random().toString(36).substr(2, 16) + Date.now().toString(36);
+    };
+    
+    const token1 = generateHostAuthToken();
+    const token2 = generateHostAuthToken();
+    
+    expect(token1).toMatch(/^host_[a-z0-9]+$/);
+    expect(token2).toMatch(/^host_[a-z0-9]+$/);
+    expect(token1).not.toBe(token2);
+  });
+  
+  test('creates and validates host auth tokens', () => {
+    const hostAuthTokens = {};
+    const HOST_AUTH_EXPIRY_MS = 24 * 60 * 60 * 1000;
+    
+    const createHostAuthToken = () => {
+      const token = 'host_test123';
+      const now = Date.now();
+      hostAuthTokens[token] = {
+        createdAt: now,
+        expiresAt: now + HOST_AUTH_EXPIRY_MS
+      };
+      return token;
+    };
+    
+    const isValidHostAuthToken = (token) => {
+      if (!token || !hostAuthTokens[token]) return false;
+      if (Date.now() > hostAuthTokens[token].expiresAt) {
+        delete hostAuthTokens[token];
+        return false;
+      }
+      return true;
+    };
+    
+    const token = createHostAuthToken();
+    expect(isValidHostAuthToken(token)).toBe(true);
+    expect(isValidHostAuthToken('invalid_token')).toBe(false);
+    expect(isValidHostAuthToken(null)).toBe(false);
+  });
+  
+  test('expires old host auth tokens', () => {
+    const hostAuthTokens = {
+      'host_old': {
+        createdAt: Date.now() - 48 * 60 * 60 * 1000, // 48 hours ago
+        expiresAt: Date.now() - 24 * 60 * 60 * 1000  // Expired 24 hours ago
+      }
+    };
+    
+    const isValidHostAuthToken = (token) => {
+      if (!token || !hostAuthTokens[token]) return false;
+      if (Date.now() > hostAuthTokens[token].expiresAt) {
+        delete hostAuthTokens[token];
+        return false;
+      }
+      return true;
+    };
+    
+    expect(isValidHostAuthToken('host_old')).toBe(false);
+    expect(hostAuthTokens['host_old']).toBeUndefined(); // Should be cleaned up
+  });
+  
+  test('PIN verification logic', () => {
+    const HOST_PIN = 'secret123';
+    
+    const verifyPin = (inputPin) => {
+      return inputPin === HOST_PIN;
+    };
+    
+    expect(verifyPin('secret123')).toBe(true);
+    expect(verifyPin('wrong')).toBe(false);
+    expect(verifyPin('')).toBe(false);
+    expect(verifyPin(null)).toBe(false);
+  });
+});
+
 describe('Session Management Logic', () => {
   test('generates unique session tokens', () => {
     const generateSessionToken = () => {

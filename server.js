@@ -19,6 +19,8 @@ const MAX_PLAYERS = 100; // Prevent server overload
 const MAX_CONNECTIONS_PER_IP = 10; // Prevent connection flooding
 const RECONNECT_GRACE_PERIOD_MS = 30000; // 30 seconds to reconnect
 const SESSION_CLEANUP_INTERVAL_MS = 10000; // Check for expired sessions every 10s
+const HOST_PIN = process.env.HOST_PIN || null; // Optional PIN to protect /host
+const HOST_AUTH_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // ============================================
 // SECURITY MIDDLEWARE
@@ -175,6 +177,43 @@ function cleanupExpiredSessions() {
   }
 }
 
+// ============================================
+// HOST AUTHENTICATION (PIN Protection)
+// ============================================
+const hostAuthTokens = {}; // { token: { createdAt, expiresAt } }
+
+function generateHostAuthToken() {
+  return 'host_' + Math.random().toString(36).substr(2, 16) + Date.now().toString(36);
+}
+
+function createHostAuthToken() {
+  const token = generateHostAuthToken();
+  const now = Date.now();
+  hostAuthTokens[token] = {
+    createdAt: now,
+    expiresAt: now + HOST_AUTH_EXPIRY_MS
+  };
+  return token;
+}
+
+function isValidHostAuthToken(token) {
+  if (!token || !hostAuthTokens[token]) return false;
+  if (Date.now() > hostAuthTokens[token].expiresAt) {
+    delete hostAuthTokens[token];
+    return false;
+  }
+  return true;
+}
+
+function cleanupExpiredHostTokens() {
+  const now = Date.now();
+  for (const [token, data] of Object.entries(hostAuthTokens)) {
+    if (now > data.expiresAt) {
+      delete hostAuthTokens[token];
+    }
+  }
+}
+
 // Health check endpoint (for monitoring / Render)
 app.get('/health', (req, res) => {
   res.json({
@@ -208,8 +247,57 @@ app.get('/play', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'player.html'));
 });
 
+// Host route - protected by PIN if HOST_PIN is set
 app.get('/host', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'host.html'));
+  // If no PIN configured, allow direct access
+  if (!HOST_PIN) {
+    return res.sendFile(path.join(__dirname, 'public', 'host.html'));
+  }
+  
+  // Check for auth token in query param or cookie
+  const authToken = req.query.auth || req.headers.cookie?.match(/hostAuth=([^;]+)/)?.[1];
+  
+  if (isValidHostAuthToken(authToken)) {
+    return res.sendFile(path.join(__dirname, 'public', 'host.html'));
+  }
+  
+  // Redirect to login page
+  res.redirect('/host-login');
+});
+
+// Host login page
+app.get('/host-login', (req, res) => {
+  if (!HOST_PIN) {
+    return res.redirect('/host');
+  }
+  res.sendFile(path.join(__dirname, 'public', 'host-login.html'));
+});
+
+// PIN verification endpoint
+app.use(express.json());
+app.post('/api/host/auth', (req, res) => {
+  if (!HOST_PIN) {
+    return res.json({ success: true, token: null, message: 'No PIN required' });
+  }
+  
+  const { pin } = req.body;
+  
+  if (!pin || pin !== HOST_PIN) {
+    console.log(`🚫 Invalid host PIN attempt`);
+    return res.status(401).json({ success: false, message: 'Invalid PIN' });
+  }
+  
+  const token = createHostAuthToken();
+  console.log(`✅ Host authenticated`);
+  res.json({ success: true, token });
+});
+
+// Check if PIN is required
+app.get('/api/host/status', (req, res) => {
+  res.json({ 
+    pinRequired: !!HOST_PIN,
+    authenticated: isValidHostAuthToken(req.query.token || req.headers.cookie?.match(/hostAuth=([^;]+)/)?.[1])
+  });
 });
 
 app.get('/display', (req, res) => {
@@ -494,8 +582,9 @@ function cleanupStaleData() {
     console.log(`🧹 Memory cleanup: removed ${cleanedCount} stale entries`);
   }
   
-  // Also cleanup expired sessions
+  // Also cleanup expired sessions and host tokens
   cleanupExpiredSessions();
+  cleanupExpiredHostTokens();
 }
 
 // Start periodic cleanup
@@ -971,6 +1060,7 @@ server.listen(PORT, HOST, () => {
 ║  Max players: ${String(MAX_PLAYERS).padEnd(50)}║
 ║  Max connections per IP: ${String(MAX_CONNECTIONS_PER_IP).padEnd(39)}║
 ║  Reconnect grace period: ${String(RECONNECT_GRACE_PERIOD_MS / 1000 + 's').padEnd(39)}║
+║  Host PIN protection: ${HOST_PIN ? '✓ Enabled' : '✗ Disabled (set HOST_PIN env var)'}${HOST_PIN ? '                            ' : ''}║
 ╠══════════════════════════════════════════════════════════════════╣
 ║  Security: Helmet ✓  Compression ✓  Rate Limiting ✓              ║
 ║  Features: Reconnection ✓  Session Management ✓                  ║

@@ -104,6 +104,7 @@ The game includes immersive audio and vibration feedback (works on mobile!):
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `PORT` | Auto | Set by hosting platform |
+| `HOST_PIN` | Optional | PIN to protect `/host` route (e.g., `mySecretPin123`) |
 | `UPSTASH_REDIS_REST_URL` | Optional | Redis URL for persistent scores |
 | `UPSTASH_REDIS_REST_TOKEN` | Optional | Redis token for authentication |
 
@@ -150,6 +151,14 @@ Players can seamlessly rejoin if their connection drops:
 - **Session tokens** stored in localStorage
 - Automatic reconnection with Socket.io
 - Visual feedback ("Reconnecting..." / "Reconnected!")
+
+### 🔐 Host PIN Protection
+
+Optionally protect the `/host` control panel:
+- Set `HOST_PIN` environment variable to enable
+- Users must enter PIN to access host controls
+- Auth tokens valid for 24 hours (stored in cookie)
+- If no PIN set, `/host` is open (backwards compatible)
 
 ## 🛠 Tech Stack
 
