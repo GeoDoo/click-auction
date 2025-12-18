@@ -50,11 +50,10 @@ Open your browser:
 Project this for everyone to see:
 - Large QR code for easy scanning
 - Game rules and instructions  
-- Live countdown timer
-- Real-time leaderboard with click animations
+- All-Time Champions leaderboard
+- Live Bids leaderboard with click animations
 - Podium for top 3 players
-- Dynamic winner ad on a billboard with confetti! 🎊
-- All-time champions section
+- Dynamic winner ad on a CSS billboard with confetti! 🎊
 
 ### `/play` - Player Page
 Share this URL with your audience. Players:
@@ -133,7 +132,7 @@ The game analyzes click timing to detect automated/scripted clicking:
 - Measures **Coefficient of Variation (CV)** of click intervals
 - Human clicks: naturally vary in timing (high CV)
 - Bot clicks: unnaturally consistent timing (low CV < 15%)
-- Suspicious players are flagged with 🤖 in the host panel
+- Detection runs server-side for fair play enforcement
 
 ### ♻️ Reconnection Support
 
@@ -192,11 +191,10 @@ click-auction/
 ├── package.json
 ├── render.yaml         # Render deployment config
 ├── public/
-│   ├── display.html    # Main display (QR, rules, leaderboard, billboard)
+│   ├── display.html    # Main display (QR, rules, leaderboards, billboard)
 │   ├── play.html       # Player bidding interface
 │   ├── host.html       # Host control panel
-│   ├── host-login.html # PIN login page for host
-│   └── ad-generator.js # Dynamic ad image generator
+│   └── host-login.html # PIN login page for host
 └── scores.json         # Local persistence (auto-created)
 ```
 
