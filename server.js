@@ -8,6 +8,7 @@ const fs = require('fs');
 const { Redis } = require('@upstash/redis');
 const helmet = require('helmet');
 const compression = require('compression');
+const cors = require('cors');
 
 const app = express();
 const server = http.createServer(app);
@@ -31,6 +32,9 @@ const HOST_AUTH_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
 // Trust proxy (for Render/reverse proxies - correct IP detection)
 app.set('trust proxy', 1);
 
+// CORS - Allow requests from any origin in development
+app.use(cors());
+
 // Helmet.js - Security headers
 app.use(helmet({
   contentSecurityPolicy: {
@@ -42,9 +46,11 @@ app.use(helmet({
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https://api.qrserver.com"],
       connectSrc: ["'self'", "wss:", "ws:"],
+      upgradeInsecureRequests: null, // Don't force HTTPS (needed for local dev)
     },
   },
   crossOriginEmbedderPolicy: false, // Allow QR code images
+  hsts: false, // Disable HSTS for local development (allows HTTP)
 }));
 
 // Compression (gzip)
