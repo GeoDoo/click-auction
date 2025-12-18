@@ -2,13 +2,13 @@ services:
   - type: web
     name: click-auction
     runtime: node
-    buildCommand: npm install
+    buildCommand: npm ci && npm test
     startCommand: node server.js
     envVars:
       - key: NODE_ENV
         value: production
       - key: BASE_URL
         sync: false  # Set this manually in Render dashboard after deploy
-    healthCheckPath: /api/config
+    healthCheckPath: /health
 
 

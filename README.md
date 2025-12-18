@@ -160,6 +160,39 @@ Optionally protect the `/host` control panel:
 - **Audio:** Web Audio API (synthesized sounds, no files)
 - **Hosting:** Render (or any Node.js host)
 
+## 🧪 Testing
+
+The project includes a comprehensive test suite with 125+ tests:
+
+```bash
+# Run tests
+npm test
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run tests in watch mode
+npm run test:watch
+```
+
+### Deployment Pipeline
+
+Tests run automatically during Render's build step. **If tests fail, deployment is blocked.**
+
+### Test Coverage
+
+| Area | Tests |
+|------|-------|
+| Connection & Players | Join, disconnect, reconnect flows |
+| Auction Flow | Start, countdown, bidding, end |
+| Leaderboards | Live rankings, all-time stats |
+| Session Management | Tokens, reconnection, expiry |
+| Input Validation | Sanitization, duration limits |
+| Rate Limiting | Click throttling per player |
+| Bot Detection | CV calculation, flagging |
+| Security | Helmet headers, connection limits |
+| HTTP Endpoints | /health, /api/config, /api/stats |
+
 ## 💡 Tips for Running Events
 
 1. **Project `/`** on a big screen - shows QR code, rules, and live leaderboard
@@ -187,15 +220,18 @@ Customize in any HTML file's `:root` CSS variables.
 
 ```
 click-auction/
-├── server.js           # Main server with Socket.io
+├── server.js              # Main server with Socket.io
 ├── package.json
-├── render.yaml         # Render deployment config
+├── render.yaml            # Render deployment config
+├── jest.config.js         # Test configuration
+├── tests/
+│   └── server.test.js     # Comprehensive test suite (125+ tests)
 ├── public/
-│   ├── display.html    # Main display (QR, rules, leaderboards, billboard)
-│   ├── play.html       # Player bidding interface
-│   ├── host.html       # Host control panel
-│   └── host-login.html # PIN login page for host
-└── scores.json         # Local persistence (auto-created)
+│   ├── display.html       # Main display (QR, rules, leaderboards, billboard)
+│   ├── play.html          # Player bidding interface
+│   ├── host.html          # Host control panel
+│   └── host-login.html    # PIN login page for host
+└── scores.json            # Local persistence (auto-created)
 ```
 
 ## 🤝 Credits
