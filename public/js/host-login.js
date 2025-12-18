@@ -28,9 +28,15 @@ form.addEventListener('submit', async (e) => {
     const data = await response.json();
 
     if (data.success) {
-      // Cookie is set by server via Set-Cookie header
-      // Just redirect - cookie is already in browser
-      window.location.href = '/host';
+      // Store token in cookie for future visits
+      if (data.token) {
+        document.cookie = `hostAuth=${data.token}; path=/; max-age=86400; SameSite=Lax`;
+        // Redirect with token in URL (immediate, no cookie timing issues)
+        window.location.href = `/host?auth=${encodeURIComponent(data.token)}`;
+      } else {
+        // No PIN required
+        window.location.href = '/host';
+      }
     } else {
       throw new Error(data.message || 'Invalid PIN');
     }

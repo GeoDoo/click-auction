@@ -276,18 +276,6 @@ app.post('/api/host/auth', (req, res) => {
     return res.status(401).json(result);
   }
 
-  // Set cookie from server (more reliable than client-side)
-  if (result.token) {
-    const isProduction = process.env.NODE_ENV === 'production';
-    res.cookie('hostAuth', result.token, {
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      httpOnly: false, // Needs to be readable by client JS for socket auth
-      secure: isProduction,
-      sameSite: 'lax',
-      path: '/',
-    });
-  }
-
   Logger.info('Host authenticated');
   res.json(result);
 });
