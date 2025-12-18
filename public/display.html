@@ -3,8 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="VIOOH Click Auction - A real-time programmatic advertising game">
   <title>Click Auction - VIOOH prDOOH Game</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/common.css">
   <style>
     :root {
       --viooh-teal: #00C9A7;
@@ -906,81 +910,84 @@
   </style>
 </head>
 <body>
-  <div class="bg" id="bg"></div>
-  <div class="grid-overlay"></div>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+  <div class="bg" id="bg" aria-hidden="true"></div>
+  <div class="grid-overlay" aria-hidden="true"></div>
 
   <div class="main-container">
-    <header>
+    <header role="banner">
       <div class="logo">
         <span class="logo-text">🎯 CLICK AUCTION</span>
       </div>
-      <div class="status-section">
-        <div class="round-badge" id="roundBadge">Round 0</div>
-        <div class="status-badge status-waiting" id="statusBadge">Waiting</div>
+      <div class="status-section" aria-live="polite">
+        <div class="round-badge" id="roundBadge" aria-label="Current round">Round 0</div>
+        <div class="status-badge status-waiting" id="statusBadge" role="status" aria-label="Game status">Waiting</div>
       </div>
     </header>
 
-    <div class="content-area">
-      <div class="leaderboard">
-        <div class="leaderboard-title">🏆 ALL-TIME CHAMPIONS</div>
-        <div class="leaderboard-list" id="allTimeList">
+    <main id="main-content" class="content-area" role="main">
+      <section class="leaderboard" aria-labelledby="alltime-title">
+        <h2 class="leaderboard-title" id="alltime-title">🏆 ALL-TIME CHAMPIONS</h2>
+        <div class="leaderboard-list" id="allTimeList" role="list" aria-live="polite">
           <div class="empty-leaderboard">
-            <div class="icon">🏆</div>
+            <div class="icon" aria-hidden="true">🏆</div>
             <div>No champions yet...</div>
           </div>
         </div>
-      </div>
+      </section>
       
-      <div class="leaderboard">
-        <div class="leaderboard-title">📊 LIVE BIDS</div>
-        <div class="leaderboard-list" id="leaderboardList">
+      <section class="leaderboard" aria-labelledby="live-bids-title">
+        <h2 class="leaderboard-title" id="live-bids-title">📊 LIVE BIDS</h2>
+        <div class="leaderboard-list" id="leaderboardList" role="list" aria-live="polite">
           <div class="empty-leaderboard">
-            <div class="icon">👥</div>
+            <div class="icon" aria-hidden="true">👥</div>
             <div>Waiting for DSPs to join...</div>
           </div>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
 
-    <div class="sidebar">
-      <div class="qr-section">
-        <div class="qr-title">📱 SCAN TO PLAY</div>
+    <aside class="sidebar" role="complementary" aria-label="Game information">
+      <section class="qr-section" aria-labelledby="qr-title">
+        <h2 class="qr-title" id="qr-title">📱 SCAN TO PLAY</h2>
         <div class="qr-code">
-          <img id="joinQr" alt="Scan to join">
+          <img id="joinQr" alt="QR code to join the game" width="160" height="160">
         </div>
-        <div class="join-url" id="joinUrl"></div>
-        <div class="player-count-box">
-          <div class="player-count" id="playerCount">0</div>
+        <div class="join-url" id="joinUrl" aria-label="Join URL"></div>
+        <div class="player-count-box" aria-live="polite">
+          <div class="player-count" id="playerCount" aria-label="Player count">0</div>
           <div class="player-count-label">Players Connected</div>
         </div>
-      </div>
+      </section>
 
-      <div class="rules-section">
-        <h3>📋 HOW TO PLAY</h3>
-        <div class="rule">
-          <span class="rule-icon">📱</span>
-          <span>Scan QR code to join</span>
-        </div>
-        <div class="rule">
-          <span class="rule-icon">✏️</span>
-          <span>Enter your name & ad message</span>
-        </div>
-        <div class="rule">
-          <span class="rule-icon">⏱️</span>
-          <span>Wait for auction to start</span>
-        </div>
-        <div class="rule">
-          <span class="rule-icon">👆</span>
-          <span>TAP fast when it begins!</span>
-        </div>
-        <div class="rule">
-          <span class="rule-icon">🏆</span>
-          <span>Most taps wins the billboard!</span>
-        </div>
-      </div>
-    </div>
+      <section class="rules-section" aria-labelledby="rules-title">
+        <h3 id="rules-title">📋 HOW TO PLAY</h3>
+        <ol style="list-style: none;">
+          <li class="rule">
+            <span class="rule-icon" aria-hidden="true">📱</span>
+            <span>Scan QR code to join</span>
+          </li>
+          <li class="rule">
+            <span class="rule-icon" aria-hidden="true">✏️</span>
+            <span>Enter your name & ad message</span>
+          </li>
+          <li class="rule">
+            <span class="rule-icon" aria-hidden="true">⏱️</span>
+            <span>Wait for auction to start</span>
+          </li>
+          <li class="rule">
+            <span class="rule-icon" aria-hidden="true">👆</span>
+            <span>TAP fast when it begins!</span>
+          </li>
+          <li class="rule">
+            <span class="rule-icon" aria-hidden="true">🏆</span>
+            <span>Most taps wins the billboard!</span>
+          </li>
+        </ol>
+      </section>
+    </aside>
 
-    <footer>
+    <footer role="contentinfo">
       <div class="footer-brand">
         <span class="viooh">VIOOH</span>
         <div class="footer-divider"></div>
@@ -1082,6 +1089,9 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/logger.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/sound.js"></script>
   <script src="/js/display.js"></script>
 </body>
 </html>

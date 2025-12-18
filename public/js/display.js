@@ -7,88 +7,7 @@ let maxClicks = 1;
 let lastCountdown = null;
 let lastStatus = 'waiting';
 
-// Sound Manager
-const SoundManager = {
-  ctx: null,
-  enabled: true,
-  initialized: false,
-  unlocked: false,
-
-  async init() {
-    if (this.initialized && this.unlocked) return;
-    try {
-      if (!this.ctx) {
-        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-        this.initialized = true;
-      }
-      if (this.ctx.state === 'suspended') await this.ctx.resume();
-      if (!this.unlocked) {
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        gain.gain.value = 0.001;
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start();
-        osc.stop(this.ctx.currentTime + 0.01);
-        this.unlocked = true;
-      }
-    } catch (_e) {
-      // Audio initialization failed silently
-    }
-  },
-
-  beep(freq = 440, duration = 0.1, type = 'sine', volume = 0.5) {
-    if (!this.ctx || !this.enabled || !this.unlocked) return;
-    try {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = type;
-      osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-      gain.gain.setValueAtTime(volume, this.ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start(this.ctx.currentTime);
-      osc.stop(this.ctx.currentTime + duration);
-    } catch (_e) {
-      // Beep failed silently
-    }
-  },
-
-  countdownTick() {
-    this.beep(520, 0.2, 'sine', 0.7);
-  },
-
-  go() {
-    if (!this.ctx || !this.enabled || !this.unlocked) return;
-    try {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(400, this.ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(900, this.ctx.currentTime + 0.3);
-      gain.gain.setValueAtTime(0.6, this.ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start(this.ctx.currentTime);
-      osc.stop(this.ctx.currentTime + 0.4);
-    } catch (_e) {
-      // Go sound failed silently
-    }
-  },
-
-  winner() {
-    if (!this.ctx || !this.enabled || !this.unlocked) return;
-    const notes = [523, 659, 784, 1047, 1319];
-    notes.forEach((freq, i) => {
-      setTimeout(() => this.beep(freq, 0.45, 'sine', 0.6), i * 120);
-    });
-  },
-};
-
-document.addEventListener('click', () => SoundManager.init());
-document.addEventListener('touchstart', () => SoundManager.init());
+// SoundManager loaded from /js/sound.js
 
 // Fetch config for QR code
 fetch('/api/config')
@@ -131,7 +50,7 @@ function loadAllTimeStats() {
         )
         .join('');
     })
-    .catch((err) => console.log('Could not load all-time stats:', err));
+    .catch((err) => Logger.warn('Could not load all-time stats:', err));
 }
 
 // Load stats initially and refresh after each auction

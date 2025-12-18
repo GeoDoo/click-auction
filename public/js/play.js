@@ -15,7 +15,7 @@ let myName = '';
 let gameStatus = 'waiting';
 let lastCountdown = null;
 let sessionToken = localStorage.getItem('clickAuctionSession');
-let isReconnecting = false;
+let _isReconnecting = false;
 
 // ==========================================
 // SESSION MANAGEMENT
@@ -33,7 +33,7 @@ function clearSession() {
 // Handle session created (new join)
 socket.on('sessionCreated', (data) => {
   saveSession(data.token);
-  console.log('🎫 Session created');
+  Logger.debug('Session created');
 });
 
 // Handle successful rejoin
@@ -51,8 +51,8 @@ socket.on('rejoinSuccess', (data) => {
   // Clear any error overlays on successful rejoin
   document.getElementById('errorOverlay').classList.remove('active');
 
-  isReconnecting = false;
-  console.log('♻️ Session restored!');
+  _isReconnecting = false;
+  Logger.info('Session restored');
 
   // Show reconnection success message briefly
   showReconnectMessage('Reconnected!');
@@ -60,9 +60,9 @@ socket.on('rejoinSuccess', (data) => {
 
 // Handle rejoin failure
 socket.on('rejoinError', (data) => {
-  console.log('❌ Rejoin failed:', data.message);
+  Logger.warn('Rejoin failed:', data.message);
   clearSession();
-  isReconnecting = false;
+  _isReconnecting = false;
   // Show join screen for fresh start
   document.getElementById('joinScreen').classList.remove('hidden');
   document.getElementById('gameScreen').classList.remove('active');
@@ -70,18 +70,18 @@ socket.on('rejoinError', (data) => {
 
 // Attempt to rejoin on reconnect
 socket.on('connect', () => {
-  console.log('🔌 Connected to server');
+  Logger.debug('Connected to server');
 
   // If we have a session and were in the game, try to rejoin
   if (sessionToken && myName) {
-    isReconnecting = true;
+    _isReconnecting = true;
     socket.emit('rejoinGame', { token: sessionToken });
   }
 });
 
 // Handle disconnection
 socket.on('disconnect', (reason) => {
-  console.log('📴 Disconnected:', reason);
+  Logger.warn('Disconnected:', reason);
   if (myName) {
     showReconnectMessage('Connection lost. Reconnecting...');
   }
@@ -131,133 +131,7 @@ function showReconnectMessage(message) {
   }
 }
 
-// ==========================================
-// SOUND MANAGER - Works on all devices!
-// ==========================================
-const SoundManager = {
-  ctx: null,
-  enabled: true,
-  initialized: false,
-  unlocked: false,
-
-  // Initialize and unlock audio context
-  async init() {
-    if (this.initialized && this.unlocked) return;
-
-    try {
-      // Create context if not exists
-      if (!this.ctx) {
-        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-        this.initialized = true;
-      }
-
-      // Resume if suspended (required for Chrome/Android)
-      if (this.ctx.state === 'suspended') {
-        await this.ctx.resume();
-      }
-
-      // Play a silent sound to fully unlock audio (Android fix)
-      if (!this.unlocked) {
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        gain.gain.value = 0.001; // Nearly silent
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start();
-        osc.stop(this.ctx.currentTime + 0.01);
-        this.unlocked = true;
-        console.log('🔊 Audio unlocked!');
-      }
-    } catch (e) {
-      console.log('Sound error:', e);
-    }
-  },
-
-  // Play a beep sound with given frequency and duration
-  beep(freq = 440, duration = 0.1, type = 'sine', volume = 0.5) {
-    if (!this.ctx || !this.enabled || !this.unlocked) return;
-
-    try {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-
-      osc.type = type;
-      osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-      gain.gain.setValueAtTime(volume, this.ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
-
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-
-      osc.start(this.ctx.currentTime);
-      osc.stop(this.ctx.currentTime + duration);
-    } catch (e) {
-      console.log('Beep error:', e);
-    }
-  },
-
-  // Tap sound - short click
-  tap() {
-    this.beep(880, 0.04, 'square', 0.4);
-  },
-
-  // Countdown tick - lower beep
-  countdownTick() {
-    this.beep(520, 0.15, 'sine', 0.6);
-  },
-
-  // GO sound - rising tone
-  go() {
-    if (!this.ctx || !this.enabled || !this.unlocked) return;
-
-    try {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(400, this.ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(900, this.ctx.currentTime + 0.25);
-      gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.35);
-
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-
-      osc.start(this.ctx.currentTime);
-      osc.stop(this.ctx.currentTime + 0.35);
-    } catch (e) {
-      console.log('Go sound error:', e);
-    }
-  },
-
-  // Winner fanfare
-  winner() {
-    if (!this.ctx || !this.enabled || !this.unlocked) return;
-
-    const notes = [523, 659, 784, 1047];
-    notes.forEach((freq, i) => {
-      setTimeout(() => this.beep(freq, 0.35, 'sine', 0.5), i * 100);
-    });
-  },
-
-  // Loser/end sound
-  end() {
-    this.beep(330, 0.3, 'sine', 0.4);
-  },
-
-  toggle() {
-    this.enabled = !this.enabled;
-    return this.enabled;
-  },
-};
-
-// Initialize sound on first user interaction (critical for mobile!)
-function initAudio() {
-  SoundManager.init();
-}
-document.addEventListener('click', initAudio);
-document.addEventListener('touchstart', initAudio);
-document.addEventListener('touchend', initAudio);
+// SoundManager and Haptics are loaded from /js/sound.js
 
 // Toggle sound on/off
 function toggleSound() {
@@ -331,14 +205,7 @@ function handleBid(e) {
   }
 }
 
-// Haptic patterns for different events
-const Haptics = {
-  tap: () => navigator.vibrate && navigator.vibrate(15),
-  countdown: () => navigator.vibrate && navigator.vibrate(30),
-  go: () => navigator.vibrate && navigator.vibrate([50, 30, 50]), // buzz-pause-buzz
-  winner: () => navigator.vibrate && navigator.vibrate([100, 50, 100, 50, 200]), // celebration pattern
-  loser: () => navigator.vibrate && navigator.vibrate(100),
-};
+// Haptics loaded from /js/sound.js
 
 bidButton.addEventListener('click', handleBid);
 bidButton.addEventListener('touchstart', (e) => {

@@ -3,8 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="Join the Click Auction game - Tap to bid!">
   <title>Play - Click Auction</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/common.css">
   <style>
     :root {
       /* VIOOH Brand Palette */
@@ -545,76 +549,79 @@
   </style>
 </head>
 <body>
-  <div class="bg" id="bg"></div>
+  <div class="bg" id="bg" aria-hidden="true"></div>
 
   <!-- Join Screen -->
-  <div class="join-screen" id="joinScreen">
+  <main class="join-screen" id="joinScreen" role="main">
     <h1 class="logo">CLICK AUCTION</h1>
     <p class="subtitle">Join as a DSP</p>
     
-    <div class="rules-quick">
-      <div class="rule-item">⏱️ <strong>Timed</strong> auction</div>
-      <div class="rule-item">👆 Tap = <strong>1 bid</strong></div>
-      <div class="rule-item">🏆 Most bids <strong>wins!</strong></div>
+    <div class="rules-quick" role="list" aria-label="Quick rules">
+      <div class="rule-item" role="listitem">⏱️ <strong>Timed</strong> auction</div>
+      <div class="rule-item" role="listitem">👆 Tap = <strong>1 bid</strong></div>
+      <div class="rule-item" role="listitem">🏆 Most bids <strong>wins!</strong></div>
     </div>
     
-    <div class="join-form">
+    <form class="join-form" id="joinForm" onsubmit="joinGame(); return false;">
       <div class="input-group">
-        <label>Your DSP Name</label>
-        <input type="text" id="playerName" placeholder="e.g., MegaBidder9000" maxlength="20" autocomplete="off">
+        <label for="playerName">Your DSP Name</label>
+        <input type="text" id="playerName" placeholder="e.g., MegaBidder9000" maxlength="20" autocomplete="off" required aria-required="true">
       </div>
       <div class="input-group">
-        <label>Your Winning Ad Message (shown if you win!)</label>
-        <input type="text" id="adContent" placeholder="e.g., Best DSP in town! 🚀" maxlength="60" autocomplete="off">
-        <small style="color: #666; font-size: 0.85rem; margin-top: 0.5rem; display: block;">This becomes a generated ad image on the big screen!</small>
+        <label for="adContent">Your Winning Ad Message (shown if you win!)</label>
+        <input type="text" id="adContent" placeholder="e.g., Best DSP in town! 🚀" maxlength="60" autocomplete="off" required aria-required="true">
+        <small style="color: #666; font-size: 0.85rem; margin-top: 0.5rem; display: block;" id="adContentHint">This becomes a generated ad image on the big screen!</small>
       </div>
-      <button class="btn-join" onclick="joinGame()">Enter the Arena</button>
-    </div>
-  </div>
+      <button type="submit" class="btn-join">Enter the Arena</button>
+    </form>
+  </main>
 
   <!-- Game Screen -->
-  <div class="game-screen" id="gameScreen">
-    <div class="game-header">
+  <div class="game-screen" id="gameScreen" role="main" aria-label="Game area">
+    <header class="game-header">
       <div class="player-info">
-        <div class="player-color-dot" id="playerColorDot"></div>
-        <span class="player-name-display" id="playerNameDisplay"></span>
+        <div class="player-color-dot" id="playerColorDot" aria-hidden="true"></div>
+        <span class="player-name-display" id="playerNameDisplay" aria-label="Your name"></span>
       </div>
       <div class="header-right">
-        <button class="sound-toggle" id="soundToggle" onclick="toggleSound()">🔊</button>
-        <div class="game-status-badge status-waiting" id="gameStatusBadge">Waiting</div>
+        <button class="sound-toggle" id="soundToggle" onclick="toggleSound()" aria-label="Toggle sound" aria-pressed="true">🔊</button>
+        <div class="game-status-badge status-waiting" id="gameStatusBadge" role="status" aria-live="polite">Waiting</div>
       </div>
-    </div>
+    </header>
 
     <div class="game-main">
-      <div class="click-section">
-        <div class="click-counter" id="clickCounter">0</div>
-        <div class="click-label">Your Bids</div>
-        <button class="bid-button waiting" id="bidButton" disabled>
+      <section class="click-section" aria-label="Bidding area">
+        <div class="click-counter" id="clickCounter" aria-live="polite" aria-atomic="true">0</div>
+        <div class="click-label" id="clickLabel">Your Bids</div>
+        <button class="bid-button waiting" id="bidButton" disabled aria-describedby="clickLabel" aria-label="Tap to bid">
           Wait...
         </button>
-      </div>
+      </section>
     </div>
   </div>
 
   <!-- Results Overlay -->
-  <div class="winner-overlay" id="winnerOverlay">
-    <div class="winner-trophy" id="winnerTrophy">🏆</div>
-    <div class="winner-title" id="winnerTitle">Winner!</div>
+  <div class="winner-overlay" id="winnerOverlay" role="dialog" aria-modal="true" aria-labelledby="winnerTitle">
+    <div class="winner-trophy" id="winnerTrophy" aria-hidden="true">🏆</div>
+    <h2 class="winner-title" id="winnerTitle">Winner!</h2>
     <div class="winner-name-big" id="winnerNameBig"></div>
     <div class="winner-clicks-big" id="winnerClicksBig"></div>
     <div class="your-result" id="yourResult">
       <div class="your-result-label" id="yourResultLabel">Your Score</div>
-      <div class="your-result-value" id="yourResultValue">0 clicks</div>
+      <div class="your-result-value" id="yourResultValue" aria-live="polite">0 clicks</div>
       <div class="your-rank" id="yourRank" style="margin-top: 0.5rem; font-size: 1.2rem; color: #888;"></div>
     </div>
   </div>
 
   <!-- Error Overlay -->
-  <div class="error-overlay" id="errorOverlay">
+  <div class="error-overlay" id="errorOverlay" role="alertdialog" aria-modal="true" aria-labelledby="errorText">
     <div class="error-text" id="errorText">An error occurred</div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/logger.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/sound.js"></script>
   <script src="/js/play.js"></script>
 </body>
 </html>

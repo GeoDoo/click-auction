@@ -1,7 +1,10 @@
 module.exports = [
+  // Ignore minified/dist files
+  {
+    ignores: ['node_modules/**', 'coverage/**', 'public/js/dist/**'],
+  },
   {
     files: ['**/*.js'],
-    ignores: ['node_modules/**', 'coverage/**'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'commonjs',
@@ -30,6 +33,11 @@ module.exports = [
         io: 'readonly',
         alert: 'readonly',
         confirm: 'readonly',
+        // Shared modules (loaded via script tags)
+        Logger: 'readonly',
+        SoundManager: 'readonly',
+        Haptics: 'readonly',
+        Utils: 'readonly',
         // Jest globals
         describe: 'readonly',
         it: 'readonly',

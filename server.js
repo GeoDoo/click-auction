@@ -10,6 +10,8 @@ const cors = require('cors');
 
 // Import modules
 const { config, validation, session, auth, botDetection, persistence } = require('./src');
+const Logger = require('./src/logger');
+const middleware = require('./src/middleware');
 
 const app = express();
 const server = http.createServer(app);
@@ -41,6 +43,12 @@ app.use(helmet({
 
 app.use(compression());
 
+// Request logging
+app.use(middleware.requestLogger());
+
+// Caching headers for static assets
+app.use(middleware.cacheControl({ maxAge: 3600 }));
+
 // ============================================
 // SOCKET CONNECTION LIMITING (per IP)
 // ============================================
@@ -62,13 +70,13 @@ io.use((socket, next) => {
   }
 
   if (connectionsByIP[ip] >= config.MAX_CONNECTIONS_PER_IP) {
-    console.log(`🚫 Connection rejected from ${ip} (limit reached: ${config.MAX_CONNECTIONS_PER_IP})`);
+    Logger.security('Connection rejected - limit reached', ip, { limit: config.MAX_CONNECTIONS_PER_IP });
     return next(new Error('Too many connections from this IP'));
   }
 
   connectionsByIP[ip]++;
   socket.clientIP = ip;
-  console.log(`🔌 Connection from ${ip} (${connectionsByIP[ip]}/${config.MAX_CONNECTIONS_PER_IP})`);
+  Logger.debug(`Connection from ${ip} (${connectionsByIP[ip]}/${config.MAX_CONNECTIONS_PER_IP})`);
   next();
 });
 
@@ -252,11 +260,11 @@ app.post('/api/host/auth', (req, res) => {
   const result = auth.verifyPinAndCreateToken(pin);
 
   if (!result.success) {
-    console.log('🚫 Invalid host PIN attempt');
+    Logger.security('Invalid host PIN attempt', req.ip);
     return res.status(401).json(result);
   }
 
-  console.log('✅ Host authenticated');
+  Logger.info('Host authenticated');
   res.json(result);
 });
 
@@ -280,7 +288,7 @@ app.get('/api/stats', (_req, res) => {
 app.post('/api/stats/reset', async (_req, res) => {
   persistence.resetAllStats();
   await persistence.saveScores();
-  console.log('🗑️ All-time stats reset');
+  Logger.info('All-time stats reset');
   broadcastState();
   res.json({ success: true, message: 'Stats reset' });
 });
@@ -290,7 +298,7 @@ app.post('/api/stats/reset', async (_req, res) => {
 // ============================================
 
 io.on('connection', (socket) => {
-  console.log(`Client connected: ${socket.id}`);
+  Logger.debug(`Client connected: ${socket.id}`);
 
   socket.emit('gameState', {
     status: gameState.status,
@@ -329,7 +337,7 @@ io.on('connection', (socket) => {
     const sessionToken = session.createSession(socket.id, playerData);
     socket.emit('sessionCreated', { token: sessionToken });
 
-    console.log(`Player joined: ${playerName} (session: ${sessionToken.substr(0, 12)}...)`);
+    Logger.playerAction('joined', playerName, { session: sessionToken.substr(0, 12) });
     broadcastState();
   });
 
@@ -370,7 +378,7 @@ io.on('connection', (socket) => {
       },
     });
 
-    console.log(`♻️ Player reconnected: ${playerData.name}`);
+    Logger.playerAction('reconnected', playerData.name);
     broadcastState();
   });
 
@@ -441,7 +449,7 @@ io.on('connection', (socket) => {
   socket.on('resetAllTimeStats', () => {
     persistence.resetAllStats();
     persistence.saveScores();
-    console.log('🗑️ All-time stats reset by host');
+    Logger.info('All-time stats reset by host');
     broadcastState();
   });
 
@@ -466,9 +474,9 @@ io.on('connection', (socket) => {
         if (sessionData) {
           sessionData.playerData = { ...gameState.players[socket.id] };
         }
-        console.log(`⏳ Player disconnected (grace period): ${playerName}`);
+        Logger.playerAction('disconnected (grace period)', playerName);
       } else {
-        console.log(`Player disconnected: ${playerName}`);
+        Logger.playerAction('disconnected', playerName);
       }
 
       delete gameState.players[socket.id];
@@ -522,7 +530,7 @@ function endAuction() {
 
   persistence.saveScores();
 
-  console.log(`Auction ended! ${leaderboard.length} participants. Winner: ${winnerName || 'None'}`);
+  Logger.gameEvent('Auction ended', { participants: leaderboard.length, winner: winnerName || 'None' });
 
   broadcastState();
 }
@@ -548,7 +556,7 @@ function cleanupStaleData() {
   cleanedCount += botDetection.cleanupBotDetectionData(activeSocketIds);
 
   if (cleanedCount > 0) {
-    console.log(`🧹 Memory cleanup: removed ${cleanedCount} stale entries`);
+    Logger.debug(`Memory cleanup: removed ${cleanedCount} stale entries`);
   }
 
   session.cleanupExpiredSessions();
@@ -562,20 +570,20 @@ const cleanupIntervalId = setInterval(cleanupStaleData, config.CLEANUP_INTERVAL_
 // ============================================
 
 app.use((err, _req, res, _next) => {
-  console.error('❌ Express error:', err.message);
+  Logger.error('Express error:', err.message);
   res.status(500).json({ error: 'Internal server error' });
 });
 
 process.on('uncaughtException', (err) => {
-  console.error('❌ Uncaught Exception:', err);
+  Logger.error('Uncaught Exception:', err);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  Logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
 io.engine.on('connection_error', (err) => {
-  console.error('❌ Socket.io connection error:', err.message);
+  Logger.error('Socket.io connection error:', err.message);
 });
 
 // ============================================
@@ -583,7 +591,7 @@ io.engine.on('connection_error', (err) => {
 // ============================================
 
 process.on('SIGTERM', () => {
-  console.log('🛑 Received SIGTERM, cleaning up...');
+  Logger.info('Received SIGTERM, cleaning up...');
   clearInterval(cleanupIntervalId);
   clearAllIntervals();
   persistence.saveScores().then(() => {
@@ -592,7 +600,7 @@ process.on('SIGTERM', () => {
 });
 
 process.on('SIGINT', () => {
-  console.log('🛑 Received SIGINT, cleaning up...');
+  Logger.info('Received SIGINT, cleaning up...');
   clearInterval(cleanupIntervalId);
   clearAllIntervals();
   persistence.saveScores().then(() => {

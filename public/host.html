@@ -3,8 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Host control panel for Click Auction game">
   <title>Host Control - Click Auction</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/common.css">
   <style>
     :root {
       /* VIOOH Brand Palette */
@@ -245,44 +249,47 @@
   </style>
 </head>
 <body>
-  <div class="bg"></div>
+  <div class="bg" aria-hidden="true"></div>
 
-  <header>
-    <div class="logo">🎛️ HOST CONTROL</div>
-    <div class="status-indicator">
-      <span class="status-dot"></span>
+  <header role="banner">
+    <h1 class="logo">🎛️ HOST CONTROL</h1>
+    <div class="status-indicator" aria-live="polite">
+      <span class="status-dot" aria-hidden="true"></span>
       <span id="playerCount">0 Players Connected</span>
     </div>
   </header>
 
-  <main class="main">
+  <main class="main" role="main">
     <div class="control-center">
-      <div class="card">
-        <h2>⚙️ Auction Control</h2>
+      <section class="card" aria-labelledby="auction-control-title">
+        <h2 id="auction-control-title">⚙️ Auction Control</h2>
         <div class="control-panel">
           <div class="setting-row">
-            <label>Auction Duration (seconds)</label>
-            <input type="number" id="duration" value="10" min="5" max="60">
+            <label for="duration">Auction Duration (seconds)</label>
+            <input type="number" id="duration" value="10" min="5" max="60" aria-describedby="duration-hint">
+            <span id="duration-hint" class="sr-only">Enter a value between 5 and 60 seconds</span>
           </div>
-          <div class="btn-group">
-            <button class="btn btn-start" id="startBtn" onclick="startAuction()">
+          <div class="btn-group" role="group" aria-label="Auction controls">
+            <button class="btn btn-start" id="startBtn" onclick="startAuction()" aria-label="Start auction">
               🚀 Start Auction
             </button>
-            <button class="btn btn-reset" id="resetBtn" onclick="resetAuction()">
+            <button class="btn btn-reset" id="resetBtn" onclick="resetAuction()" aria-label="Reset auction">
               🔄 Reset
             </button>
           </div>
           <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); text-align: center;">
-            <button class="btn" style="background: rgba(255,51,102,0.15); color: var(--danger); border: 1px solid rgba(255,51,102,0.4); font-size: 0.7rem; padding: 0.4rem 0.8rem; min-width: auto; flex: none;" onclick="resetAllTimeStats()">
+            <button class="btn" style="background: rgba(255,51,102,0.15); color: var(--danger); border: 1px solid rgba(255,51,102,0.4); font-size: 0.7rem; padding: 0.4rem 0.8rem; min-width: auto; flex: none;" onclick="resetAllTimeStats()" aria-label="Reset all-time statistics">
               🗑️ Reset All-Time Stats
             </button>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   </main>
 
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/logger.js"></script>
+  <script src="/js/utils.js"></script>
   <script src="/js/host.js"></script>
 </body>
 </html>
