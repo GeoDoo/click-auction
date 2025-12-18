@@ -28,15 +28,8 @@ form.addEventListener('submit', async (e) => {
     const data = await response.json();
 
     if (data.success) {
-      // Store token in cookie
-      if (data.token) {
-        // Add Secure flag on HTTPS to ensure cookie is sent
-        const isSecure = window.location.protocol === 'https:';
-        const secureFlag = isSecure ? '; Secure' : '';
-        document.cookie = `hostAuth=${data.token}; path=/; max-age=${60 * 60 * 24}; SameSite=Lax${secureFlag}`;
-        Logger.debug('Cookie set, redirecting to /host');
-      }
-      // Redirect to host panel
+      // Cookie is set by server via Set-Cookie header
+      // Just redirect - cookie is already in browser
       window.location.href = '/host';
     } else {
       throw new Error(data.message || 'Invalid PIN');
