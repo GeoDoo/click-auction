@@ -377,8 +377,7 @@ io.on('connection', (socket) => {
     }
 
     // Reset clicks if rejoining in a different round (prevent carrying over old clicks)
-    const sessionData = session.getSessionByToken(token);
-    if (sessionData && sessionData.disconnectedRound !== undefined && sessionData.disconnectedRound !== gameState.round) {
+    if (sessionData.disconnectedRound !== undefined && sessionData.disconnectedRound !== gameState.round) {
       playerData.clicks = 0;
     }
 
