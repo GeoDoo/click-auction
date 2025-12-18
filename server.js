@@ -278,11 +278,93 @@ function isRateLimited(socketId) {
 
 function cleanupRateLimitData(socketId) {
   delete clickTimestamps[socketId];
+  delete clickIntervals[socketId];
+}
+
+// ============================================
+// BOT DETECTION (Statistical Outlier Flagging)
+// ============================================
+// Bots click at very consistent intervals (low variance)
+// Humans have natural variance in their click timing
+
+const clickIntervals = {}; // { socketId: [interval1, interval2, ...] }
+const lastClickTime = {}; // { socketId: timestamp }
+
+// Minimum coefficient of variation (CV) expected for human clicks
+// CV = stdDev / mean. Humans typically have CV > 0.3 (30% variance)
+// Bots often have CV < 0.1 (very consistent timing)
+const MIN_HUMAN_CV = 0.15; // Flag if CV is below 15%
+const MIN_CLICKS_FOR_ANALYSIS = 10; // Need at least 10 clicks to analyze
+
+function recordClickInterval(socketId) {
+  const now = Date.now();
+  
+  if (lastClickTime[socketId]) {
+    const interval = now - lastClickTime[socketId];
+    
+    if (!clickIntervals[socketId]) {
+      clickIntervals[socketId] = [];
+    }
+    
+    // Keep last 50 intervals for analysis
+    clickIntervals[socketId].push(interval);
+    if (clickIntervals[socketId].length > 50) {
+      clickIntervals[socketId].shift();
+    }
+  }
+  
+  lastClickTime[socketId] = now;
+}
+
+function calculateCV(intervals) {
+  if (intervals.length < MIN_CLICKS_FOR_ANALYSIS) {
+    return null; // Not enough data
+  }
+  
+  const mean = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+  if (mean === 0) return null;
+  
+  const squaredDiffs = intervals.map(x => Math.pow(x - mean, 2));
+  const variance = squaredDiffs.reduce((a, b) => a + b, 0) / intervals.length;
+  const stdDev = Math.sqrt(variance);
+  
+  return stdDev / mean; // Coefficient of variation
+}
+
+function isSuspiciousClicker(socketId) {
+  const intervals = clickIntervals[socketId];
+  if (!intervals || intervals.length < MIN_CLICKS_FOR_ANALYSIS) {
+    return { suspicious: false, reason: null, cv: null };
+  }
+  
+  const cv = calculateCV(intervals);
+  if (cv === null) {
+    return { suspicious: false, reason: null, cv: null };
+  }
+  
+  if (cv < MIN_HUMAN_CV) {
+    return { 
+      suspicious: true, 
+      reason: `Click timing too consistent (CV: ${(cv * 100).toFixed(1)}%)`,
+      cv: cv
+    };
+  }
+  
+  return { suspicious: false, reason: null, cv: cv };
+}
+
+function resetBotDetectionData(socketId) {
+  delete clickIntervals[socketId];
+  delete lastClickTime[socketId];
 }
 
 function resetGame() {
   Object.keys(gameState.players).forEach(id => {
     gameState.players[id].clicks = 0;
+    gameState.players[id].suspicious = false;
+    gameState.players[id].suspicionReason = null;
+    // Reset bot detection data for this player
+    resetBotDetectionData(id);
   });
   gameState.status = 'waiting';
   gameState.winner = null;
@@ -297,7 +379,8 @@ function getLeaderboard() {
       id,
       name: player.name,
       clicks: player.clicks,
-      color: player.color
+      color: player.color,
+      suspicious: player.suspicious || false
     }))
     .sort((a, b) => b.clicks - a.clicks);
 }
@@ -356,7 +439,7 @@ io.on('connection', (socket) => {
     broadcastState();
   });
 
-  // Player clicks (with rate limiting)
+  // Player clicks (with rate limiting and bot detection)
   socket.on('click', () => {
     if (gameState.status === 'bidding' && gameState.players[socket.id]) {
       // Check rate limit (max 20 clicks/second)
@@ -364,13 +447,25 @@ io.on('connection', (socket) => {
         return; // Silently ignore excessive clicks
       }
       
+      // Record click timing for bot detection
+      recordClickInterval(socket.id);
+      
       gameState.players[socket.id].clicks++;
+      
+      // Check for suspicious behavior
+      const suspicionCheck = isSuspiciousClicker(socket.id);
+      gameState.players[socket.id].suspicious = suspicionCheck.suspicious;
+      if (suspicionCheck.suspicious) {
+        gameState.players[socket.id].suspicionReason = suspicionCheck.reason;
+      }
+      
       // Emit to all clients for real-time leaderboard updates
       io.emit('clickUpdate', {
         playerId: socket.id,
         playerName: gameState.players[socket.id].name,
         clicks: gameState.players[socket.id].clicks,
-        color: gameState.players[socket.id].color
+        color: gameState.players[socket.id].color,
+        suspicious: suspicionCheck.suspicious
       });
     }
   });
@@ -445,8 +540,9 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    // Clean up rate limit data for this socket
+    // Clean up rate limit and bot detection data for this socket
     cleanupRateLimitData(socket.id);
+    resetBotDetectionData(socket.id);
     
     if (gameState.players[socket.id]) {
       console.log(`Player disconnected: ${gameState.players[socket.id].name}`);

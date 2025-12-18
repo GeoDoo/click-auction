@@ -1874,6 +1874,109 @@ describe('Input Validation', () => {
     });
   });
   
+  describe('Bot Detection', () => {
+    const MIN_HUMAN_CV = 0.15;
+    const MIN_CLICKS_FOR_ANALYSIS = 10;
+    
+    function calculateCV(intervals) {
+      if (intervals.length < MIN_CLICKS_FOR_ANALYSIS) {
+        return null;
+      }
+      
+      const mean = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+      if (mean === 0) return null;
+      
+      const squaredDiffs = intervals.map(x => Math.pow(x - mean, 2));
+      const variance = squaredDiffs.reduce((a, b) => a + b, 0) / intervals.length;
+      const stdDev = Math.sqrt(variance);
+      
+      return stdDev / mean;
+    }
+    
+    function isSuspiciousClicker(intervals) {
+      if (!intervals || intervals.length < MIN_CLICKS_FOR_ANALYSIS) {
+        return { suspicious: false, reason: null, cv: null };
+      }
+      
+      const cv = calculateCV(intervals);
+      if (cv === null) {
+        return { suspicious: false, reason: null, cv: null };
+      }
+      
+      if (cv < MIN_HUMAN_CV) {
+        return { 
+          suspicious: true, 
+          reason: `Click timing too consistent (CV: ${(cv * 100).toFixed(1)}%)`,
+          cv: cv
+        };
+      }
+      
+      return { suspicious: false, reason: null, cv: cv };
+    }
+    
+    test('returns null CV for insufficient data', () => {
+      const intervals = [50, 50, 50]; // Only 3 intervals
+      expect(calculateCV(intervals)).toBeNull();
+    });
+    
+    test('calculates CV correctly for consistent intervals (bot-like)', () => {
+      // Bot: clicks exactly every 50ms
+      const botIntervals = [50, 50, 50, 50, 50, 50, 50, 50, 50, 50];
+      const cv = calculateCV(botIntervals);
+      expect(cv).toBe(0); // Perfect consistency = 0 variance
+    });
+    
+    test('calculates CV correctly for varied intervals (human-like)', () => {
+      // Human: varied timing (40-80ms range)
+      const humanIntervals = [45, 62, 51, 78, 43, 67, 55, 72, 48, 60];
+      const cv = calculateCV(humanIntervals);
+      expect(cv).toBeGreaterThan(MIN_HUMAN_CV);
+    });
+    
+    test('flags bot-like clicking pattern', () => {
+      const botIntervals = [50, 50, 50, 50, 50, 50, 50, 50, 50, 50];
+      const result = isSuspiciousClicker(botIntervals);
+      
+      expect(result.suspicious).toBe(true);
+      expect(result.reason).toContain('too consistent');
+      expect(result.cv).toBe(0);
+    });
+    
+    test('does not flag human-like clicking pattern', () => {
+      const humanIntervals = [45, 62, 51, 78, 43, 67, 55, 72, 48, 60];
+      const result = isSuspiciousClicker(humanIntervals);
+      
+      expect(result.suspicious).toBe(false);
+      expect(result.reason).toBeNull();
+    });
+    
+    test('does not flag with insufficient data', () => {
+      const fewIntervals = [50, 50, 50];
+      const result = isSuspiciousClicker(fewIntervals);
+      
+      expect(result.suspicious).toBe(false);
+      expect(result.cv).toBeNull();
+    });
+    
+    test('handles edge case of slightly varied bot', () => {
+      // Bot with tiny variance (still suspicious)
+      const sneakyBot = [50, 51, 50, 49, 50, 51, 50, 49, 50, 50];
+      const result = isSuspiciousClicker(sneakyBot);
+      
+      // CV should be very low (< 15%)
+      expect(result.cv).toBeLessThan(MIN_HUMAN_CV);
+      expect(result.suspicious).toBe(true);
+    });
+    
+    test('handles very fast human clicking', () => {
+      // Fast but varied (human mashing button)
+      const fastHuman = [30, 45, 28, 52, 35, 48, 32, 55, 38, 42];
+      const result = isSuspiciousClicker(fastHuman);
+      
+      expect(result.suspicious).toBe(false);
+    });
+  });
+  
   describe('isValidSocketId', () => {
     test('rejects non-string inputs', () => {
       expect(isValidSocketId(null)).toBe(false);
