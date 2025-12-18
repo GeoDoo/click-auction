@@ -243,12 +243,17 @@ app.get('/host', (req, res) => {
     return res.sendFile(path.join(__dirname, 'public', 'host.html'));
   }
 
-  const authToken = req.query.auth || req.headers.cookie?.match(/hostAuth=([^;]+)/)?.[1];
+  const cookieHeader = req.headers.cookie || '';
+  const authToken = req.query.auth || cookieHeader.match(/hostAuth=([^;]+)/)?.[1];
+
+  Logger.debug(`Host access attempt - cookie: "${cookieHeader.substring(0, 50)}...", token: ${authToken ? 'found' : 'missing'}`);
 
   if (auth.isValidHostAuthToken(authToken)) {
+    Logger.debug('Host token valid, serving host.html');
     return res.sendFile(path.join(__dirname, 'public', 'host.html'));
   }
 
+  Logger.debug('Host token invalid or missing, redirecting to login');
   res.redirect('/host-login');
 });
 
@@ -259,6 +264,7 @@ app.get('/host-login', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'host-login.html'));
 });
 
+// JSON body parser MUST be before routes that use req.body
 app.use(express.json());
 
 app.post('/api/host/auth', (req, res) => {

@@ -30,7 +30,11 @@ form.addEventListener('submit', async (e) => {
     if (data.success) {
       // Store token in cookie
       if (data.token) {
-        document.cookie = `hostAuth=${data.token}; path=/; max-age=${60 * 60 * 24}; SameSite=Strict`;
+        // Add Secure flag on HTTPS to ensure cookie is sent
+        const isSecure = window.location.protocol === 'https:';
+        const secureFlag = isSecure ? '; Secure' : '';
+        document.cookie = `hostAuth=${data.token}; path=/; max-age=${60 * 60 * 24}; SameSite=Lax${secureFlag}`;
+        Logger.debug('Cookie set, redirecting to /host');
       }
       // Redirect to host panel
       window.location.href = '/host';
