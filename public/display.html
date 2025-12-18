@@ -3,56 +3,52 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Display - Click Auction</title>
+  <title>Click Auction - VIOOH prDOOH Game</title>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      /* VIOOH Brand Palette */
       --viooh-teal: #00C9A7;
       --viooh-cyan: #00D4D4;
       --viooh-purple: #6B3FA0;
       --viooh-magenta: #E91E8C;
       --viooh-navy: #0A0B1E;
       --viooh-dark: #060714;
-      
       --primary: var(--viooh-teal);
       --secondary: var(--viooh-purple);
       --accent: var(--viooh-magenta);
       --success: #00E896;
-      --warning: #FFB800;
+      --warning: #FFD700;
       --danger: #FF3366;
-      --dark: var(--viooh-navy);
-      --darker: var(--viooh-dark);
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       font-family: 'Rajdhani', sans-serif;
-      background: var(--darker);
+      background: var(--viooh-dark);
       color: #e0e0e0;
       min-height: 100vh;
       overflow-x: hidden;
-      overflow-y: auto;
     }
 
+    /* Background */
     .bg {
       position: fixed;
       top: 0; left: 0;
       width: 100%; height: 100%;
       z-index: -2;
       background: 
-        radial-gradient(ellipse at 20% 80%, rgba(123, 44, 191, 0.2) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 20%, rgba(0, 245, 212, 0.15) 0%, transparent 50%),
-        radial-gradient(ellipse at 50% 50%, rgba(241, 91, 181, 0.1) 0%, transparent 70%),
-        var(--darker);
-      transition: background 0.5s ease;
+        radial-gradient(ellipse at 20% 80%, rgba(107, 63, 160, 0.2) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(0, 201, 167, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(233, 30, 140, 0.1) 0%, transparent 70%),
+        var(--viooh-dark);
+      transition: background 0.5s;
     }
 
     .bg.bidding {
       background: 
-        radial-gradient(ellipse at 50% 50%, rgba(0, 255, 136, 0.25) 0%, transparent 50%),
-        var(--darker);
+        radial-gradient(ellipse at 50% 50%, rgba(0, 232, 150, 0.25) 0%, transparent 50%),
+        var(--viooh-dark);
     }
 
     .grid-overlay {
@@ -61,29 +57,42 @@
       width: 100%; height: 100%;
       z-index: -1;
       background-image: 
-        linear-gradient(rgba(0, 245, 212, 0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0, 245, 212, 0.03) 1px, transparent 1px);
+        linear-gradient(rgba(0, 201, 167, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 201, 167, 0.03) 1px, transparent 1px);
       background-size: 80px 80px;
     }
 
-    .container {
+    /* Main Layout */
+    .main-container {
       height: 100vh;
       display: grid;
+      grid-template-columns: 1fr 380px;
       grid-template-rows: auto 1fr auto;
-      padding: 2rem;
-      gap: 2rem;
+      gap: 1.5rem;
+      padding: 1.5rem;
     }
 
     /* Header */
     header {
+      grid-column: 1 / -1;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      padding: 0.75rem 1.5rem;
+      background: rgba(10, 11, 30, 0.8);
+      border-radius: 16px;
+      border: 1px solid rgba(0, 201, 167, 0.2);
     }
 
     .logo {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .logo-text {
       font-family: 'Orbitron', sans-serif;
-      font-size: 2.5rem;
+      font-size: 1.8rem;
       font-weight: 900;
       background: linear-gradient(135deg, var(--primary), var(--accent));
       -webkit-background-clip: text;
@@ -93,85 +102,58 @@
     .status-section {
       display: flex;
       align-items: center;
-      gap: 2rem;
+      gap: 1.5rem;
     }
 
     .round-badge {
       font-family: 'Orbitron', sans-serif;
-      font-size: 1rem;
+      font-size: 0.9rem;
       color: #666;
     }
 
     .status-badge {
-      padding: 0.75rem 2rem;
+      padding: 0.5rem 1.5rem;
       border-radius: 50px;
       font-family: 'Orbitron', sans-serif;
-      font-size: 1.2rem;
+      font-size: 1rem;
       font-weight: 700;
       text-transform: uppercase;
     }
 
-    .status-waiting { background: rgba(255, 190, 11, 0.2); color: var(--warning); border: 2px solid var(--warning); }
-    .status-countdown { background: rgba(241, 91, 181, 0.2); color: var(--accent); border: 2px solid var(--accent); animation: pulse 0.5s infinite; }
-    .status-bidding { background: rgba(0, 255, 136, 0.2); color: var(--success); border: 2px solid var(--success); animation: pulse 0.3s infinite; }
-    .status-finished { background: rgba(0, 245, 212, 0.2); color: var(--primary); border: 2px solid var(--primary); }
+    .status-waiting { background: rgba(255, 215, 0, 0.15); color: var(--warning); border: 2px solid var(--warning); }
+    .status-countdown { background: rgba(233, 30, 140, 0.2); color: var(--accent); border: 2px solid var(--accent); animation: pulse 0.5s infinite; }
+    .status-bidding { background: rgba(0, 232, 150, 0.2); color: var(--success); border: 2px solid var(--success); animation: pulse 0.3s infinite; }
+    .status-finished { background: rgba(0, 201, 167, 0.2); color: var(--primary); border: 2px solid var(--primary); }
 
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.05); }
-    }
+    @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
 
-    /* Main Content */
-    .main-content {
-      display: grid;
-      grid-template-columns: 1fr 400px;
-      gap: 2rem;
+    /* Main Content Area */
+    .content-area {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
     }
 
     /* Timer Section */
     .timer-section {
+      flex: 1;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
+      background: rgba(10, 11, 30, 0.6);
+      border-radius: 20px;
+      border: 1px solid rgba(0, 201, 167, 0.2);
       position: relative;
-    }
-
-    .timer-circle {
-      width: 400px;
-      height: 400px;
-      border-radius: 50%;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      background: rgba(0, 0, 0, 0.3);
-      border: 4px solid rgba(0, 245, 212, 0.3);
-      position: relative;
-    }
-
-    .timer-circle::before {
-      content: '';
-      position: absolute;
-      top: -4px; left: -4px; right: -4px; bottom: -4px;
-      border-radius: 50%;
-      border: 4px solid transparent;
-      border-top-color: var(--primary);
-      animation: spin 2s linear infinite;
-    }
-
-    .timer-circle.countdown::before { border-top-color: var(--accent); }
-    .timer-circle.bidding::before { border-top-color: var(--success); animation-duration: 0.5s; }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+      min-height: 280px;
     }
 
     .timer-label {
-      font-size: 1.2rem;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1rem;
       color: #666;
       text-transform: uppercase;
-      letter-spacing: 0.3em;
+      letter-spacing: 0.2em;
       margin-bottom: 0.5rem;
     }
 
@@ -181,10 +163,10 @@
       font-weight: 900;
       line-height: 1;
       color: var(--primary);
-      text-shadow: 0 0 50px rgba(0, 245, 212, 0.5);
+      text-shadow: 0 0 60px rgba(0, 201, 167, 0.5);
     }
 
-    .timer-value.countdown { color: var(--accent); text-shadow: 0 0 50px rgba(241, 91, 181, 0.5); }
+    .timer-value.countdown { color: var(--accent); text-shadow: 0 0 60px rgba(233, 30, 140, 0.5); }
     .timer-value.urgent { color: var(--danger); animation: shake 0.1s infinite; }
 
     @keyframes shake {
@@ -193,34 +175,21 @@
       75% { transform: translateX(5px); }
     }
 
-    .message-display {
-      position: absolute;
-      bottom: -60px;
-      font-family: 'Orbitron', sans-serif;
-      font-size: 2rem;
-      color: var(--warning);
-      text-transform: uppercase;
-      animation: float 2s ease-in-out infinite;
-    }
-
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-10px); }
-    }
-
     /* Leaderboard */
     .leaderboard {
-      background: rgba(0, 0, 0, 0.4);
-      border: 1px solid rgba(0, 245, 212, 0.2);
+      background: rgba(10, 11, 30, 0.8);
       border-radius: 20px;
-      padding: 1.5rem;
+      border: 1px solid rgba(0, 201, 167, 0.2);
+      padding: 1.25rem;
+      flex: 1;
       display: flex;
       flex-direction: column;
+      min-height: 0;
     }
 
     .leaderboard-title {
       font-family: 'Orbitron', sans-serif;
-      font-size: 1.2rem;
+      font-size: 1rem;
       color: var(--primary);
       margin-bottom: 1rem;
       display: flex;
@@ -231,59 +200,54 @@
     .leaderboard-list {
       flex: 1;
       overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
     }
 
     .leaderboard-item {
       display: flex;
       align-items: center;
-      gap: 1rem;
-      padding: 1rem;
-      margin-bottom: 0.5rem;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
       background: rgba(255, 255, 255, 0.03);
-      border-radius: 12px;
-      transition: all 0.3s ease;
+      border-radius: 10px;
       position: relative;
       overflow: hidden;
     }
 
     .leaderboard-item:first-child {
-      background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.05));
-      border: 1px solid rgba(255, 215, 0, 0.3);
+      background: linear-gradient(90deg, rgba(255, 215, 0, 0.15), transparent);
+      border-left: 3px solid var(--warning);
     }
 
     .leaderboard-item:nth-child(2) {
-      background: linear-gradient(135deg, rgba(192, 192, 192, 0.1), rgba(192, 192, 192, 0.05));
-      border: 1px solid rgba(192, 192, 192, 0.2);
+      background: linear-gradient(90deg, rgba(192, 192, 192, 0.1), transparent);
+      border-left: 3px solid #c0c0c0;
     }
 
     .leaderboard-item:nth-child(3) {
-      background: linear-gradient(135deg, rgba(205, 127, 50, 0.1), rgba(205, 127, 50, 0.05));
-      border: 1px solid rgba(205, 127, 50, 0.2);
+      background: linear-gradient(90deg, rgba(205, 127, 50, 0.1), transparent);
+      border-left: 3px solid #cd7f32;
     }
 
     .rank {
       font-family: 'Orbitron', sans-serif;
-      font-size: 1.5rem;
-      font-weight: 900;
-      width: 50px;
+      font-size: 1.2rem;
+      width: 35px;
       text-align: center;
     }
 
-    .rank-1 { color: #ffd700; }
-    .rank-2 { color: #c0c0c0; }
-    .rank-3 { color: #cd7f32; }
-
     .player-color {
-      width: 16px;
-      height: 16px;
+      width: 10px;
+      height: 10px;
       border-radius: 50%;
-      flex-shrink: 0;
     }
 
     .player-name {
       flex: 1;
-      font-size: 1.2rem;
-      font-weight: 500;
+      font-size: 1rem;
+      font-weight: 600;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -291,20 +255,18 @@
 
     .player-clicks {
       font-family: 'Orbitron', sans-serif;
-      font-size: 1.5rem;
+      font-size: 1.2rem;
       font-weight: 700;
       color: var(--success);
-      min-width: 80px;
-      text-align: right;
     }
 
     .click-bar {
       position: absolute;
       bottom: 0;
       left: 0;
-      height: 3px;
+      height: 2px;
       background: var(--success);
-      transition: width 0.2s ease;
+      transition: width 0.2s;
     }
 
     .empty-leaderboard {
@@ -315,539 +277,630 @@
       align-items: center;
       color: #555;
       text-align: center;
+      gap: 0.5rem;
     }
 
-    .empty-leaderboard .icon {
-      font-size: 4rem;
-      margin-bottom: 1rem;
-    }
+    .empty-leaderboard .icon { font-size: 3rem; }
 
-    /* Footer */
-    footer {
+    /* Sidebar */
+    .sidebar {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      color: #888;
-      background: rgba(0, 0, 0, 0.3);
-      margin: -2rem;
-      margin-top: 0;
-      padding: 1.5rem 2rem;
-      border-top: 1px solid rgba(0, 201, 167, 0.2);
-    }
-
-    .join-info {
-      display: flex;
-      align-items: center;
+      flex-direction: column;
       gap: 1.5rem;
     }
 
-    .join-qr {
+    /* QR Section */
+    .qr-section {
+      background: rgba(10, 11, 30, 0.9);
+      border-radius: 20px;
+      border: 1px solid rgba(0, 201, 167, 0.3);
+      padding: 1.5rem;
+      text-align: center;
+    }
+
+    .qr-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1rem;
+      color: var(--primary);
+      margin-bottom: 1rem;
+    }
+
+    .qr-code {
       background: white;
-      padding: 8px;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      padding: 12px;
+      border-radius: 12px;
+      display: inline-block;
+      margin-bottom: 0.75rem;
     }
 
-    .join-qr img {
-      width: 80px;
-      height: 80px;
+    .qr-code img {
+      width: 160px;
+      height: 160px;
       display: block;
-    }
-
-    .join-text {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-    }
-
-    .join-label {
-      font-size: 0.9rem;
-      color: #888;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
     }
 
     .join-url {
       font-family: 'Orbitron', sans-serif;
-      font-size: 1.3rem;
+      font-size: 0.7rem;
       color: var(--primary);
+      word-break: break-all;
+    }
+
+    .player-count-box {
+      margin-top: 1rem;
+      padding: 0.75rem;
+      background: rgba(0, 201, 167, 0.1);
+      border-radius: 10px;
     }
 
     .player-count {
       font-family: 'Orbitron', sans-serif;
-      font-size: 1.1rem;
-      color: var(--primary);
+      font-size: 2rem;
+      color: var(--accent);
+    }
+
+    .player-count-label {
+      font-size: 0.75rem;
+      color: #888;
+    }
+
+    /* Rules Section */
+    .rules-section {
+      background: rgba(10, 11, 30, 0.9);
+      border-radius: 20px;
+      border: 1px solid rgba(107, 63, 160, 0.3);
+      padding: 1.25rem;
+      flex: 1;
+    }
+
+    .rules-section h3 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.85rem;
+      color: var(--secondary);
+      margin-bottom: 1rem;
+    }
+
+    .rule {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+      font-size: 0.85rem;
+      color: #aaa;
+    }
+
+    .rule-icon { font-size: 1rem; }
+
+    /* Footer */
+    footer {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       padding: 0.75rem 1.5rem;
-      background: rgba(0, 201, 167, 0.1);
-      border: 1px solid rgba(0, 201, 167, 0.3);
-      border-radius: 50px;
+      background: rgba(10, 11, 30, 0.8);
+      border-radius: 16px;
+      border: 1px solid rgba(0, 201, 167, 0.2);
     }
 
-    .player-count .count {
-      font-weight: 900;
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .footer-brand .viooh {
+      font-family: 'Orbitron', sans-serif;
       font-size: 1.3rem;
+      font-weight: 900;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
 
-    /* Winner Screen */
+    .footer-divider {
+      width: 2px;
+      height: 25px;
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .footer-tagline {
+      font-size: 0.7rem;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .footer-tagline .pr { color: var(--accent); }
+    .footer-tagline .dooh { color: var(--primary); }
+
+    /* ============================================
+       WINNER SCREEN - Epic Billboard
+       ============================================ */
     .winner-screen {
       display: none;
       position: fixed;
       top: 0; left: 0;
       width: 100%; height: 100%;
-      background: var(--darker);
-      z-index: 100;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      text-align: center;
-    }
-
-    .winner-screen.active { display: flex; }
-
-    .winner-bg {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: 
-        radial-gradient(ellipse at 50% 30%, rgba(255, 215, 0, 0.3) 0%, transparent 50%),
-        var(--darker);
-    }
-
-    .winner-content {
-      position: relative;
-      z-index: 1;
-    }
-
-    .confetti {
-      position: absolute;
-      width: 10px;
-      height: 10px;
-      opacity: 0;
-    }
-
-    .trophy-big {
-      font-size: 12rem;
-      animation: trophy-bounce 1s ease infinite;
-    }
-
-    @keyframes trophy-bounce {
-      0%, 100% { transform: translateY(0) rotate(-5deg); }
-      50% { transform: translateY(-30px) rotate(5deg); }
-    }
-
-    .winner-label {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 3rem;
-      color: var(--warning);
-      text-transform: uppercase;
-      letter-spacing: 0.3em;
-      margin-bottom: 1rem;
-      animation: glow 1s ease-in-out infinite alternate;
-    }
-
-    @keyframes glow {
-      from { text-shadow: 0 0 20px rgba(255, 190, 11, 0.5); }
-      to { text-shadow: 0 0 40px rgba(255, 190, 11, 0.8), 0 0 60px rgba(255, 190, 11, 0.5); }
-    }
-
-    .winner-name-huge {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 6rem;
-      font-weight: 900;
-      color: var(--primary);
-      text-shadow: 0 0 60px rgba(0, 245, 212, 0.6);
-      margin-bottom: 1rem;
-    }
-
-    .winner-ad {
-      font-size: 2.5rem;
-      color: white;
-      margin: 2rem 0;
-      padding: 1.5rem 3rem;
-      background: linear-gradient(135deg, var(--secondary), var(--accent));
-      border-radius: 20px;
-      max-width: 80%;
-      animation: ad-pulse 2s ease-in-out infinite;
-    }
-
-    @keyframes ad-pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.02); }
-    }
-
-    .winner-clicks-huge {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 3rem;
-      color: var(--success);
-    }
-
-    .winner-ad-image {
-      max-width: 90%;
-      max-height: 50vh;
-      border-radius: 20px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-      margin: 2rem 0;
-      animation: ad-float 3s ease-in-out infinite;
-    }
-
-    @keyframes ad-float {
-      0%, 100% { transform: translateY(0) scale(1); }
-      50% { transform: translateY(-10px) scale(1.02); }
-    }
-
-    .ad-canvas {
-      display: none;
-    }
-
-    /* Results Screen with Podium */
-    .results-screen {
-      display: none;
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: var(--darker);
+      background: linear-gradient(180deg, #0d0e1a 0%, #060714 100%);
       z-index: 100;
       overflow-y: auto;
     }
 
-    .results-screen.active { display: block; }
+    .winner-screen.active { display: block; }
 
-    .results-bg {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: 
-        radial-gradient(ellipse at 30% 20%, rgba(255, 215, 0, 0.2) 0%, transparent 40%),
-        radial-gradient(ellipse at 70% 80%, rgba(0, 245, 212, 0.15) 0%, transparent 40%),
-        var(--darker);
-      z-index: -1;
-    }
-
-    .results-container {
+    .winner-layout {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 2rem;
       max-width: 1400px;
       margin: 0 auto;
       padding: 2rem;
+      min-height: 100vh;
+      align-content: center;
+    }
+
+    .winner-left {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .winner-right {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* Winner Info */
+    .winner-info {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .winner-crown {
+      font-size: 4rem;
+      animation: bounce 0.6s infinite;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .winner-details {}
+
+    .winner-label {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.8rem;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+    }
+
+    .winner-name {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 2.5rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, #FFD700, #FFA500);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .winner-score {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1rem;
+      color: var(--primary);
+    }
+
+    /* ============================================
+       CSS BILLBOARD
+       ============================================ */
+    .billboard-scene {
       position: relative;
+      width: 100%;
+      height: 400px;
+      perspective: 1000px;
+    }
+
+    .billboard-environment {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(180deg, #0a0b1a 0%, #151832 30%, #1a2040 60%, #252a4a 100%);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    /* Stars */
+    .billboard-environment::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 50%;
+      background-image: 
+        radial-gradient(1px 1px at 10% 15%, white, transparent),
+        radial-gradient(1px 1px at 25% 8%, white, transparent),
+        radial-gradient(2px 2px at 40% 20%, white, transparent),
+        radial-gradient(1px 1px at 55% 5%, white, transparent),
+        radial-gradient(1px 1px at 70% 18%, white, transparent),
+        radial-gradient(2px 2px at 85% 10%, white, transparent),
+        radial-gradient(1px 1px at 15% 35%, rgba(255,255,255,0.7), transparent),
+        radial-gradient(1px 1px at 75% 25%, rgba(255,255,255,0.6), transparent);
+      opacity: 0.8;
+    }
+
+    /* City */
+    .city-silhouette {
+      position: absolute;
+      bottom: 80px;
+      left: 0; right: 0;
+      height: 100px;
+    }
+
+    .building {
+      position: absolute;
+      bottom: 0;
+      background: linear-gradient(180deg, #1a1d30, #0d0f1a);
+    }
+
+    .building::before {
+      content: '';
+      position: absolute;
+      top: 10%; left: 10%; right: 10%; bottom: 20%;
+      background-image: 
+        linear-gradient(90deg, rgba(255,200,100,0.8) 1px, transparent 1px),
+        linear-gradient(rgba(255,200,100,0.6) 1px, transparent 1px);
+      background-size: 8px 12px;
+      opacity: 0.3;
+    }
+
+    .building.b1 { left: 2%; width: 8%; height: 60px; }
+    .building.b2 { left: 12%; width: 6%; height: 80px; }
+    .building.b3 { left: 20%; width: 10%; height: 50px; }
+    .building.b4 { left: 75%; width: 7%; height: 70px; }
+    .building.b5 { left: 84%; width: 9%; height: 45px; }
+    .building.b6 { left: 95%; width: 5%; height: 65px; }
+
+    /* Road */
+    .road {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 80px;
+      background: linear-gradient(180deg, #1e2030 0%, #151720 100%);
+    }
+
+    .road::before {
+      content: '';
+      position: absolute;
+      top: 35px; left: 0; right: 0;
+      height: 4px;
+      background: repeating-linear-gradient(90deg, #ffcc00 0px, #ffcc00 40px, transparent 40px, transparent 80px);
+      opacity: 0.6;
+    }
+
+    .road::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(180deg, rgba(233, 30, 140, 0.08) 0%, rgba(0, 201, 167, 0.04) 50%, transparent 100%);
+    }
+
+    .ground-glow {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 70%;
+      height: 80px;
+      background: radial-gradient(ellipse at top, rgba(233, 30, 140, 0.15) 0%, rgba(0, 201, 167, 0.1) 30%, transparent 70%);
+    }
+
+    /* Billboard Structure */
+    .billboard-structure {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 70px;
+    }
+
+    .pole {
+      position: absolute;
+      width: 10px;
+      height: 180px;
+      bottom: -160px;
+      background: linear-gradient(90deg, #3a3d50 0%, #5a5d70 30%, #4a4d60 50%, #3a3d50 100%);
+      border-radius: 2px;
+    }
+
+    .pole.left { left: 25px; }
+    .pole.right { right: 25px; }
+
+    .pole::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: -6px;
+      width: 22px;
+      height: 8px;
+      background: linear-gradient(180deg, #4a4d60, #2a2d40);
+      border-radius: 2px;
+    }
+
+    .billboard-frame {
+      position: relative;
+      width: 480px;
+      padding: 12px;
+      background: linear-gradient(135deg, #4a4d60 0%, #3a3d50 20%, #2a2d40 50%, #3a3d50 80%, #4a4d60 100%);
+      border-radius: 8px;
+      box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.8),
+        0 0 80px rgba(233, 30, 140, 0.2),
+        0 0 120px rgba(0, 201, 167, 0.1);
+    }
+
+    .billboard-frame::before,
+    .billboard-frame::after {
+      content: '';
+      position: absolute;
+      width: 6px; height: 6px;
+      background: radial-gradient(circle at 30% 30%, #6a6d80, #3a3d50);
+      border-radius: 50%;
+    }
+
+    .billboard-frame::before { top: 6px; left: 6px; }
+    .billboard-frame::after { top: 6px; right: 6px; }
+
+    .screen-bezel {
+      background: #0a0a0a;
+      border-radius: 4px;
+      padding: 6px;
+      position: relative;
+    }
+
+    .screen-bezel::after {
+      content: '';
+      position: absolute;
+      top: -6px; right: 16px;
+      width: 5px; height: 5px;
+      background: var(--primary);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--primary);
+      animation: ledBlink 2s infinite;
+    }
+
+    @keyframes ledBlink {
+      0%, 90%, 100% { opacity: 1; }
+      95% { opacity: 0.3; }
+    }
+
+    .led-screen {
+      position: relative;
+      background: linear-gradient(135deg, var(--secondary) 0%, var(--accent) 40%, var(--primary) 100%);
+      border-radius: 2px;
+      aspect-ratio: 16 / 7;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 25px;
+      overflow: hidden;
+      box-shadow: 0 0 30px rgba(233, 30, 140, 0.5), 0 0 60px rgba(0, 201, 167, 0.3);
+    }
+
+    .led-screen::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(0, 0, 0, 0.02) 2px, rgba(0, 0, 0, 0.02) 4px);
+    }
+
+    .led-screen::after {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 60%; height: 100%;
+      background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.12) 50%, transparent 100%);
+      animation: screenSweep 4s ease-in-out infinite;
+    }
+
+    @keyframes screenSweep {
+      0% { left: -100%; }
+      50%, 100% { left: 150%; }
+    }
+
+    .ad-winner-badge {
+      position: absolute;
+      top: 12px; left: 12px;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 5px 12px;
+      border-radius: 12px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.6rem;
+      color: var(--primary);
+      border: 1px solid rgba(0, 201, 167, 0.4);
+    }
+
+    .ad-content {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      text-align: center;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+      max-width: 95%;
+      line-height: 1.4;
       z-index: 1;
     }
 
-    .results-header {
-      text-align: center;
-      margin-bottom: 2rem;
+    .ad-author {
+      margin-top: 10px;
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.9);
+      font-weight: 600;
+      z-index: 1;
     }
 
-    .results-title {
+    .billboard-brand {
+      position: absolute;
+      bottom: 8px; right: 12px;
       font-family: 'Orbitron', sans-serif;
-      font-size: 3rem;
-      background: linear-gradient(135deg, var(--warning), var(--accent));
+      font-size: 0.5rem;
+      color: rgba(255, 255, 255, 0.5);
+      letter-spacing: 0.15em;
+      z-index: 1;
+    }
+
+    .frame-brand {
+      position: absolute;
+      bottom: -24px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 900;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      margin-bottom: 0.5rem;
+      letter-spacing: 0.3em;
     }
 
-    .results-subtitle {
-      color: #888;
-      font-size: 1.2rem;
-    }
-
-    /* Podium Section */
+    /* Podium */
     .podium-section {
+      background: rgba(10, 11, 30, 0.95);
+      border-radius: 20px;
+      border: 1px solid rgba(0, 201, 167, 0.3);
+      padding: 1.5rem;
+    }
+
+    .podium-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.85rem;
+      color: var(--primary);
+      margin-bottom: 1rem;
+      text-align: center;
+      letter-spacing: 0.1em;
+    }
+
+    .podium {
       display: flex;
       justify-content: center;
       align-items: flex-end;
-      gap: 1rem;
-      margin: 3rem 0;
-      min-height: 400px;
+      gap: 8px;
+      height: 200px;
+      padding-top: 20px;
     }
 
     .podium-place {
       display: flex;
       flex-direction: column;
       align-items: center;
-      animation: podium-rise 0.8s ease-out forwards;
-      opacity: 0;
-      transform: translateY(100px);
+      width: 90px;
     }
 
-    .podium-place:nth-child(1) { animation-delay: 0.4s; }
-    .podium-place:nth-child(2) { animation-delay: 0s; }
-    .podium-place:nth-child(3) { animation-delay: 0.6s; }
-
-    @keyframes podium-rise {
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .podium-avatar {
-      width: 80px;
-      height: 80px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2.5rem;
-      margin-bottom: 1rem;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    }
-
-    .podium-name {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 1.1rem;
-      color: white;
-      margin-bottom: 0.5rem;
-      max-width: 150px;
+    .podium-player {
       text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .podium-medal { font-size: 1.5rem; margin-bottom: 4px; }
+
+    .podium-name-text {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: white;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      max-width: 80px;
     }
 
-    .podium-clicks {
+    .podium-score-text {
       font-family: 'Orbitron', sans-serif;
-      font-size: 1.5rem;
-      font-weight: 900;
-      margin-bottom: 1rem;
-    }
-
-    .podium-stand {
-      width: 160px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      padding-top: 1.5rem;
-      border-radius: 10px 10px 0 0;
-      position: relative;
-    }
-
-    .podium-rank {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 3rem;
-      font-weight: 900;
-      opacity: 0.3;
-    }
-
-    /* 1st Place - Gold */
-    .place-1 .podium-avatar { background: linear-gradient(135deg, #ffd700, #ffaa00); border: 4px solid #fff; }
-    .place-1 .podium-clicks { color: #ffd700; }
-    .place-1 .podium-stand { 
-      height: 200px; 
-      background: linear-gradient(180deg, rgba(255, 215, 0, 0.3), rgba(255, 215, 0, 0.1));
-      border: 2px solid rgba(255, 215, 0, 0.5);
-      border-bottom: none;
-    }
-    .place-1 .podium-rank { color: #ffd700; }
-
-    /* 2nd Place - Silver */
-    .place-2 .podium-avatar { background: linear-gradient(135deg, #c0c0c0, #a0a0a0); border: 4px solid #e0e0e0; }
-    .place-2 .podium-clicks { color: #c0c0c0; }
-    .place-2 .podium-stand { 
-      height: 150px; 
-      background: linear-gradient(180deg, rgba(192, 192, 192, 0.3), rgba(192, 192, 192, 0.1));
-      border: 2px solid rgba(192, 192, 192, 0.5);
-      border-bottom: none;
-    }
-    .place-2 .podium-rank { color: #c0c0c0; }
-
-    /* 3rd Place - Bronze */
-    .place-3 .podium-avatar { background: linear-gradient(135deg, #cd7f32, #a0522d); border: 4px solid #dda15e; }
-    .place-3 .podium-clicks { color: #cd7f32; }
-    .place-3 .podium-stand { 
-      height: 100px; 
-      background: linear-gradient(180deg, rgba(205, 127, 50, 0.3), rgba(205, 127, 50, 0.1));
-      border: 2px solid rgba(205, 127, 50, 0.5);
-      border-bottom: none;
-    }
-    .place-3 .podium-rank { color: #cd7f32; }
-
-    .empty-place {
-      opacity: 0.3;
-    }
-
-    .empty-place .podium-avatar {
-      background: rgba(255, 255, 255, 0.1);
-      border: 4px dashed rgba(255, 255, 255, 0.3);
-    }
-
-    /* Winner Ad Section */
-    .winner-ad-section {
-      display: flex;
-      justify-content: center;
-      margin: 2rem 0;
-    }
-
-    .winner-ad-container {
-      text-align: center;
-    }
-
-    .winner-ad-label {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 1rem;
-      color: var(--warning);
-      text-transform: uppercase;
-      letter-spacing: 0.2em;
-      margin-bottom: 1rem;
-    }
-
-    .results-ad-image {
-      max-width: 600px;
-      width: 100%;
-      border-radius: 16px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-      animation: ad-float 3s ease-in-out infinite;
-    }
-
-    /* Full Leaderboard */
-    .full-leaderboard {
-      background: rgba(0, 0, 0, 0.4);
-      border: 1px solid rgba(0, 245, 212, 0.2);
-      border-radius: 20px;
-      padding: 2rem;
-      margin-top: 2rem;
-    }
-
-    .leaderboard-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1.5rem;
-    }
-
-    .leaderboard-header h2 {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 1.5rem;
+      font-size: 0.6rem;
       color: var(--primary);
     }
 
-    .total-players {
-      color: #888;
-      font-size: 1rem;
-    }
-
-    .full-leaderboard-list {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 1rem;
-      max-height: 400px;
-      overflow-y: auto;
-    }
-
-    .leaderboard-entry {
+    .podium-block {
+      width: 100%;
       display: flex;
+      justify-content: center;
       align-items: center;
-      gap: 1rem;
-      padding: 1rem;
-      background: rgba(255, 255, 255, 0.03);
-      border-radius: 12px;
-      transition: all 0.3s ease;
-    }
-
-    .leaderboard-entry:hover {
-      background: rgba(255, 255, 255, 0.08);
-    }
-
-    .entry-rank {
+      border-radius: 6px 6px 0 0;
       font-family: 'Orbitron', sans-serif;
       font-size: 1.2rem;
       font-weight: 900;
-      width: 40px;
-      text-align: center;
-      color: #666;
+      color: rgba(0, 0, 0, 0.5);
     }
 
-    .entry-rank.top-3 { color: var(--warning); }
-
-    .entry-color {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      flex-shrink: 0;
+    .podium-place.first .podium-block {
+      background: linear-gradient(180deg, #FFD700, #B8860B);
+      height: 90px;
+      box-shadow: 0 0 25px rgba(255, 215, 0, 0.4);
     }
 
-    .entry-name {
-      flex: 1;
-      font-size: 1.1rem;
-      font-weight: 500;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+    .podium-place.second .podium-block {
+      background: linear-gradient(180deg, #C0C0C0, #808080);
+      height: 65px;
     }
 
-    .entry-clicks {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: var(--success);
+    .podium-place.third .podium-block {
+      background: linear-gradient(180deg, #CD7F32, #8B4513);
+      height: 45px;
     }
 
-    /* All-Time Leaderboard */
-    .all-time-list {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 0.75rem;
-      max-height: 300px;
-      overflow-y: auto;
-    }
-
-    .all-time-entry {
+    /* VIOOH Footer */
+    .viooh-footer {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
-      padding: 0.75rem 1rem;
-      background: rgba(255, 190, 11, 0.05);
-      border: 1px solid rgba(255, 190, 11, 0.1);
-      border-radius: 10px;
-      transition: all 0.3s ease;
+      justify-content: center;
+      gap: 12px;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 12px;
     }
 
-    .all-time-entry:hover {
-      background: rgba(255, 190, 11, 0.1);
-    }
-
-    .all-time-rank {
+    .viooh-logo-text {
       font-family: 'Orbitron', sans-serif;
-      font-size: 1rem;
-      font-weight: 700;
-      width: 30px;
-      color: var(--warning);
+      font-size: 1.5rem;
+      font-weight: 900;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
 
-    .all-time-name {
-      flex: 1;
-      font-size: 1rem;
-      font-weight: 500;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+    .viooh-divider {
+      width: 2px;
+      height: 25px;
+      background: rgba(255, 255, 255, 0.2);
     }
 
-    .all-time-stats {
-      display: flex;
-      gap: 1rem;
-      font-size: 0.85rem;
+    .viooh-subtitle {
+      font-size: 0.6rem;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      line-height: 1.4;
     }
 
-    .stat-wins {
-      color: var(--warning);
-      font-weight: 700;
+    .viooh-subtitle .pr { color: var(--accent); }
+    .viooh-subtitle .dooh { color: var(--primary); }
+
+    /* Confetti */
+    @keyframes confetti-fall {
+      to {
+        top: 100%;
+        opacity: 0;
+        transform: rotate(720deg) translateX(var(--drift, 0px));
+      }
     }
 
-    .stat-clicks {
-      color: var(--success);
-    }
-
-    .stat-rounds {
-      color: #888;
-    }
-
-    /* Countdown overlay */
+    /* Countdown Overlay */
     .countdown-overlay {
       display: none;
       position: fixed;
       top: 0; left: 0;
       width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.8);
+      background: rgba(0, 0, 0, 0.85);
       z-index: 50;
       justify-content: center;
       align-items: center;
@@ -857,10 +910,10 @@
 
     .countdown-number {
       font-family: 'Orbitron', sans-serif;
-      font-size: 20rem;
+      font-size: 18rem;
       font-weight: 900;
       color: var(--accent);
-      text-shadow: 0 0 100px rgba(241, 91, 181, 0.8);
+      text-shadow: 0 0 100px rgba(233, 30, 140, 0.8);
       animation: countdown-pop 1s ease-out;
     }
 
@@ -875,11 +928,10 @@
   <div class="bg" id="bg"></div>
   <div class="grid-overlay"></div>
 
-  <div class="container">
+  <div class="main-container">
     <header>
       <div class="logo">
-        <span style="font-size: 0.5em; color: var(--primary); letter-spacing: 0.2em; display: block; margin-bottom: 0.25rem;">VIOOH</span>
-        🎯 CLICK AUCTION
+        <span class="logo-text">🎯 CLICK AUCTION</span>
       </div>
       <div class="status-section">
         <div class="round-badge" id="roundBadge">Round 0</div>
@@ -887,38 +939,68 @@
       </div>
     </header>
 
-    <div class="main-content">
+    <div class="content-area">
       <div class="timer-section">
-        <div class="timer-circle" id="timerCircle">
-          <div class="timer-label" id="timerLabel">Waiting for players</div>
-          <div class="timer-value" id="timerValue">--</div>
-        </div>
-        <div class="message-display" id="messageDisplay" style="display: none;"></div>
+        <div class="timer-label" id="timerLabel">Waiting for host</div>
+        <div class="timer-value" id="timerValue">--</div>
       </div>
 
       <div class="leaderboard">
-        <div class="leaderboard-title">📊 Live Bids</div>
+        <div class="leaderboard-title">📊 LIVE BIDS</div>
         <div class="leaderboard-list" id="leaderboardList">
           <div class="empty-leaderboard">
             <div class="icon">👥</div>
             <div>Waiting for DSPs to join...</div>
-            <div style="margin-top: 0.5rem; font-size: 0.9rem;">Share the link below!</div>
           </div>
         </div>
       </div>
     </div>
 
-    <footer>
-      <div class="join-info">
-        <div class="join-qr">
+    <div class="sidebar">
+      <div class="qr-section">
+        <div class="qr-title">📱 SCAN TO PLAY</div>
+        <div class="qr-code">
           <img id="joinQr" alt="Scan to join">
         </div>
-        <div class="join-text">
-          <span class="join-label">📱 Scan to Play</span>
-          <span class="join-url" id="joinUrl"></span>
+        <div class="join-url" id="joinUrl"></div>
+        <div class="player-count-box">
+          <div class="player-count" id="playerCount">0</div>
+          <div class="player-count-label">Players Connected</div>
         </div>
       </div>
-      <div class="player-count"><span class="count" id="playerCount">0</span> DSPs connected</div>
+
+      <div class="rules-section">
+        <h3>📋 HOW TO PLAY</h3>
+        <div class="rule">
+          <span class="rule-icon">📱</span>
+          <span>Scan QR code to join</span>
+        </div>
+        <div class="rule">
+          <span class="rule-icon">✏️</span>
+          <span>Enter your name & ad message</span>
+        </div>
+        <div class="rule">
+          <span class="rule-icon">⏱️</span>
+          <span>Wait for auction to start</span>
+        </div>
+        <div class="rule">
+          <span class="rule-icon">👆</span>
+          <span>TAP fast when it begins!</span>
+        </div>
+        <div class="rule">
+          <span class="rule-icon">🏆</span>
+          <span>Most taps wins the billboard!</span>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <div class="footer-brand">
+        <span class="viooh">VIOOH</span>
+        <div class="footer-divider"></div>
+        <div class="footer-tagline">THE GLOBAL <span class="pr">pr</span><span class="dooh">DOOH</span> PLATFORM</div>
+      </div>
+      <div style="font-size: 0.75rem; color: #555;">Programmatic Auction Simulator</div>
     </footer>
   </div>
 
@@ -927,96 +1009,100 @@
     <div class="countdown-number" id="countdownNumber">3</div>
   </div>
 
-  <!-- Results Screen with Podium -->
-  <div class="results-screen" id="resultsScreen">
-    <div class="results-bg"></div>
-    <div class="results-container">
-      <div class="results-header">
-        <div style="font-size: 1rem; color: var(--primary); letter-spacing: 0.3em; margin-bottom: 0.5rem; font-family: 'Orbitron', sans-serif;">VIOOH prDOOH</div>
-        <h1 class="results-title">🏆 AUCTION COMPLETE!</h1>
-        <p class="results-subtitle" id="resultsSubtitle">Round 1 Results</p>
-      </div>
-
-      <!-- Podium -->
-      <div class="podium-section">
-        <!-- 2nd Place (left) -->
-        <div class="podium-place place-2" id="place2">
-          <div class="podium-avatar">🥈</div>
-          <div class="podium-name" id="name2">-</div>
-          <div class="podium-clicks" id="clicks2">0</div>
-          <div class="podium-stand">
-            <div class="podium-rank">2</div>
+  <!-- Winner Screen -->
+  <div class="winner-screen" id="winnerScreen">
+    <div class="winner-layout">
+      <div class="winner-left">
+        <div class="winner-info">
+          <div class="winner-crown">👑</div>
+          <div class="winner-details">
+            <div class="winner-label">AUCTION WINNER</div>
+            <div class="winner-name" id="winnerName">-</div>
+            <div class="winner-score" id="winnerScoreText">0 clicks • Round 0</div>
           </div>
         </div>
 
-        <!-- 1st Place (center) -->
-        <div class="podium-place place-1" id="place1">
-          <div class="podium-avatar">🥇</div>
-          <div class="podium-name" id="name1">-</div>
-          <div class="podium-clicks" id="clicks1">0</div>
-          <div class="podium-stand">
-            <div class="podium-rank">1</div>
+        <!-- Billboard Scene -->
+        <div class="billboard-scene">
+          <div class="billboard-environment">
+            <div class="city-silhouette">
+              <div class="building b1"></div>
+              <div class="building b2"></div>
+              <div class="building b3"></div>
+              <div class="building b4"></div>
+              <div class="building b5"></div>
+              <div class="building b6"></div>
+            </div>
+            <div class="road"></div>
+            <div class="ground-glow"></div>
+          </div>
+
+          <div class="billboard-structure">
+            <div class="pole left"></div>
+            <div class="pole right"></div>
+            <div class="billboard-frame">
+              <div class="screen-bezel">
+                <div class="led-screen">
+                  <div class="ad-winner-badge">🏆 WINNING BID</div>
+                  <div class="ad-content" id="adContent">"Your Ad Here!"</div>
+                  <div class="ad-author" id="adAuthor">— Winner</div>
+                  <div class="billboard-brand">prDOOH • POWERED BY VIOOH</div>
+                </div>
+              </div>
+              <div class="frame-brand">VIOOH</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="winner-right">
+        <div class="podium-section">
+          <div class="podium-title">🏆 ROUND <span id="podiumRound">0</span> PODIUM</div>
+          <div class="podium">
+            <div class="podium-place second" id="place2">
+              <div class="podium-player">
+                <div class="podium-medal">🥈</div>
+                <div class="podium-name-text" id="podiumName2">-</div>
+                <div class="podium-score-text" id="podiumScore2">0</div>
+              </div>
+              <div class="podium-block">2</div>
+            </div>
+            <div class="podium-place first" id="place1">
+              <div class="podium-player">
+                <div class="podium-medal">🥇</div>
+                <div class="podium-name-text" id="podiumName1">-</div>
+                <div class="podium-score-text" id="podiumScore1">0</div>
+              </div>
+              <div class="podium-block">1</div>
+            </div>
+            <div class="podium-place third" id="place3">
+              <div class="podium-player">
+                <div class="podium-medal">🥉</div>
+                <div class="podium-name-text" id="podiumName3">-</div>
+                <div class="podium-score-text" id="podiumScore3">0</div>
+              </div>
+              <div class="podium-block">3</div>
+            </div>
           </div>
         </div>
 
-        <!-- 3rd Place (right) -->
-        <div class="podium-place place-3" id="place3">
-          <div class="podium-avatar">🥉</div>
-          <div class="podium-name" id="name3">-</div>
-          <div class="podium-clicks" id="clicks3">0</div>
-          <div class="podium-stand">
-            <div class="podium-rank">3</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Winner's Ad -->
-      <div class="winner-ad-section" id="winnerAdSection">
-        <div class="winner-ad-container">
-          <div class="winner-ad-label">🎯 Winning Ad Placement</div>
-          <img class="results-ad-image" id="resultsAdImage" alt="Winner's Ad">
-        </div>
-      </div>
-
-      <!-- Full Leaderboard -->
-      <div class="full-leaderboard">
-        <div class="leaderboard-header">
-          <h2>📊 Round Leaderboard</h2>
-          <span class="total-players" id="totalPlayers">0 participants</span>
-        </div>
-        <div class="full-leaderboard-list" id="fullLeaderboardList">
-          <!-- Populated by JS -->
-        </div>
-      </div>
-
-      <!-- All-Time Leaderboard -->
-      <div class="full-leaderboard" style="border-color: rgba(255, 190, 11, 0.3); margin-top: 2rem;">
-        <div class="leaderboard-header">
-          <h2 style="color: var(--warning);">🏅 All-Time Champions</h2>
-          <span class="total-players" id="allTimePlayers">0 players</span>
-        </div>
-        <div class="all-time-list" id="allTimeList">
-          <!-- Populated by JS -->
+        <div class="viooh-footer">
+          <div class="viooh-logo-text">VIOOH</div>
+          <div class="viooh-divider"></div>
+          <div class="viooh-subtitle">THE GLOBAL<br><span class="pr">pr</span><span class="dooh">DOOH</span> PLATFORM</div>
         </div>
       </div>
     </div>
   </div>
-  
-  <!-- Hidden canvas for ad generation -->
-  <canvas class="ad-canvas" id="adCanvas"></canvas>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/ad-generator.js"></script>
   <script>
     const socket = io();
     let maxClicks = 1;
     let lastCountdown = null;
     let lastStatus = 'waiting';
-    const adGenerator = new AdGenerator(800, 500);
 
-    // ==========================================
-    // SOUND MANAGER - For big screen effects
-    // ==========================================
+    // Sound Manager
     const SoundManager = {
       ctx: null,
       enabled: true,
@@ -1025,17 +1111,12 @@
 
       async init() {
         if (this.initialized && this.unlocked) return;
-        
         try {
           if (!this.ctx) {
             this.ctx = new (window.AudioContext || window.webkitAudioContext)();
             this.initialized = true;
           }
-          
-          if (this.ctx.state === 'suspended') {
-            await this.ctx.resume();
-          }
-          
+          if (this.ctx.state === 'suspended') await this.ctx.resume();
           if (!this.unlocked) {
             const osc = this.ctx.createOscillator();
             const gain = this.ctx.createGain();
@@ -1045,53 +1126,40 @@
             osc.start();
             osc.stop(this.ctx.currentTime + 0.01);
             this.unlocked = true;
-            console.log('🔊 Display audio unlocked!');
           }
-        } catch (e) {
-          console.log('Sound error:', e);
-        }
+        } catch (e) {}
       },
 
       beep(freq = 440, duration = 0.1, type = 'sine', volume = 0.5) {
         if (!this.ctx || !this.enabled || !this.unlocked) return;
-        
         try {
           const osc = this.ctx.createOscillator();
           const gain = this.ctx.createGain();
-          
           osc.type = type;
           osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
           gain.gain.setValueAtTime(volume, this.ctx.currentTime);
           gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
-          
           osc.connect(gain);
           gain.connect(this.ctx.destination);
-          
           osc.start(this.ctx.currentTime);
           osc.stop(this.ctx.currentTime + duration);
         } catch (e) {}
       },
 
-      countdownTick() {
-        this.beep(520, 0.2, 'sine', 0.7);
-      },
+      countdownTick() { this.beep(520, 0.2, 'sine', 0.7); },
 
       go() {
         if (!this.ctx || !this.enabled || !this.unlocked) return;
-        
         try {
           const osc = this.ctx.createOscillator();
           const gain = this.ctx.createGain();
-          
           osc.type = 'sawtooth';
           osc.frequency.setValueAtTime(400, this.ctx.currentTime);
           osc.frequency.exponentialRampToValueAtTime(900, this.ctx.currentTime + 0.3);
           gain.gain.setValueAtTime(0.6, this.ctx.currentTime);
           gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
-          
           osc.connect(gain);
           gain.connect(this.ctx.destination);
-          
           osc.start(this.ctx.currentTime);
           osc.stop(this.ctx.currentTime + 0.4);
         } catch (e) {}
@@ -1099,65 +1167,49 @@
 
       winner() {
         if (!this.ctx || !this.enabled || !this.unlocked) return;
-        
         const notes = [523, 659, 784, 1047, 1319];
         notes.forEach((freq, i) => {
           setTimeout(() => this.beep(freq, 0.45, 'sine', 0.6), i * 120);
         });
-      },
-
-      toggle() {
-        this.enabled = !this.enabled;
-        return this.enabled;
       }
     };
 
-    // Initialize sound on any interaction
     document.addEventListener('click', () => SoundManager.init());
     document.addEventListener('touchstart', () => SoundManager.init());
 
-    // Fetch config to get the correct base URL
+    // Fetch config for QR code
     fetch('/api/config')
       .then(res => res.json())
       .then(config => {
         const playUrl = config.baseUrl + '/play';
         document.getElementById('joinUrl').textContent = playUrl;
-        const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(playUrl)}&bgcolor=ffffff&color=0a0b1e&margin=5`;
-        document.getElementById('joinQr').src = qrApiUrl;
+        document.getElementById('joinQr').src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(playUrl)}&bgcolor=ffffff&color=0a0b1e&margin=5`;
       })
       .catch(() => {
         const playUrl = window.location.origin + '/play';
         document.getElementById('joinUrl').textContent = playUrl;
-        const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(playUrl)}&bgcolor=ffffff&color=0a0b1e&margin=5`;
-        document.getElementById('joinQr').src = qrApiUrl;
+        document.getElementById('joinQr').src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(playUrl)}&bgcolor=ffffff&color=0a0b1e&margin=5`;
       });
 
-    function updateUI(state) {
-      // Update background
-      document.getElementById('bg').className = 'bg' + (state.status === 'bidding' ? ' bidding' : '');
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
 
-      // Update round
+    function updateUI(state) {
+      document.getElementById('bg').className = 'bg' + (state.status === 'bidding' ? ' bidding' : '');
       document.getElementById('roundBadge').textContent = `Round ${state.round}`;
 
-      // Update status badge
       const badge = document.getElementById('statusBadge');
       badge.className = 'status-badge status-' + state.status;
-      const statusTexts = {
-        waiting: 'Waiting',
-        countdown: 'Starting...',
-        bidding: 'LIVE!',
-        finished: 'Complete'
-      };
+      const statusTexts = { waiting: 'Waiting', countdown: 'Starting...', bidding: 'LIVE!', finished: 'Complete' };
       badge.textContent = statusTexts[state.status] || state.status;
 
-      // Update timer
-      const timerCircle = document.getElementById('timerCircle');
       const timerLabel = document.getElementById('timerLabel');
       const timerValue = document.getElementById('timerValue');
       const countdownOverlay = document.getElementById('countdownOverlay');
       const countdownNumber = document.getElementById('countdownNumber');
-      
-      timerCircle.className = 'timer-circle' + (state.status === 'countdown' ? ' countdown' : '') + (state.status === 'bidding' ? ' bidding' : '');
 
       if (state.status === 'waiting') {
         timerLabel.textContent = 'Waiting for host';
@@ -1165,28 +1217,24 @@
         timerValue.className = 'timer-value';
         countdownOverlay.className = 'countdown-overlay';
       } else if (state.status === 'countdown') {
-        timerLabel.textContent = 'Get Ready!';
+        timerLabel.textContent = 'GET READY!';
         timerValue.textContent = state.timeRemaining;
         timerValue.className = 'timer-value countdown';
         countdownOverlay.className = 'countdown-overlay active';
         countdownNumber.textContent = state.timeRemaining;
-        countdownNumber.style.animation = 'none';
-        // Play countdown sound
         if (lastCountdown !== state.timeRemaining) {
           lastCountdown = state.timeRemaining;
           SoundManager.countdownTick();
+          countdownNumber.style.animation = 'none';
+          countdownNumber.offsetHeight;
+          countdownNumber.style.animation = 'countdown-pop 1s ease-out';
         }
-        countdownNumber.offsetHeight; // Trigger reflow
-        countdownNumber.style.animation = 'countdown-pop 1s ease-out';
       } else if (state.status === 'bidding') {
         timerLabel.textContent = 'Time Remaining';
         timerValue.textContent = state.timeRemaining;
         timerValue.className = 'timer-value' + (state.timeRemaining <= 3 ? ' urgent' : '');
         countdownOverlay.className = 'countdown-overlay';
-        // Play GO sound when bidding starts
-        if (lastStatus !== 'bidding') {
-          SoundManager.go();
-        }
+        if (lastStatus !== 'bidding') SoundManager.go();
       } else if (state.status === 'finished') {
         timerLabel.textContent = 'Auction Complete';
         timerValue.textContent = '✓';
@@ -1194,28 +1242,19 @@
         countdownOverlay.className = 'countdown-overlay';
       }
 
-      // Update player count
       document.getElementById('playerCount').textContent = state.playerCount;
 
-      // Update max clicks for bar scaling
       if (state.leaderboard.length > 0) {
         maxClicks = Math.max(maxClicks, state.leaderboard[0].clicks);
       }
 
-      // Update leaderboard
       const list = document.getElementById('leaderboardList');
       if (state.leaderboard.length === 0) {
-        list.innerHTML = `
-          <div class="empty-leaderboard">
-            <div class="icon">👥</div>
-            <div>Waiting for DSPs to join...</div>
-            <div style="margin-top: 0.5rem; font-size: 0.9rem;">Share the link below!</div>
-          </div>
-        `;
+        list.innerHTML = `<div class="empty-leaderboard"><div class="icon">👥</div><div>Waiting for DSPs to join...</div></div>`;
       } else {
-        list.innerHTML = state.leaderboard.map((player, index) => `
+        list.innerHTML = state.leaderboard.slice(0, 10).map((player, index) => `
           <div class="leaderboard-item">
-            <div class="rank rank-${index + 1}">${index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}</div>
+            <div class="rank">${index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}</div>
             <div class="player-color" style="background: ${player.color}"></div>
             <div class="player-name">${escapeHtml(player.name)}</div>
             <div class="player-clicks">${player.clicks}</div>
@@ -1224,151 +1263,71 @@
         `).join('');
       }
 
-      // Show results screen with podium
-      const resultsScreen = document.getElementById('resultsScreen');
+      // Winner screen
+      const winnerScreen = document.getElementById('winnerScreen');
       if (state.status === 'finished' && state.leaderboard.length > 0) {
-        showResultsScreen(state);
-        resultsScreen.className = 'results-screen active';
+        showWinnerScreen(state);
+        winnerScreen.className = 'winner-screen active';
         createConfetti();
-        // Play winner fanfare (only once)
-        if (lastStatus !== 'finished') {
-          SoundManager.winner();
-        }
+        if (lastStatus !== 'finished') SoundManager.winner();
       } else {
-        resultsScreen.className = 'results-screen';
+        winnerScreen.className = 'winner-screen';
       }
-      
-      // Track last status for sound triggers
+
       lastStatus = state.status;
     }
 
-    function showResultsScreen(state) {
-      // Update subtitle
-      document.getElementById('resultsSubtitle').textContent = `Round ${state.round} Results`;
-      document.getElementById('totalPlayers').textContent = `${state.leaderboard.length} participants`;
+    function showWinnerScreen(state) {
+      const lb = state.leaderboard;
+      const winner = lb[0];
 
-      const leaderboard = state.leaderboard;
+      document.getElementById('winnerName').textContent = winner ? winner.name : '-';
+      document.getElementById('winnerScoreText').textContent = winner ? `${winner.clicks} clicks • Round ${state.round} Champion` : '';
+      document.getElementById('adContent').textContent = state.winnerAd ? `"${state.winnerAd}"` : '"We Won! 🎉"';
+      document.getElementById('adAuthor').textContent = winner ? `— ${winner.name}` : '';
+      document.getElementById('podiumRound').textContent = state.round;
 
-      // Update podium
+      // Podium
       for (let i = 1; i <= 3; i++) {
-        const place = document.getElementById(`place${i}`);
-        const name = document.getElementById(`name${i}`);
-        const clicks = document.getElementById(`clicks${i}`);
-        
-        if (leaderboard[i - 1]) {
-          const player = leaderboard[i - 1];
-          place.classList.remove('empty-place');
-          name.textContent = player.name;
-          clicks.textContent = player.clicks;
-        } else {
-          place.classList.add('empty-place');
-          name.textContent = '-';
-          clicks.textContent = '0';
-        }
+        const player = lb[i - 1];
+        document.getElementById(`podiumName${i}`).textContent = player ? player.name : '-';
+        document.getElementById(`podiumScore${i}`).textContent = player ? `${player.clicks} clicks` : '0';
       }
-
-      // Generate and show winner's ad
-      if (state.winner) {
-        const canvas = document.getElementById('adCanvas');
-        const adMessage = state.winnerAd || '🎉 We Won! 🎉';
-        const adImageData = adGenerator.generate(canvas, adMessage, state.winner.name);
-        document.getElementById('resultsAdImage').src = adImageData;
-        document.getElementById('winnerAdSection').style.display = 'flex';
-      } else {
-        document.getElementById('winnerAdSection').style.display = 'none';
-      }
-
-      // Populate full leaderboard
-      const fullList = document.getElementById('fullLeaderboardList');
-      fullList.innerHTML = leaderboard.map((player, index) => `
-        <div class="leaderboard-entry">
-          <div class="entry-rank ${index < 3 ? 'top-3' : ''}">${index < 3 ? ['🥇', '🥈', '🥉'][index] : index + 1}</div>
-          <div class="entry-color" style="background: ${player.color}"></div>
-          <div class="entry-name">${escapeHtml(player.name)}</div>
-          <div class="entry-clicks">${player.clicks}</div>
-        </div>
-      `).join('');
-
-      // Populate all-time leaderboard
-      const allTimeList = document.getElementById('allTimeList');
-      const allTime = state.allTimeLeaderboard || [];
-      document.getElementById('allTimePlayers').textContent = `${allTime.length} players`;
-      
-      if (allTime.length === 0) {
-        allTimeList.innerHTML = '<div style="color: #666; text-align: center; padding: 1rem;">No all-time stats yet</div>';
-      } else {
-        allTimeList.innerHTML = allTime.map((player, index) => `
-          <div class="all-time-entry">
-            <div class="all-time-rank">${index < 3 ? ['🥇', '🥈', '🥉'][index] : '#' + (index + 1)}</div>
-            <div class="all-time-name">${escapeHtml(player.name)}</div>
-            <div class="all-time-stats">
-              <span class="stat-wins">🏆 ${player.wins}</span>
-              <span class="stat-clicks">👆 ${player.totalClicks}</span>
-              <span class="stat-rounds">📊 ${player.roundsPlayed}</span>
-            </div>
-          </div>
-        `).join('');
-      }
-    }
-
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
     }
 
     function createConfetti() {
-      const colors = ['#00f5d4', '#f15bb5', '#7b2cbf', '#ffbe0b', '#00ff88', '#ff006e', '#ffd700', '#c0c0c0', '#cd7f32'];
-      const container = document.querySelector('.results-screen');
-      if (!container) return;
-      
-      // Clear old confetti
+      const colors = ['#00C9A7', '#E91E8C', '#6B3FA0', '#FFD700', '#00E896', '#FF3366'];
+      const container = document.getElementById('winnerScreen');
       container.querySelectorAll('.confetti').forEach(c => c.remove());
-      
-      for (let i = 0; i < 150; i++) {
+
+      for (let i = 0; i < 100; i++) {
         const confetti = document.createElement('div');
         confetti.className = 'confetti';
+        const drift = (Math.random() - 0.5) * 200;
         confetti.style.cssText = `
           position: fixed;
-          width: ${Math.random() * 12 + 5}px;
-          height: ${Math.random() * 12 + 5}px;
+          width: ${Math.random() * 10 + 5}px;
+          height: ${Math.random() * 10 + 5}px;
           background: ${colors[Math.floor(Math.random() * colors.length)]};
           left: ${Math.random() * 100}%;
           top: -20px;
           opacity: 1;
           transform: rotate(${Math.random() * 360}deg);
-          animation: confetti-fall ${Math.random() * 3 + 2}s linear forwards;
-          animation-delay: ${Math.random() * 2}s;
+          --drift: ${drift}px;
+          animation: confetti-fall ${Math.random() * 2 + 2}s linear forwards;
+          animation-delay: ${Math.random() * 1.5}s;
           z-index: 1000;
           pointer-events: none;
         `;
         container.appendChild(confetti);
-        
-        // Clean up after animation
-        setTimeout(() => confetti.remove(), 6000);
+        setTimeout(() => confetti.remove(), 5000);
       }
     }
 
-    // Add confetti animation
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes confetti-fall {
-        to {
-          top: 100%;
-          opacity: 0;
-          transform: rotate(720deg) translateX(${Math.random() * 200 - 100}px);
-        }
-      }
-    `;
-    document.head.appendChild(style);
-
     socket.on('gameState', updateUI);
-
-    // Real-time click updates for smoother animation
     socket.on('clickUpdate', (data) => {
       maxClicks = Math.max(maxClicks, data.clicks);
     });
   </script>
 </body>
 </html>
-

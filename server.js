@@ -282,12 +282,13 @@ app.get('/api/config', (req, res) => {
 });
 
 // Page routes (defined before static to ensure they always work)
+// Main landing page is now the unified display
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'display.html'));
 });
 
 app.get('/play', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'player.html'));
+  res.sendFile(path.join(__dirname, 'public', 'play.html'));
 });
 
 // Host route - protected by PIN if HOST_PIN is set
@@ -341,10 +342,6 @@ app.get('/api/host/status', (req, res) => {
     pinRequired: !!HOST_PIN,
     authenticated: isValidHostAuthToken(req.query.token || req.headers.cookie?.match(/hostAuth=([^;]+)/)?.[1])
   });
-});
-
-app.get('/display', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'display.html'));
 });
 
 // Serve static files (JS, CSS, images)
@@ -1114,10 +1111,9 @@ server.listen(PORT, HOST, () => {
 ║  Network:  http://${(localIP + ':' + PORT).padEnd(47)}║
 ╠══════════════════════════════════════════════════════════════════╣
 ║  Routes:                                                         ║
-║    /           - Landing page with QR code                       ║
+║    /           - Main display (big screen + QR code)             ║
 ║    /play       - Player page (DSPs join here)                    ║
 ║    /host       - Host control panel                              ║
-║    /display    - Big screen display                              ║
 ║    /api/config - Get current configuration                       ║
 ║    /health     - Health check (for monitoring)                   ║
 ╚══════════════════════════════════════════════════════════════════╝

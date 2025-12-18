@@ -62,6 +62,7 @@
       font-size: 1.5rem;
       background: linear-gradient(135deg, var(--primary), var(--accent));
       -webkit-background-clip: text;
+      background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
@@ -87,14 +88,17 @@
 
     .main {
       padding: 2rem;
-      max-width: 1400px;
+      max-width: 500px;
       margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100vh - 80px);
     }
 
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 350px;
-      gap: 2rem;
+    .control-center {
+      width: 100%;
     }
 
     .card {
@@ -194,221 +198,6 @@
       opacity: 0.5;
       cursor: not-allowed;
     }
-
-    .game-status {
-      text-align: center;
-      padding: 2rem;
-    }
-
-    .status-badge {
-      display: inline-block;
-      padding: 0.5rem 1.5rem;
-      border-radius: 50px;
-      font-family: 'Orbitron', sans-serif;
-      font-size: 1rem;
-      text-transform: uppercase;
-      margin-bottom: 1rem;
-    }
-
-    .status-waiting { background: rgba(255, 190, 11, 0.2); color: var(--warning); border: 1px solid var(--warning); }
-    .status-countdown { background: rgba(241, 91, 181, 0.2); color: var(--accent); border: 1px solid var(--accent); animation: pulse 0.5s infinite; }
-    .status-bidding { background: rgba(0, 255, 136, 0.2); color: var(--success); border: 1px solid var(--success); animation: pulse 0.3s infinite; }
-    .status-finished { background: rgba(0, 245, 212, 0.2); color: var(--primary); border: 1px solid var(--primary); }
-
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.05); }
-    }
-
-    .timer-display {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 5rem;
-      font-weight: 900;
-      color: var(--primary);
-      text-shadow: 0 0 30px rgba(0, 245, 212, 0.5);
-      line-height: 1;
-    }
-
-    .timer-display.countdown { color: var(--accent); text-shadow: 0 0 30px rgba(241, 91, 181, 0.5); }
-    .timer-display.urgent { color: var(--danger); text-shadow: 0 0 30px rgba(255, 0, 110, 0.5); animation: shake 0.1s infinite; }
-
-    @keyframes shake {
-      0%, 100% { transform: translateX(0); }
-      25% { transform: translateX(-2px); }
-      75% { transform: translateX(2px); }
-    }
-
-    .round-display {
-      font-size: 1.2rem;
-      color: #666;
-      margin-top: 1rem;
-    }
-
-    .players-list {
-      max-height: 500px;
-      overflow-y: auto;
-    }
-
-    .player-row {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      padding: 0.75rem;
-      border-radius: 8px;
-      margin-bottom: 0.5rem;
-      background: rgba(0, 0, 0, 0.2);
-      transition: all 0.3s ease;
-    }
-
-    .player-row:hover {
-      background: rgba(0, 0, 0, 0.4);
-    }
-
-    .player-color {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-    }
-
-    .player-name {
-      flex: 1;
-      font-weight: 500;
-    }
-
-    .player-clicks {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 1.2rem;
-      color: var(--primary);
-    }
-
-    .btn-kick {
-      padding: 0.3rem 0.6rem;
-      font-size: 0.75rem;
-      background: var(--danger);
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      opacity: 0.7;
-    }
-
-    .btn-kick:hover {
-      opacity: 1;
-    }
-
-    .bot-badge {
-      font-size: 1rem;
-      cursor: help;
-      animation: botPulse 1s infinite;
-    }
-
-    @keyframes botPulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 2rem;
-      color: #666;
-    }
-
-    .winner-display {
-      text-align: center;
-      padding: 1rem;
-    }
-
-    .winner-label {
-      font-size: 1rem;
-      color: var(--warning);
-      text-transform: uppercase;
-      letter-spacing: 0.2em;
-      margin-bottom: 0.5rem;
-    }
-
-    .winner-name {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 1.5rem;
-      color: var(--primary);
-    }
-
-    .winner-clicks {
-      font-size: 1rem;
-      color: #888;
-      margin-top: 0.5rem;
-    }
-
-    .qr-section {
-      text-align: center;
-    }
-
-    .host-qr {
-      background: white;
-      padding: 12px;
-      border-radius: 12px;
-      display: inline-block;
-      margin-bottom: 0.5rem;
-    }
-
-    .host-qr img {
-      width: 150px;
-      height: 150px;
-      display: block;
-    }
-
-    .join-url {
-      background: rgba(0, 0, 0, 0.3);
-      padding: 0.75rem 1rem;
-      border-radius: 8px;
-      font-family: 'Orbitron', sans-serif;
-      font-size: 0.85rem;
-      color: var(--primary);
-      word-break: break-all;
-    }
-
-    .all-time-stats-host {
-      max-height: 200px;
-      overflow-y: auto;
-    }
-
-    .all-time-row {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.5rem;
-      border-radius: 6px;
-      margin-bottom: 0.25rem;
-      background: rgba(255, 190, 11, 0.05);
-      font-size: 0.9rem;
-    }
-
-    .all-time-row .rank {
-      font-family: 'Orbitron', sans-serif;
-      color: var(--warning);
-      width: 25px;
-    }
-
-    .all-time-row .name {
-      flex: 1;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .all-time-row .wins {
-      color: var(--warning);
-      font-weight: 600;
-    }
-
-    .btn-danger {
-      background: var(--danger) !important;
-    }
-
-    @media (max-width: 1000px) {
-      .grid {
-        grid-template-columns: 1fr;
-      }
-    }
     
     @media (max-width: 600px) {
       header {
@@ -423,6 +212,7 @@
       
       .main {
         padding: 1rem;
+        min-height: auto;
       }
       
       .card {
@@ -451,19 +241,6 @@
         width: 100%;
         min-width: auto;
       }
-      
-      .timer-display {
-        font-size: 3rem;
-      }
-      
-      .host-qr img {
-        width: 120px;
-        height: 120px;
-      }
-      
-      .join-url {
-        font-size: 0.75rem;
-      }
     }
   </style>
 </head>
@@ -479,69 +256,27 @@
   </header>
 
   <main class="main">
-    <div class="grid">
-      <div>
-        <div class="card">
-          <h2>⚙️ Auction Settings</h2>
-          <div class="control-panel">
-            <div class="setting-row">
-              <label>Auction Duration (seconds)</label>
-              <input type="number" id="duration" value="10" min="5" max="60">
-            </div>
-            <div class="btn-group">
-              <button class="btn btn-start" id="startBtn" onclick="startAuction()">
-                🚀 Start Auction
-              </button>
-              <button class="btn btn-reset" id="resetBtn" onclick="resetAuction()">
-                🔄 Reset
-              </button>
-            </div>
+    <div class="control-center">
+      <div class="card">
+        <h2>⚙️ Auction Control</h2>
+        <div class="control-panel">
+          <div class="setting-row">
+            <label>Auction Duration (seconds)</label>
+            <input type="number" id="duration" value="10" min="5" max="60">
           </div>
-        </div>
-
-        <div class="card">
-          <h2>📊 Game Status</h2>
-          <div class="game-status">
-            <div class="status-badge status-waiting" id="statusBadge">Waiting</div>
-            <div class="timer-display" id="timerDisplay">--</div>
-            <div class="round-display" id="roundDisplay">Round 0</div>
+          <div class="btn-group">
+            <button class="btn btn-start" id="startBtn" onclick="startAuction()">
+              🚀 Start Auction
+            </button>
+            <button class="btn btn-reset" id="resetBtn" onclick="resetAuction()">
+              🔄 Reset
+            </button>
           </div>
-          
-          <div class="winner-display" id="winnerDisplay" style="display: none;">
-            <div class="winner-label">🏆 Winner</div>
-            <div class="winner-name" id="winnerName"></div>
-            <div class="winner-clicks" id="winnerClicks"></div>
+          <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); text-align: center;">
+            <button class="btn" style="background: rgba(255,51,102,0.15); color: var(--danger); border: 1px solid rgba(255,51,102,0.4); font-size: 0.7rem; padding: 0.4rem 0.8rem; min-width: auto; flex: none;" onclick="resetAllTimeStats()">
+              🗑️ Reset All-Time Stats
+            </button>
           </div>
-        </div>
-      </div>
-
-      <div>
-        <div class="card">
-          <h2>👥 Players</h2>
-          <div class="players-list" id="playersList">
-            <div class="empty-state">No players yet. Share the link!</div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h2>📱 Join Link</h2>
-          <div class="qr-section">
-            <div class="host-qr">
-              <img id="joinQr" alt="Scan to join">
-            </div>
-            <p style="margin-top: 1rem; color: #888;">or share this URL:</p>
-            <div class="join-url" id="joinUrl"></div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h2>🏅 All-Time Stats</h2>
-          <div class="all-time-stats-host" id="allTimeStatsHost">
-            <div class="empty-state">Loading stats...</div>
-          </div>
-          <button class="btn btn-danger" style="margin-top: 1rem; background: linear-gradient(135deg, var(--danger), #cc0055); flex: none; min-width: auto; padding: 0.5rem 1rem; font-size: 0.8rem;" onclick="resetAllTimeStats()">
-            🗑️ Reset All Stats
-          </button>
         </div>
       </div>
     </div>
@@ -550,22 +285,6 @@
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
-
-    // Fetch config to get the correct base URL
-    fetch('/api/config')
-      .then(res => res.json())
-      .then(config => {
-        const playUrl = config.baseUrl + '/play';
-        document.getElementById('joinUrl').textContent = playUrl;
-        const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(playUrl)}&bgcolor=ffffff&color=0a0b1e&margin=5`;
-        document.getElementById('joinQr').src = qrApiUrl;
-      })
-      .catch(() => {
-        const playUrl = window.location.origin + '/play';
-        document.getElementById('joinUrl').textContent = playUrl;
-        const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(playUrl)}&bgcolor=ffffff&color=0a0b1e&margin=5`;
-        document.getElementById('joinQr').src = qrApiUrl;
-      });
 
     function startAuction() {
       const duration = parseInt(document.getElementById('duration').value) || 10;
@@ -587,104 +306,22 @@
       socket.emit('resetAuction');
     }
 
-    function kickPlayer(playerId) {
-      if (confirm('Kick this player?')) {
-        socket.emit('kickPlayer', playerId);
-      }
-    }
-
     function updateUI(state) {
-      // Update player count
+      // Update player count in header
       document.getElementById('playerCount').textContent = `${state.playerCount} Players Connected`;
 
-      // Update status badge
-      const badge = document.getElementById('statusBadge');
-      badge.className = 'status-badge status-' + state.status;
-      badge.textContent = state.status.charAt(0).toUpperCase() + state.status.slice(1);
-
-      // Update timer
-      const timer = document.getElementById('timerDisplay');
-      if (state.status === 'waiting') {
-        timer.textContent = '--';
-        timer.className = 'timer-display';
-      } else {
-        timer.textContent = state.timeRemaining;
-        timer.className = 'timer-display' + 
-          (state.status === 'countdown' ? ' countdown' : '') +
-          (state.status === 'bidding' && state.timeRemaining <= 3 ? ' urgent' : '');
-      }
-
-      // Update round
-      document.getElementById('roundDisplay').textContent = `Round ${state.round}`;
-
-      // Update buttons
-      document.getElementById('startBtn').disabled = state.status === 'countdown' || state.status === 'bidding';
-      document.getElementById('resetBtn').disabled = state.status === 'countdown' || state.status === 'bidding';
-
-      // Update players list
-      const playersList = document.getElementById('playersList');
-      if (state.leaderboard.length === 0) {
-        playersList.innerHTML = '<div class="empty-state">No players yet. Share the link!</div>';
-      } else {
-        playersList.innerHTML = state.leaderboard.map(player => `
-          <div class="player-row">
-            <div class="player-color" style="background: ${player.color}"></div>
-            <div class="player-name">${escapeHtml(player.name)}${player.suspicious ? ' <span class="bot-badge" title="Suspicious click pattern detected">🤖</span>' : ''}</div>
-            <div class="player-clicks">${player.clicks}</div>
-            <button class="btn-kick" onclick="kickPlayer('${player.id}')">✕</button>
-          </div>
-        `).join('');
-      }
-
-      // Update winner display
-      const winnerDisplay = document.getElementById('winnerDisplay');
-      if (state.status === 'finished' && state.winner) {
-        winnerDisplay.style.display = 'block';
-        document.getElementById('winnerName').textContent = state.winner.name;
-        document.getElementById('winnerClicks').textContent = `${state.winner.clicks} clicks`;
-      } else {
-        winnerDisplay.style.display = 'none';
-      }
+      // Enable/disable buttons based on auction state
+      const isLocked = state.status === 'countdown' || state.status === 'bidding';
+      document.getElementById('startBtn').disabled = isLocked;
+      document.getElementById('resetBtn').disabled = isLocked;
     }
 
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-
-    socket.on('gameState', (state) => {
-      updateUI(state);
-      updateAllTimeStats(state.allTimeLeaderboard || []);
-    });
-    
-    socket.on('clickUpdate', (data) => {
-      // Update individual player's clicks in real-time
-      const playersList = document.getElementById('playersList');
-      const rows = playersList.querySelectorAll('.player-row');
-      // The full state update will handle reordering
-    });
-
-    function updateAllTimeStats(allTime) {
-      const container = document.getElementById('allTimeStatsHost');
-      if (allTime.length === 0) {
-        container.innerHTML = '<div class="empty-state" style="padding: 1rem;">No stats yet</div>';
-        return;
-      }
-      
-      container.innerHTML = allTime.slice(0, 10).map((player, i) => `
-        <div class="all-time-row">
-          <span class="rank">${i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}</span>
-          <span class="name">${escapeHtml(player.name)}</span>
-          <span class="wins">🏆 ${player.wins}</span>
-        </div>
-      `).join('');
-    }
+    socket.on('gameState', updateUI);
 
     function resetAllTimeStats() {
       if (confirm('⚠️ This will permanently delete ALL player stats. Are you sure?')) {
         socket.emit('resetAllTimeStats');
-        alert('Stats have been reset!');
+        alert('All-time stats have been reset!');
       }
     }
   </script>

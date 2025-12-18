@@ -33,10 +33,9 @@ npm start
 ```
 
 Open your browser:
-- **Landing Page (QR Code):** http://localhost:3000
+- **Main Display (QR + Leaderboard):** http://localhost:3000
 - **Player View:** http://localhost:3000/play
 - **Host Control:** http://localhost:3000/host
-- **Big Screen Display:** http://localhost:3000/display
 
 ### Cloud Deployment (Render)
 
@@ -47,11 +46,15 @@ Open your browser:
 
 ## 📱 Pages
 
-### `/` - Landing Page
-Display on a screen for players to join:
+### `/` - Main Display (Big Screen)
+Project this for everyone to see:
 - Large QR code for easy scanning
-- Game rules and instructions
-- Clean, branded interface
+- Game rules and instructions  
+- Live countdown timer
+- Real-time leaderboard with click animations
+- Podium for top 3 players
+- Dynamic winner ad on a billboard with confetti! 🎊
+- All-time champions section
 
 ### `/play` - Player Page
 Share this URL with your audience. Players:
@@ -63,18 +66,7 @@ Share this URL with your audience. Players:
 For the event organizer:
 - Set auction duration (5-60 seconds)
 - Start/reset auctions
-- View connected players with live click counts
-- Kick troublemakers 😈
-- QR code for easy sharing
-- All-time stats leaderboard
-
-### `/display` - Big Screen
-Project this for everyone to see:
-- Live countdown timer
-- Real-time leaderboard with click animations
-- Podium for top 3 players
-- Dynamic winner ad generation with confetti! 🎊
-- All-time champions section
+- Reset all-time stats
 
 ## 🎯 Game Flow
 
@@ -171,11 +163,10 @@ Optionally protect the `/host` control panel:
 
 ## 💡 Tips for Running Events
 
-1. **Display the landing page** on a big screen for QR code scanning
-2. **Open `/host`** on your laptop to control the game
-3. **Project `/display`** on another screen for the leaderboard
-4. Test with a few people before the main event
-5. Use fullscreen mode (F11) for `/display`
+1. **Project `/`** on a big screen - shows QR code, rules, and live leaderboard
+2. **Open `/host`** on your laptop/phone to control the auction
+3. Test with a few people before the main event
+4. Use fullscreen mode (F11) for the best experience
 
 ## 🎨 Branding
 
@@ -201,10 +192,10 @@ click-auction/
 ├── package.json
 ├── render.yaml         # Render deployment config
 ├── public/
-│   ├── index.html      # Landing page with QR
-│   ├── player.html     # Player bidding interface
+│   ├── display.html    # Main display (QR, rules, leaderboard, billboard)
+│   ├── play.html       # Player bidding interface
 │   ├── host.html       # Host control panel
-│   ├── display.html    # Big screen display
+│   ├── host-login.html # PIN login page for host
 │   └── ad-generator.js # Dynamic ad image generator
 └── scores.json         # Local persistence (auto-created)
 ```
