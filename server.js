@@ -431,9 +431,9 @@ io.on('connection', (socket) => {
     broadcastState();
   });
 
-  socket.on('resetAllTimeStats', () => {
+  socket.on('resetAllTimeStats', async () => {
     persistence.resetAllStats();
-    persistence.saveScores();
+    await persistence.saveScores();
     Logger.info('All-time stats reset by host');
     broadcastState();
   });
@@ -506,7 +506,8 @@ function endAuction() {
     persistence.updatePlayerStats(player.name, player.clicks, player.name === winnerName);
   });
 
-  persistence.saveScores();
+  // Save scores asynchronously but don't block the broadcast
+  persistence.saveScores().catch((err) => Logger.error('Failed to save scores:', err));
 
   Logger.gameEvent('Auction ended', { participants: leaderboard.length, winner: winnerName || 'None' });
 
@@ -590,9 +591,9 @@ process.on('SIGINT', () => {
 // START SERVER
 // ============================================
 
-persistence.loadScores();
-
-server.listen(config.PORT, config.HOST, () => {
+// Load scores before starting server to prevent race conditions
+persistence.loadScores().then(() => {
+  server.listen(config.PORT, config.HOST, () => {
   const localIP = getLocalIP() || 'localhost';
   console.log(`
 ╔══════════════════════════════════════════════════════════════════╗
@@ -619,4 +620,5 @@ server.listen(config.PORT, config.HOST, () => {
 ║    /health     - Health check (for monitoring)                   ║
 ╚══════════════════════════════════════════════════════════════════╝
   `);
+  });
 });

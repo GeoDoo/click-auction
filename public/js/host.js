@@ -5,7 +5,7 @@
 const socket = io();
 
 function startAuction() {
-  const duration = parseInt(document.getElementById('duration').value) || 10;
+  const duration = parseInt(document.getElementById('duration').value, 10) || 10;
   Logger.debug('Starting auction with duration:', duration);
   Logger.debug('Socket connected:', socket.connected);
   socket.emit('startAuction', { duration });
