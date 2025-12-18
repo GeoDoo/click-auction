@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const { Redis } = require('@upstash/redis');
 const config = require('./config');
+const Logger = require('./logger');
 
 const SCORES_FILE = path.join(__dirname, '..', 'scores.json');
 
@@ -16,9 +17,9 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
     url: process.env.UPSTASH_REDIS_REST_URL,
     token: process.env.UPSTASH_REDIS_REST_TOKEN,
   });
-  console.log('🔴 Redis connected (Upstash)');
+  Logger.info('🔴 Redis connected (Upstash)');
 } else {
-  console.log('📁 Using local file storage (set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN for cloud persistence)');
+  Logger.info('📁 Using local file storage (set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN for cloud persistence)');
 }
 
 // All-time stats structure: { "PlayerName": { wins, totalClicks, roundsPlayed, bestRound, lastPlayed } }
@@ -33,7 +34,7 @@ async function loadScores() {
       const data = await redis.get(config.REDIS_KEY);
       if (data) {
         allTimeStats = typeof data === 'string' ? JSON.parse(data) : data;
-        console.log(`📊 Loaded ${Object.keys(allTimeStats).length} player records from Redis`);
+        Logger.info(`📊 Loaded ${Object.keys(allTimeStats).length} player records from Redis`);
       }
     } else if (fs.existsSync(SCORES_FILE)) {
       const data = fs.readFileSync(SCORES_FILE, 'utf8');
@@ -41,20 +42,20 @@ async function loadScores() {
         const parsed = JSON.parse(data);
         if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
           allTimeStats = parsed;
-          console.log(`📊 Loaded ${Object.keys(allTimeStats).length} player records from scores.json`);
+          Logger.info(`📊 Loaded ${Object.keys(allTimeStats).length} player records from scores.json`);
         } else {
           throw new Error('Invalid scores format');
         }
       } catch {
-        console.error('⚠️ Corrupt scores.json detected, backing up and starting fresh');
+        Logger.warn('⚠️ Corrupt scores.json detected, backing up and starting fresh');
         const backupPath = `${SCORES_FILE}.corrupt.${Date.now()}`;
         fs.renameSync(SCORES_FILE, backupPath);
-        console.log(`📁 Corrupt file backed up to: ${backupPath}`);
+        Logger.info(`📁 Corrupt file backed up to: ${backupPath}`);
         allTimeStats = {};
       }
     }
   } catch (err) {
-    console.error('Error loading scores:', err);
+    Logger.error('Error loading scores:', err);
     allTimeStats = {};
   }
 }
@@ -66,13 +67,13 @@ async function saveScores() {
   try {
     if (redis) {
       await redis.set(config.REDIS_KEY, JSON.stringify(allTimeStats));
-      console.log('💾 Scores saved to Redis');
+      Logger.debug('💾 Scores saved to Redis');
     } else {
       fs.writeFileSync(SCORES_FILE, JSON.stringify(allTimeStats, null, 2));
-      console.log('💾 Scores saved to scores.json');
+      Logger.debug('💾 Scores saved to scores.json');
     }
   } catch (err) {
-    console.error('Error saving scores:', err);
+    Logger.error('Error saving scores:', err);
   }
 }
 

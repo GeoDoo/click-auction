@@ -40,7 +40,7 @@ function loadAllTimeStats() {
           (player, index) => `
             <div class="leaderboard-item">
               <div class="rank">${index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}</div>
-              <div class="player-name">${escapeHtml(player.name)}</div>
+              <div class="player-name">${Utils.escapeHtml(player.name)}</div>
               <div class="player-stats">
                 <span class="wins">${player.wins} 🏆</span>
                 <span class="best">Best: ${player.bestRound}</span>
@@ -57,11 +57,7 @@ function loadAllTimeStats() {
 loadAllTimeStats();
 setInterval(loadAllTimeStats, 10000); // Refresh every 10 seconds
 
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
+// escapeHtml is available from utils.js
 
 function updateUI(state) {
   document.getElementById('bg').className = 'bg' + (state.status === 'bidding' ? ' bidding' : '');
@@ -111,7 +107,7 @@ function updateUI(state) {
           <div class="leaderboard-item">
             <div class="rank">${index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}</div>
             <div class="player-color" style="background: ${player.color}"></div>
-            <div class="player-name">${escapeHtml(player.name)}</div>
+            <div class="player-name">${Utils.escapeHtml(player.name)}</div>
             <div class="player-clicks">${player.clicks}</div>
             <div class="click-bar" style="width: ${maxClicks > 0 ? (player.clicks / maxClicks) * 100 : 0}%; background: ${player.color}"></div>
           </div>

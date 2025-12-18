@@ -3,6 +3,7 @@
 // ============================================
 
 const config = require('./config');
+const Logger = require('./logger');
 
 const playerSessions = {}; // { sessionToken: { playerId, playerData, disconnectedAt, timeoutId } }
 const socketToSession = {}; // { socketId: sessionToken }
@@ -76,7 +77,7 @@ function restoreSession(token, newSocketId) {
 function expireSession(token) {
   const session = playerSessions[token];
   if (session) {
-    console.log(`🕐 Session expired: ${session.playerData?.name || 'Unknown'}`);
+    Logger.debug(`🕐 Session expired: ${session.playerData?.name || 'Unknown'}`);
     if (session.timeoutId) {
       clearTimeout(session.timeoutId);
     }

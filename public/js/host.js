@@ -6,18 +6,17 @@ const socket = io();
 
 function startAuction() {
   const duration = parseInt(document.getElementById('duration').value) || 10;
-  console.log('Starting auction with duration:', duration);
-  console.log('Socket connected:', socket.connected);
+  Logger.debug('Starting auction with duration:', duration);
+  Logger.debug('Socket connected:', socket.connected);
   socket.emit('startAuction', { duration });
 }
 
-// Debug: Log socket connection status
 socket.on('connect', () => {
-  console.log('✅ Socket connected:', socket.id);
+  Logger.debug('Socket connected:', socket.id);
 });
 
 socket.on('connect_error', (err) => {
-  console.error('❌ Socket connection error:', err.message);
+  Logger.error('Socket connection error:', err.message);
 });
 
 function resetAuction() {
