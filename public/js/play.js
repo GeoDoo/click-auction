@@ -72,8 +72,8 @@ socket.on('rejoinError', (data) => {
 socket.on('connect', () => {
   Logger.debug('Connected to server');
 
-  // If we have a session and were in the game, try to rejoin
-  if (sessionToken && myName) {
+  // If we have a session token, try to rejoin (server has the player data)
+  if (sessionToken) {
     _isReconnecting = true;
     socket.emit('rejoinGame', { token: sessionToken });
   }
@@ -210,6 +210,7 @@ bidButton.addEventListener('touchstart', (e) => {
 bidButton.addEventListener('touchend', (e) => e.preventDefault());
 
 function updateUI(state) {
+  const previousStatus = gameStatus; // Save BEFORE updating
   gameStatus = state.status;
 
   // Update background
@@ -227,8 +228,8 @@ function updateUI(state) {
       SoundManager.countdownTick();
     }
   } else if (state.status === 'bidding') {
-    // Play GO sound when bidding starts
-    if (gameStatus !== 'bidding') {
+    // Play GO sound when bidding starts (compare with PREVIOUS status)
+    if (previousStatus !== 'bidding') {
       SoundManager.go();
     }
   }
