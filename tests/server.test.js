@@ -97,17 +97,6 @@ const waitForPlayerCount = (socket, count, timeout = 5000) => {
 };
 
 /**
- * Wait for a player to appear in leaderboard
- */
-const _waitForPlayerInLeaderboard = (socket, playerName, timeout = 5000) => {
-  return waitForCondition(
-    socket,
-    (state) => state.leaderboard.some(p => p.name === playerName),
-    timeout,
-  );
-};
-
-/**
  * Emit and wait for acknowledgment via gameState update
  * This replaces arbitrary delays after emit
  */
@@ -1851,17 +1840,7 @@ describe('File Corruption Handling', () => {
 });
 
 describe('HTTP Endpoints', () => {
-  let _server;
-  const _TEST_PORT = 3098;
-
-  beforeAll(async () => {
-    // Import and start the actual server for HTTP tests
-    // We need to use a different approach - spawn the server or use supertest
-    // For simplicity, let's test the routes exist by making fetch requests
-  });
-
-  // These tests require the server to be running
-  // In a real CI/CD, you'd use supertest or spawn the server
+  // Unit tests for endpoint logic (mocked requests)
 
   describe('/api/config', () => {
     test('returns baseUrl and mode for localhost', async () => {
@@ -2398,8 +2377,6 @@ describe('Session Management Logic', () => {
 
 describe('Input Validation', () => {
   // Test the validation functions directly
-  const _MAX_NAME_LENGTH = 50;
-  const _MAX_AD_CONTENT_LENGTH = 200;
   const MIN_AUCTION_DURATION = 1;
   const MAX_AUCTION_DURATION = 300;
 
@@ -2745,10 +2722,6 @@ describe('Input Validation Integration', () => {
     if (isNaN(num) || num < MIN_AUCTION_DURATION) return MIN_AUCTION_DURATION;
     if (num > MAX_AUCTION_DURATION) return MAX_AUCTION_DURATION;
     return Math.floor(num);
-  }
-
-  function _isValidSocketId(id) {
-    return typeof id === 'string' && id.length > 0 && id.length < 50;
   }
 
   const DSP_COLORS = ['#00C9A7', '#E91E8C', '#6B3FA0'];
