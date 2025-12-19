@@ -118,8 +118,10 @@ export function startBidding(): void {
     broadcastState();
 
     if (gameState.timeRemaining <= 0) {
-      clearInterval(biddingInterval!);
-      biddingInterval = null;
+      if (biddingInterval) {
+        clearInterval(biddingInterval);
+        biddingInterval = null;
+      }
       endAuction();
     }
   }, config.TICK_INTERVAL_MS);
