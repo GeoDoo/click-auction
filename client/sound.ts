@@ -137,8 +137,8 @@ function toggle(): boolean {
 }
 
 // Auto-initialize on user interaction
-document.addEventListener('click', () => init(), { once: false });
-document.addEventListener('touchstart', () => init(), { once: false });
+document.addEventListener('click', () => init());
+document.addEventListener('touchstart', () => init());
 
 export const SoundManager = {
   init,
