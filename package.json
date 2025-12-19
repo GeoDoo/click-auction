@@ -4,7 +4,8 @@
   "description": "Real-time programmatic auction game - DSPs compete by clicking!",
   "main": "dist/src/server.js",
   "scripts": {
-    "start": "npm run build:client && ts-node src/server.ts",
+    "start": "node dist/src/server.js",
+    "dev": "npm run build:client && ts-node src/server.ts",
     "build": "npm run build:client && tsc",
     "build:client": "vite build",
     "test": "jest --detectOpenHandles --forceExit",
