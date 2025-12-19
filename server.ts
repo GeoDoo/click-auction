@@ -282,8 +282,8 @@ app.get('/api/config', (req: Request, res: Response) => {
   res.json({ baseUrl, mode: isLocal ? 'local' : 'production' });
 });
 
-// In compiled mode, __dirname is dist/, so we need to go up one level
-const publicDir = path.join(__dirname, '..', 'public');
+// Works for both ts-node (source) and compiled (dist/) mode
+const publicDir = path.join(process.cwd(), 'public');
 
 app.get('/', (_req: Request, res: Response) => {
   res.sendFile(path.join(publicDir, 'display.html'));

@@ -2,17 +2,12 @@
   "name": "click-auction",
   "version": "1.0.0",
   "description": "Real-time programmatic auction game - DSPs compete by clicking!",
-  "main": "dist/server.js",
+  "main": "server.ts",
   "scripts": {
-    "start": "node dist/server.js",
-    "dev": "ts-node server.ts",
+    "start": "ts-node server.ts",
     "build": "tsc",
     "test": "jest --detectOpenHandles --forceExit",
-    "test:watch": "jest --watch --detectOpenHandles",
-    "test:coverage": "jest --coverage --detectOpenHandles --forceExit",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "typecheck": "tsc --noEmit"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@upstash/redis": "^1.35.8",
