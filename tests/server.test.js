@@ -99,7 +99,7 @@ const waitForPlayerCount = (socket, count, timeout = 5000) => {
 /**
  * Wait for a player to appear in leaderboard
  */
-const waitForPlayerInLeaderboard = (socket, playerName, timeout = 5000) => {
+const _waitForPlayerInLeaderboard = (socket, playerName, timeout = 5000) => {
   return waitForCondition(
     socket,
     (state) => state.leaderboard.some(p => p.name === playerName),
@@ -1775,7 +1775,7 @@ describe('File Corruption Handling', () => {
       } else {
         throw new Error('Invalid scores format');
       }
-    } catch (parseErr) {
+    } catch {
       // This is what happens on corrupt data
       backupCreated = true;
       allTimeStats = {};
@@ -1797,7 +1797,7 @@ describe('File Corruption Handling', () => {
       } else {
         throw new Error('Invalid scores format');
       }
-    } catch (parseErr) {
+    } catch {
       rejected = true;
       allTimeStats = {};
     }
@@ -1819,7 +1819,7 @@ describe('File Corruption Handling', () => {
       } else {
         throw new Error('Invalid scores format');
       }
-    } catch (parseErr) {
+    } catch {
       allTimeStats = {};
     }
 
@@ -1840,7 +1840,7 @@ describe('File Corruption Handling', () => {
       } else {
         throw new Error('Invalid scores format');
       }
-    } catch (parseErr) {
+    } catch {
       rejected = true;
       allTimeStats = {};
     }
@@ -1851,8 +1851,8 @@ describe('File Corruption Handling', () => {
 });
 
 describe('HTTP Endpoints', () => {
-  let server;
-  const TEST_PORT = 3098;
+  let _server;
+  const _TEST_PORT = 3098;
 
   beforeAll(async () => {
     // Import and start the actual server for HTTP tests
@@ -2398,8 +2398,8 @@ describe('Session Management Logic', () => {
 
 describe('Input Validation', () => {
   // Test the validation functions directly
-  const MAX_NAME_LENGTH = 50;
-  const MAX_AD_CONTENT_LENGTH = 200;
+  const _MAX_NAME_LENGTH = 50;
+  const _MAX_AD_CONTENT_LENGTH = 200;
   const MIN_AUCTION_DURATION = 1;
   const MAX_AUCTION_DURATION = 300;
 
@@ -2747,7 +2747,7 @@ describe('Input Validation Integration', () => {
     return Math.floor(num);
   }
 
-  function isValidSocketId(id) {
+  function _isValidSocketId(id) {
     return typeof id === 'string' && id.length > 0 && id.length < 50;
   }
 

@@ -653,8 +653,8 @@ process.on('SIGINT', () => {
 // Load scores before starting server to prevent race conditions
 persistence.loadScores().then(() => {
   server.listen(config.PORT, config.HOST, () => {
-  const localIP = getLocalIP() || 'localhost';
-  console.log(`
+    const localIP = getLocalIP() || 'localhost';
+    console.log(`
 ╔══════════════════════════════════════════════════════════════════╗
 ║                      🎯 CLICK AUCTION 🎯                          ║
 ╠══════════════════════════════════════════════════════════════════╣
@@ -678,6 +678,6 @@ persistence.loadScores().then(() => {
 ║    /api/config - Get current configuration                       ║
 ║    /health     - Health check (for monitoring)                   ║
 ╚══════════════════════════════════════════════════════════════════╝
-  `);
+    `);
   });
 });
