@@ -3,7 +3,7 @@ services:
     name: click-auction
     runtime: node
     buildCommand: npm ci && npm test && npm run build
-    startCommand: node dist/src/server.js
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
