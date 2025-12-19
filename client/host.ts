@@ -3,7 +3,7 @@
 // ==========================================
 
 import { io, Socket } from 'socket.io-client';
-import { Logger } from './lib/logger';
+import { Logger } from './logger';
 
 interface GameState {
   status: 'waiting' | 'countdown' | 'bidding' | 'finished';

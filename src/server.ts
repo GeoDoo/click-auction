@@ -10,14 +10,14 @@ import cors from 'cors';
 import os from 'os';
 
 // Import modules
-import config from './src/config';
-import * as validation from './src/validation';
-import * as session from './src/session';
-import * as auth from './src/auth';
-import * as botDetection from './src/botDetection';
-import * as persistence from './src/persistence';
-import Logger from './src/logger';
-import * as middleware from './src/middleware';
+import config from './config';
+import * as validation from './validation';
+import * as session from './session';
+import * as auth from './auth';
+import * as botDetection from './botDetection';
+import * as persistence from './persistence';
+import Logger from './logger';
+import * as middleware from './middleware';
 
 // Extend Socket type to include custom properties
 interface CustomSocket extends Socket {

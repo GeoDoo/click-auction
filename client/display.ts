@@ -3,9 +3,9 @@
 // ==========================================
 
 import { io, Socket } from 'socket.io-client';
-import { Logger } from './lib/logger';
-import { SoundManager } from './lib/sound';
-import { escapeHtml } from './lib/utils';
+import { Logger } from './logger';
+import { SoundManager } from './sound';
+import { escapeHtml } from './utils';
 
 interface Player {
   name: string;

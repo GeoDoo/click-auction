@@ -2,9 +2,9 @@
   "name": "click-auction",
   "version": "1.0.0",
   "description": "Real-time programmatic auction game - DSPs compete by clicking!",
-  "main": "dist/server.js",
+  "main": "dist/src/server.js",
   "scripts": {
-    "start": "npm run build:client && ts-node server.ts",
+    "start": "npm run build:client && ts-node src/server.ts",
     "build": "npm run build:client && tsc",
     "build:client": "vite build",
     "test": "jest --detectOpenHandles --forceExit",
@@ -34,13 +34,7 @@
     "typescript": "^5.9.3",
     "vite": "^6.4.1"
   },
-  "keywords": [
-    "auction",
-    "game",
-    "programmatic",
-    "dsp",
-    "real-time"
-  ],
+  "keywords": ["auction", "game", "programmatic", "dsp", "real-time"],
   "author": "",
   "license": "MIT"
 }

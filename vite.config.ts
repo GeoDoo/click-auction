@@ -15,12 +15,10 @@ export default defineConfig({
       },
       output: {
         entryFileNames: '[name].js',
-        chunkFileNames: 'chunks/[name].js',
-        assetFileNames: 'assets/[name].[ext]',
+        chunkFileNames: '[name].js',
       },
     },
     sourcemap: true,
     minify: 'esbuild',
   },
 });
-

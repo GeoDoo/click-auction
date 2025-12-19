@@ -3,8 +3,8 @@
 // ==========================================
 
 import { io, Socket } from 'socket.io-client';
-import { Logger } from './lib/logger';
-import { SoundManager } from './lib/sound';
+import { Logger } from './logger';
+import { SoundManager } from './sound';
 
 interface Player {
   name: string;

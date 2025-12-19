@@ -2,7 +2,7 @@
 // Host Login Page - PIN Authentication
 // ==========================================
 
-import { Logger } from './lib/logger';
+import { Logger } from './logger';
 
 interface AuthResponse {
   success: boolean;
