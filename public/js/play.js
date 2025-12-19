@@ -68,6 +68,11 @@ socket.on('rejoinError', (data) => {
   Logger.warn('Rejoin failed:', data.message);
   clearSession();
   _isReconnecting = false;
+
+  // Remove reconnect banner
+  const banner = document.getElementById('reconnectBanner');
+  if (banner) banner.remove();
+
   // Show join screen for fresh start
   document.getElementById('joinScreen').classList.remove('hidden');
   document.getElementById('gameScreen').classList.remove('active');
@@ -90,6 +95,24 @@ socket.on('disconnect', (reason) => {
   if (myName) {
     showReconnectMessage('Connection lost. Reconnecting...');
   }
+});
+
+// Handle reconnection failure (all attempts exhausted)
+socket.on('reconnect_failed', () => {
+  Logger.error('Reconnection failed after all attempts');
+  showReconnectMessage('Connection failed. Click to refresh.');
+
+  // Make banner clickable to refresh
+  const banner = document.getElementById('reconnectBanner');
+  if (banner) {
+    banner.style.cursor = 'pointer';
+    banner.onclick = () => window.location.reload();
+  }
+});
+
+// Handle successful reconnection (socket.io built-in event)
+socket.on('reconnect', (attemptNumber) => {
+  Logger.info(`Reconnected after ${attemptNumber} attempts`);
 });
 
 // Show reconnection status message
