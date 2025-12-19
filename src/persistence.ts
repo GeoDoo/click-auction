@@ -62,8 +62,8 @@ export async function loadScores(): Promise<void> {
         } else {
           throw new Error('Invalid scores format');
         }
-      } catch {
-        Logger.warn('⚠️ Corrupt scores.json detected, backing up and starting fresh');
+      } catch (parseErr) {
+        Logger.warn('⚠️ Corrupt scores.json detected, backing up and starting fresh:', (parseErr as Error).message);
         const backupPath = `${SCORES_FILE}.corrupt.${Date.now()}`;
         fs.renameSync(SCORES_FILE, backupPath);
         Logger.info(`📁 Corrupt file backed up to: ${backupPath}`);

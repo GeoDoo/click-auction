@@ -121,7 +121,7 @@ export function startBidding(): void {
       biddingInterval = null;
       endAuction();
     }
-  }, 1000);
+  }, config.TICK_INTERVAL_MS);
 }
 
 export function endAuction(): void {

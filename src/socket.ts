@@ -234,7 +234,7 @@ export function setupSocketIO(io: Server): void {
           clearCountdownInterval();
           startBidding();
         }
-      }, 1000);
+      }, config.TICK_INTERVAL_MS);
       setCountdownInterval(interval);
     });
 

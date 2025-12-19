@@ -3,6 +3,7 @@ import path from 'path';
 import helmet from 'helmet';
 import compression from 'compression';
 import cors from 'cors';
+import config from './config';
 import * as middleware from './middleware';
 import routes from './routes';
 import Logger from './logger';
@@ -40,7 +41,7 @@ app.use(compression());
 app.use(middleware.requestLogger());
 
 // Caching headers
-app.use(middleware.cacheControl({ maxAge: 3600 }));
+app.use(middleware.cacheControl({ maxAge: config.STATIC_CACHE_MAX_AGE }));
 
 // JSON body parser (before routes)
 app.use(express.json());

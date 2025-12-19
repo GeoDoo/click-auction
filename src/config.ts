@@ -40,6 +40,11 @@ export interface Config {
   // Redis
   REDIS_KEY: string;
 
+  // Timing constants
+  TICK_INTERVAL_MS: number;
+  RATE_LIMIT_WINDOW_MS: number;
+  STATIC_CACHE_MAX_AGE: number;
+
   // VIOOH-inspired DSP colors
   DSP_COLORS: string[];
 }
@@ -81,6 +86,11 @@ const config: Config = {
 
   // Redis
   REDIS_KEY: 'click-auction:stats',
+
+  // Timing constants
+  TICK_INTERVAL_MS: 1000, // 1 second tick for countdown/bidding
+  RATE_LIMIT_WINDOW_MS: 1000, // 1 second window for rate limiting
+  STATIC_CACHE_MAX_AGE: 3600, // 1 hour cache for static assets
 
   // VIOOH-inspired DSP colors
   DSP_COLORS: [

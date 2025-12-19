@@ -49,14 +49,14 @@ const clickTimestamps: Record<string, number[]> = {};
  */
 export function isRateLimited(socketId: string): boolean {
   const now = Date.now();
-  const oneSecondAgo = now - 1000;
+  const windowStart = now - config.RATE_LIMIT_WINDOW_MS;
 
   if (!clickTimestamps[socketId]) {
     clickTimestamps[socketId] = [];
   }
 
-  // Remove timestamps older than 1 second
-  clickTimestamps[socketId] = clickTimestamps[socketId].filter((ts) => ts > oneSecondAgo);
+  // Remove timestamps outside the rate limit window
+  clickTimestamps[socketId] = clickTimestamps[socketId].filter((ts) => ts > windowStart);
 
   // Check if rate limited
   if (clickTimestamps[socketId].length >= config.MAX_CLICKS_PER_SECOND) {
