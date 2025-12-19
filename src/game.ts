@@ -2,6 +2,7 @@ import { Server } from 'socket.io';
 import config from './config';
 import * as botDetection from './botDetection';
 import * as persistence from './persistence';
+import Logger from './logger';
 import { GameState, LeaderboardEntry, Player } from './types';
 
 // Game state
@@ -146,8 +147,9 @@ export function endAuction(): void {
   });
 
   persistence.saveScores().catch((err) => {
-    // Import Logger inline to avoid circular dependency
-    import('./logger').then((mod) => mod.default.error('Failed to save scores:', err));
+    // Logger is imported at module level - no circular dependency issue
+    // since this catch handler runs asynchronously after module initialization
+    Logger.error('Failed to save scores:', err);
   });
 
   broadcastState();

@@ -22,7 +22,7 @@ const hostAuthTokens: Record<string, TokenData> = {};
  * Generate a unique host auth token
  */
 export function generateHostAuthToken(): string {
-  return 'host_' + Math.random().toString(36).substr(2, 16) + Date.now().toString(36);
+  return 'host_' + Math.random().toString(36).substring(2, 18) + Date.now().toString(36);
 }
 
 /**

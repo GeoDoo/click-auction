@@ -28,7 +28,7 @@ const socketToSession: Record<string, string> = {};
  * Generate a unique session token
  */
 export function generateSessionToken(): string {
-  return 'sess_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+  return 'sess_' + Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
 }
 
 /**

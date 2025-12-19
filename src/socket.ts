@@ -76,7 +76,7 @@ export function setupSocketIO(io: Server): void {
       if (token && auth.isValidHostAuthToken(token)) {
         authenticatedHostSockets.add(socket.id);
         socket.emit('hostAuthenticated', { success: true });
-        Logger.debug(`Host socket authenticated: ${socket.id.substr(0, 8)}`);
+        Logger.debug(`Host socket authenticated: ${socket.id.substring(0, 8)}`);
       } else {
         socket.emit('hostAuthenticated', { success: false });
       }
@@ -109,7 +109,7 @@ export function setupSocketIO(io: Server): void {
       const name = validation.sanitizeString(safeData.name, config.MAX_NAME_LENGTH);
       const adContent = validation.sanitizeString(safeData.adContent, config.MAX_AD_CONTENT_LENGTH);
 
-      const playerName = name || `DSP-${socket.id.substr(0, 4)}`;
+      const playerName = name || `DSP-${socket.id.substring(0, 4)}`;
 
       const playerData: Player = {
         name: playerName,
@@ -123,7 +123,7 @@ export function setupSocketIO(io: Server): void {
       const sessionToken = session.createSession(socket.id, playerData);
       socket.emit('sessionCreated', { token: sessionToken });
 
-      Logger.playerAction('joined', playerName, { session: sessionToken.substr(0, 12) });
+      Logger.playerAction('joined', playerName, { session: sessionToken.substring(0, 12) });
       broadcastState();
     });
 
