@@ -28,14 +28,24 @@ Perfect for conferences, events, and any gathering where you want to gamify prog
 # Install dependencies
 npm install
 
-# Start the server
-npm start
+# Start development server (TypeScript with hot reload)
+npm run dev
 ```
 
 Open your browser:
 - **Main Display (QR + Leaderboard):** http://localhost:3000
 - **Player View:** http://localhost:3000/play
 - **Host Control:** http://localhost:3000/host
+
+### Production Build
+
+```bash
+# Build everything (client + server)
+npm run build
+
+# Start production server
+npm start
+```
 
 ### Cloud Deployment (Render)
 
@@ -152,26 +162,26 @@ Optionally protect the `/host` control panel:
 
 ## 🛠 Tech Stack
 
+- **Language:** TypeScript (server + client)
 - **Backend:** Node.js + Express
 - **Real-time:** Socket.io
+- **Build:** Vite (client bundling)
 - **Persistence:** Upstash Redis (optional) / Local JSON file
-- **Frontend:** Vanilla HTML/CSS/JS
+- **Frontend:** Vanilla HTML/CSS/TypeScript
 - **Audio:** Web Audio API (synthesized sounds, no files)
+- **Testing:** Jest (159 tests)
 - **Hosting:** Render (or any Node.js host)
 
 ## 🧪 Testing
 
-The project includes a comprehensive test suite with 125+ tests:
+The project includes a comprehensive test suite with **159 tests**:
 
 ```bash
 # Run tests
 npm test
 
-# Run tests with coverage
-npm run test:coverage
-
-# Run tests in watch mode
-npm run test:watch
+# Run linter
+npm run lint
 ```
 
 ### Deployment Pipeline
@@ -191,6 +201,8 @@ Tests run automatically during Render's build step. **If tests fail, deployment 
 | Bot Detection | CV calculation, flagging |
 | Security | Helmet headers, connection limits |
 | HTTP Endpoints | /health, /api/config, /api/stats |
+| Middleware | Cache control, request logging, error handling |
+| Logger | Log levels, formatting, specialized methods |
 
 ## 💡 Tips for Running Events
 
@@ -219,33 +231,59 @@ Customize in any HTML file's `:root` CSS variables.
 
 ```
 click-auction/
-├── server.js              # Main Express/Socket.io server
+├── src/                    # Server-side TypeScript
+│   ├── server.ts           # Entry point
+│   ├── app.ts              # Express setup & middleware
+│   ├── routes.ts           # HTTP routes
+│   ├── socket.ts           # Socket.io handlers
+│   ├── game.ts             # Game state & logic
+│   ├── types.ts            # TypeScript interfaces
+│   ├── config.ts           # Configuration constants
+│   ├── validation.ts       # Input validation & rate limiting
+│   ├── session.ts          # Session management (reconnection)
+│   ├── auth.ts             # Host PIN authentication
+│   ├── botDetection.ts     # Bot detection (CV analysis)
+│   ├── persistence.ts      # Redis/file score persistence
+│   ├── middleware.ts       # Express middleware
+│   └── logger.ts           # Server-side logging
+├── client/                 # Client-side TypeScript
+│   ├── display.ts          # Main display page logic
+│   ├── play.ts             # Player page logic
+│   ├── host.ts             # Host control logic
+│   ├── host-login.ts       # Login page logic
+│   ├── sound.ts            # Web Audio sound effects
+│   ├── logger.ts           # Client-side logging
+│   └── utils.ts            # Shared utilities
+├── public/                 # Static files
+│   ├── display.html        # Main display (QR, rules, leaderboards)
+│   ├── play.html           # Player bidding interface
+│   ├── host.html           # Host control panel
+│   ├── host-login.html     # PIN login page
+│   ├── css/                # Extracted stylesheets
+│   └── js/                 # Vite-compiled client bundles
+├── tests/                  # Test suites
+│   ├── server.test.ts      # Server tests (125 tests)
+│   ├── middleware.test.ts  # Middleware tests (17 tests)
+│   └── logger.test.ts      # Logger tests (17 tests)
+├── dist/                   # Compiled server (gitignored)
 ├── package.json
-├── render.yaml            # Render deployment config
-├── jest.config.js         # Test configuration
-├── eslint.config.js       # ESLint configuration
-├── src/                   # Backend modules
-│   ├── index.js           # Module exports
-│   ├── config.js          # Configuration constants
-│   ├── validation.js      # Input validation & rate limiting
-│   ├── session.js         # Session management (reconnection)
-│   ├── auth.js            # Host PIN authentication
-│   ├── botDetection.js    # Bot detection (CV analysis)
-│   └── persistence.js     # Redis/file score persistence
-├── tests/
-│   └── server.test.js     # Comprehensive test suite (125+ tests)
-├── public/
-│   ├── display.html       # Main display (QR, rules, leaderboards, billboard)
-│   ├── play.html          # Player bidding interface
-│   ├── host.html          # Host control panel
-│   ├── host-login.html    # PIN login page for host
-│   └── js/                # Extracted frontend JavaScript
-│       ├── play.js        # Player page logic
-│       ├── host.js        # Host control logic
-│       ├── host-login.js  # Login page logic
-│       └── display.js     # Display page logic
-└── scores.json            # Local persistence (auto-created)
+├── tsconfig.json           # Server TypeScript config
+├── vite.config.ts          # Client build config
+├── jest.config.js          # Test configuration
+├── eslint.config.js        # Linter configuration
+├── render.yaml             # Render deployment config
+└── scores.json             # Local persistence (auto-created)
 ```
+
+## 📜 NPM Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm start` | Run production server (requires build first) |
+| `npm run dev` | Run development server with TypeScript |
+| `npm run build` | Build client (Vite) + server (tsc) |
+| `npm test` | Run all tests |
+| `npm run lint` | Run ESLint |
 
 ## 🤝 Credits
 
