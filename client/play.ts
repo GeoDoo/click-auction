@@ -37,7 +37,6 @@ let myName = '';
 let gameStatus: GameState['status'] = 'waiting';
 let lastCountdown: number | null = null;
 let sessionToken: string | null = localStorage.getItem('clickAuctionSession');
-let _isReconnecting = false;
 
 // ==========================================
 // SESSION MANAGEMENT
@@ -85,7 +84,6 @@ socket.on('rejoinSuccess', (data: SessionData) => {
   if (clickCounter) clickCounter.textContent = String(myClicks);
   if (errorOverlay) errorOverlay.classList.remove('active');
 
-  _isReconnecting = false;
   Logger.info('Session restored');
 
   showReconnectMessage('Reconnected!');
@@ -95,7 +93,6 @@ socket.on('rejoinSuccess', (data: SessionData) => {
 socket.on('rejoinError', (data: { message: string }) => {
   Logger.warn('Rejoin failed:', data.message);
   clearSession();
-  _isReconnecting = false;
 
   const banner = document.getElementById('reconnectBanner');
   if (banner) banner.remove();
@@ -111,7 +108,6 @@ socket.on('connect', () => {
   Logger.debug('Connected to server');
 
   if (sessionToken) {
-    _isReconnecting = true;
     socket.emit('rejoinGame', { token: sessionToken });
   }
 });
@@ -425,7 +421,4 @@ declare global {
 }
 window.joinGame = joinGame;
 window.toggleSound = toggleSound;
-
-// Prevent unused variable warning
-void _isReconnecting;
 
