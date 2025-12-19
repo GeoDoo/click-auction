@@ -2,7 +2,49 @@
 // CONFIGURATION
 // ============================================
 
-module.exports = {
+export interface Config {
+  PORT: number | string;
+  HOST: string;
+
+  // Player limits
+  MAX_PLAYERS: number;
+  MAX_CONNECTIONS_PER_IP: number;
+
+  // Session management
+  RECONNECT_GRACE_PERIOD_MS: number;
+  SESSION_CLEANUP_INTERVAL_MS: number;
+
+  // Host authentication
+  HOST_PIN: string | null;
+  HOST_AUTH_EXPIRY_MS: number;
+
+  // Input validation
+  MAX_NAME_LENGTH: number;
+  MAX_AD_CONTENT_LENGTH: number;
+  MIN_AUCTION_DURATION: number;
+  MAX_AUCTION_DURATION: number;
+  MIN_COUNTDOWN_DURATION: number;
+  MAX_COUNTDOWN_DURATION: number;
+
+  // Rate limiting
+  MAX_CLICKS_PER_SECOND: number;
+
+  // Memory cleanup
+  CLEANUP_INTERVAL_MS: number;
+  STALE_DATA_THRESHOLD_MS: number;
+
+  // Bot detection
+  MIN_HUMAN_CV: number;
+  MIN_CLICKS_FOR_ANALYSIS: number;
+
+  // Redis
+  REDIS_KEY: string;
+
+  // VIOOH-inspired DSP colors
+  DSP_COLORS: string[];
+}
+
+const config: Config = {
   PORT: process.env.PORT || 3000,
   HOST: '0.0.0.0', // Listen on all network interfaces
 
@@ -48,4 +90,6 @@ module.exports = {
     '#2ECC71', '#E91E63', '#00ACC1', '#AB47BC', '#26A69A',
   ],
 };
+
+export default config;
 

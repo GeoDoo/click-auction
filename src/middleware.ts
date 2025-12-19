@@ -3,21 +3,30 @@
  * @module middleware
  */
 
-// config can be used for future middleware options
+import { Request, Response, NextFunction } from 'express';
+import Logger from './logger';
+
+interface CacheControlOptions {
+  maxAge?: number;
+  immutable?: boolean;
+  noCache?: boolean;
+}
+
+interface CustomError extends Error {
+  status?: number;
+}
 
 /**
  * Add caching headers to static assets
- * @param {Object} options
- * @returns {Function} Express middleware
  */
-function cacheControl(options = {}) {
+export function cacheControl(options: CacheControlOptions = {}) {
   const {
     maxAge = 86400, // 1 day default
     immutable = false,
     noCache = false,
   } = options;
 
-  return (req, res, next) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     // Skip for HTML files (should not be cached aggressively)
     if (req.path.endsWith('.html') || req.path === '/') {
       res.setHeader('Cache-Control', 'no-cache, must-revalidate');
@@ -48,12 +57,9 @@ function cacheControl(options = {}) {
 
 /**
  * Request logging middleware
- * @returns {Function} Express middleware
  */
-function requestLogger() {
-  const Logger = require('./logger');
-
-  return (req, res, next) => {
+export function requestLogger() {
+  return (req: Request, res: Response, next: NextFunction): void => {
     const start = Date.now();
 
     res.on('finish', () => {
@@ -75,14 +81,13 @@ function requestLogger() {
 
 /**
  * Error handling middleware
- * @param {Error} err
- * @param {Object} req
- * @param {Object} res
- * @param {Function} _next
  */
-function errorHandler(err, req, res, _next) {
-  const Logger = require('./logger');
-
+export function errorHandler(
+  err: CustomError,
+  req: Request,
+  res: Response,
+  _next: NextFunction
+): void {
   Logger.error(`Express error: ${err.message}`, {
     stack: err.stack,
     path: req.path,
@@ -98,10 +103,8 @@ function errorHandler(err, req, res, _next) {
 
 /**
  * 404 handler
- * @param {Object} req
- * @param {Object} res
  */
-function notFoundHandler(req, res) {
+export function notFoundHandler(req: Request, res: Response): void {
   res.status(404).json({
     error: 'Not found',
     path: req.path,
@@ -110,23 +113,16 @@ function notFoundHandler(req, res) {
 
 /**
  * Security headers for WebSocket upgrade
- * @param {Object} req
- * @param {Object} res
- * @param {Function} next
  */
-function wsSecurityHeaders(req, res, next) {
+export function wsSecurityHeaders(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void {
   // Additional headers for WebSocket connections
   if (req.headers.upgrade === 'websocket') {
     res.setHeader('X-Content-Type-Options', 'nosniff');
   }
   next();
 }
-
-module.exports = {
-  cacheControl,
-  requestLogger,
-  errorHandler,
-  notFoundHandler,
-  wsSecurityHeaders,
-};
 

@@ -1,17 +1,65 @@
-require('dotenv').config();
+import 'dotenv/config';
 
-const express = require('express');
-const { Server } = require('socket.io');
-const http = require('http');
-const path = require('path');
-const helmet = require('helmet');
-const compression = require('compression');
-const cors = require('cors');
+import express, { Request, Response, NextFunction } from 'express';
+import { Server, Socket } from 'socket.io';
+import http from 'http';
+import path from 'path';
+import helmet from 'helmet';
+import compression from 'compression';
+import cors from 'cors';
+import os from 'os';
 
 // Import modules
-const { config, validation, session, auth, botDetection, persistence } = require('./src');
-const Logger = require('./src/logger');
-const middleware = require('./src/middleware');
+import config from './src/config';
+import * as validation from './src/validation';
+import * as session from './src/session';
+import * as auth from './src/auth';
+import * as botDetection from './src/botDetection';
+import * as persistence from './src/persistence';
+import Logger from './src/logger';
+import * as middleware from './src/middleware';
+
+// Extend Socket type to include custom properties
+interface CustomSocket extends Socket {
+  clientIP?: string;
+}
+
+// Player type
+interface Player {
+  name: string;
+  clicks: number;
+  color: string;
+  adContent: string;
+  suspicious?: boolean;
+  suspicionReason?: string | null;
+}
+
+// Leaderboard entry type
+interface LeaderboardEntry {
+  id: string;
+  name: string;
+  clicks: number;
+  color: string;
+  suspicious: boolean;
+}
+
+// Winner type
+interface Winner extends Player {
+  id: string;
+}
+
+// Game state type
+interface GameState {
+  status: 'waiting' | 'countdown' | 'bidding' | 'finished';
+  players: Record<string, Player>;
+  auctionDuration: number;
+  countdownDuration: number;
+  timeRemaining: number;
+  winner: Winner | null;
+  winnerAd: string | null;
+  round: number;
+  finalLeaderboard: LeaderboardEntry[];
+}
 
 const app = express();
 const server = http.createServer(app);
@@ -52,17 +100,18 @@ app.use(middleware.cacheControl({ maxAge: 3600 }));
 // ============================================
 // SOCKET CONNECTION LIMITING (per IP)
 // ============================================
-const connectionsByIP = {};
+const connectionsByIP: Record<string, number> = {};
 
-function getClientIP(socket) {
+function getClientIP(socket: CustomSocket): string {
   const forwarded = socket.handshake.headers['x-forwarded-for'];
   if (forwarded) {
-    return forwarded.split(',')[0].trim();
+    const forwardedStr = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+    return forwardedStr.split(',')[0].trim();
   }
   return socket.handshake.address;
 }
 
-io.use((socket, next) => {
+io.use((socket: CustomSocket, next) => {
   const ip = getClientIP(socket);
 
   if (!connectionsByIP[ip]) {
@@ -80,7 +129,7 @@ io.use((socket, next) => {
   next();
 });
 
-io.on('connection', (socket) => {
+io.on('connection', (socket: CustomSocket) => {
   socket.on('disconnect', () => {
     if (socket.clientIP && connectionsByIP[socket.clientIP]) {
       connectionsByIP[socket.clientIP]--;
@@ -94,7 +143,7 @@ io.on('connection', (socket) => {
 // ============================================
 // GAME STATE
 // ============================================
-const gameState = {
+const gameState: GameState = {
   status: 'waiting',
   players: {},
   auctionDuration: 10,
@@ -106,11 +155,11 @@ const gameState = {
   finalLeaderboard: [],
 };
 
-let countdownInterval = null;
-let biddingInterval = null;
+let countdownInterval: ReturnType<typeof setInterval> | null = null;
+let biddingInterval: ReturnType<typeof setInterval> | null = null;
 let colorIndex = 0;
 
-function clearAllIntervals() {
+function clearAllIntervals(): void {
   if (countdownInterval) {
     clearInterval(countdownInterval);
     countdownInterval = null;
@@ -121,13 +170,13 @@ function clearAllIntervals() {
   }
 }
 
-function getNextColor() {
+function getNextColor(): string {
   const color = config.DSP_COLORS[colorIndex % config.DSP_COLORS.length];
   colorIndex++;
   return color;
 }
 
-function resetGame() {
+function resetGame(): void {
   // Remove disconnected players (they stayed during active auction for leaderboard)
   const connectedSockets = new Set([...io.sockets.sockets.keys()]);
   Object.keys(gameState.players).forEach((id) => {
@@ -147,7 +196,7 @@ function resetGame() {
   gameState.finalLeaderboard = [];
 }
 
-function getLeaderboard() {
+function getLeaderboard(): LeaderboardEntry[] {
   return Object.entries(gameState.players)
     .map(([id, player]) => ({
       id,
@@ -159,7 +208,7 @@ function getLeaderboard() {
     .sort((a, b) => b.clicks - a.clicks);
 }
 
-function broadcastState() {
+function broadcastState(): void {
   const leaderboard = gameState.status === 'finished' && gameState.finalLeaderboard.length > 0
     ? gameState.finalLeaderboard
     : getLeaderboard();
@@ -179,18 +228,21 @@ function broadcastState() {
 // ============================================
 // UTILITY FUNCTIONS
 // ============================================
-function getLocalIP() {
-  const { networkInterfaces } = require('os');
-  const nets = networkInterfaces();
+function getLocalIP(): string | null {
+  const nets = os.networkInterfaces();
   for (const name of Object.keys(nets)) {
-    for (const net of nets[name]) {
+    const netList = nets[name];
+    if (!netList) continue;
+    for (const net of netList) {
       if (net.family === 'IPv4' && !net.internal && net.address.startsWith('192.168.')) {
         return net.address;
       }
     }
   }
   for (const name of Object.keys(nets)) {
-    for (const net of nets[name]) {
+    const netList = nets[name];
+    if (!netList) continue;
+    for (const net of netList) {
       if (net.family === 'IPv4' && !net.internal) {
         return net.address;
       }
@@ -203,7 +255,7 @@ function getLocalIP() {
 // ROUTES
 // ============================================
 
-app.get('/health', (_req, res) => {
+app.get('/health', (_req: Request, res: Response) => {
   res.json({
     status: 'healthy',
     uptime: process.uptime(),
@@ -213,12 +265,12 @@ app.get('/health', (_req, res) => {
   });
 });
 
-app.get('/api/config', (req, res) => {
-  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-  const host = req.headers['x-forwarded-host'] || req.headers.host;
-  const isLocal = host.includes('localhost') || host.match(/^127\./) || host.match(/^\d+\.\d+\.\d+\.\d+:\d+$/);
+app.get('/api/config', (req: Request, res: Response) => {
+  const protocol = (req.headers['x-forwarded-proto'] as string) || req.protocol || 'http';
+  const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || '';
+  const isLocal = host.includes('localhost') || /^127\./.test(host) || /^\d+\.\d+\.\d+\.\d+:\d+$/.test(host);
 
-  let baseUrl;
+  let baseUrl: string;
   if (isLocal) {
     const localIP = getLocalIP();
     const port = host.split(':')[1] || config.PORT;
@@ -230,59 +282,66 @@ app.get('/api/config', (req, res) => {
   res.json({ baseUrl, mode: isLocal ? 'local' : 'production' });
 });
 
-app.get('/', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'display.html'));
+// In compiled mode, __dirname is dist/, so we need to go up one level
+const publicDir = path.join(__dirname, '..', 'public');
+
+app.get('/', (_req: Request, res: Response) => {
+  res.sendFile(path.join(publicDir, 'display.html'));
 });
 
-app.get('/play', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'play.html'));
+app.get('/play', (_req: Request, res: Response) => {
+  res.sendFile(path.join(publicDir, 'play.html'));
 });
 
-app.get('/host', (req, res) => {
+app.get('/host', (req: Request, res: Response): void => {
   if (!config.HOST_PIN) {
-    return res.sendFile(path.join(__dirname, 'public', 'host.html'));
+    res.sendFile(path.join(publicDir, 'host.html'));
+    return;
   }
 
   const cookieHeader = req.headers.cookie || '';
-  const authToken = req.query.auth || cookieHeader.match(/hostAuth=([^;]+)/)?.[1];
+  const authToken = (req.query.auth as string) || cookieHeader.match(/hostAuth=([^;]+)/)?.[1];
 
   Logger.debug(`Host access attempt - cookie: "${cookieHeader.substring(0, 50)}...", token: ${authToken ? 'found' : 'missing'}`);
 
   if (auth.isValidHostAuthToken(authToken)) {
     Logger.debug('Host token valid, serving host.html');
-    return res.sendFile(path.join(__dirname, 'public', 'host.html'));
+    res.sendFile(path.join(publicDir, 'host.html'));
+    return;
   }
 
   Logger.debug('Host token invalid or missing, redirecting to login');
   res.redirect('/host-login');
 });
 
-app.get('/host-login', (_req, res) => {
+app.get('/host-login', (_req: Request, res: Response): void => {
   if (!config.HOST_PIN) {
-    return res.redirect('/host');
+    res.redirect('/host');
+    return;
   }
-  res.sendFile(path.join(__dirname, 'public', 'host-login.html'));
+  res.sendFile(path.join(publicDir, 'host-login.html'));
 });
 
 // JSON body parser MUST be before routes that use req.body
 app.use(express.json());
 
-app.post('/api/host/auth', (req, res) => {
+app.post('/api/host/auth', (req: Request, res: Response): void => {
   const { pin } = req.body;
   const result = auth.verifyPinAndCreateToken(pin);
 
   if (!result.success) {
-    Logger.security('Invalid host PIN attempt', req.ip);
-    return res.status(401).json(result);
+    Logger.security('Invalid host PIN attempt', req.ip || 'unknown');
+    res.status(401).json(result);
+    return;
   }
 
   Logger.info('Host authenticated');
   res.json(result);
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(publicDir));
 
-app.get('/api/stats', (_req, res) => {
+app.get('/api/stats', (_req: Request, res: Response) => {
   res.json({
     allTime: persistence.getAllTimeLeaderboard(),
     totalRounds: gameState.round,
@@ -295,13 +354,13 @@ app.get('/api/stats', (_req, res) => {
 // ============================================
 
 // Track authenticated host sockets
-const authenticatedHostSockets = new Set();
+const authenticatedHostSockets = new Set<string>();
 
-io.on('connection', (socket) => {
+io.on('connection', (socket: CustomSocket) => {
   Logger.debug(`Client connected: ${socket.id}`);
 
   // Host authentication via socket
-  socket.on('authenticateHost', (data) => {
+  socket.on('authenticateHost', (data: { token?: string }) => {
     const token = data && data.token;
     if (token && auth.isValidHostAuthToken(token)) {
       authenticatedHostSockets.add(socket.id);
@@ -313,7 +372,7 @@ io.on('connection', (socket) => {
   });
 
   // Helper to check if socket is authenticated host
-  const isAuthenticatedHost = () => authenticatedHostSockets.has(socket.id);
+  const isAuthenticatedHost = (): boolean => authenticatedHostSockets.has(socket.id);
 
   socket.emit('gameState', {
     status: gameState.status,
@@ -328,7 +387,7 @@ io.on('connection', (socket) => {
     allTimeLeaderboard: persistence.getAllTimeLeaderboard().slice(0, 20),
   });
 
-  socket.on('joinGame', (data) => {
+  socket.on('joinGame', (data: { name?: string; adContent?: string }) => {
     if (Object.keys(gameState.players).length >= config.MAX_PLAYERS) {
       socket.emit('joinError', { message: 'Game is full! Maximum players reached.' });
       return;
@@ -340,7 +399,7 @@ io.on('connection', (socket) => {
 
     const playerName = name || `DSP-${socket.id.substr(0, 4)}`;
 
-    const playerData = {
+    const playerData: Player = {
       name: playerName,
       clicks: 0,
       color: getNextColor(),
@@ -356,7 +415,7 @@ io.on('connection', (socket) => {
     broadcastState();
   });
 
-  socket.on('rejoinGame', (data) => {
+  socket.on('rejoinGame', (data: { token?: string }) => {
     const safeData = data && typeof data === 'object' ? data : {};
     const token = safeData.token;
 
@@ -383,7 +442,7 @@ io.on('connection', (socket) => {
     }
 
     // Reset clicks if rejoining in a different round (prevent carrying over old clicks)
-    if (sessionData.disconnectedRound !== undefined && sessionData.disconnectedRound !== gameState.round) {
+    if (sessionData.playerData.disconnectedRound !== undefined && sessionData.playerData.disconnectedRound !== gameState.round) {
       playerData.clicks = 0;
     }
 
@@ -427,7 +486,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('startAuction', (settings) => {
+  socket.on('startAuction', (settings?: { duration?: number; countdown?: number }) => {
     // Security: Only authenticated hosts can start auctions
     if (!isAuthenticatedHost()) {
       Logger.security('Unauthorized startAuction attempt', socket.id);
@@ -459,7 +518,7 @@ io.on('connection', (socket) => {
       broadcastState();
 
       if (gameState.timeRemaining <= 0) {
-        clearInterval(countdownInterval);
+        clearInterval(countdownInterval!);
         countdownInterval = null;
         startBidding();
       }
@@ -505,7 +564,7 @@ io.on('connection', (socket) => {
         const sessionData = session.getSessionByToken(token);
         if (sessionData) {
           sessionData.playerData = { ...gameState.players[socket.id] };
-          sessionData.disconnectedRound = gameState.round; // Track which round they disconnected in
+          sessionData.playerData.disconnectedRound = gameState.round; // Track which round they disconnected in
         }
         Logger.playerAction('disconnected (grace period)', playerName);
       } else {
@@ -526,7 +585,7 @@ io.on('connection', (socket) => {
 // GAME FLOW
 // ============================================
 
-function startBidding() {
+function startBidding(): void {
   gameState.status = 'bidding';
   gameState.timeRemaining = gameState.auctionDuration;
 
@@ -537,20 +596,20 @@ function startBidding() {
     broadcastState();
 
     if (gameState.timeRemaining <= 0) {
-      clearInterval(biddingInterval);
+      clearInterval(biddingInterval!);
       biddingInterval = null;
       endAuction();
     }
   }, 1000);
 }
 
-function endAuction() {
+function endAuction(): void {
   gameState.status = 'finished';
 
   const leaderboard = getLeaderboard();
   gameState.finalLeaderboard = leaderboard;
 
-  let winnerName = null;
+  let winnerName: string | null = null;
   if (leaderboard.length > 0 && leaderboard[0].clicks > 0) {
     const winnerId = leaderboard[0].id;
     gameState.winner = {
@@ -577,7 +636,7 @@ function endAuction() {
 // MEMORY CLEANUP
 // ============================================
 
-function cleanupStaleData() {
+function cleanupStaleData(): void {
   const activeSocketIds = new Set(Object.keys(gameState.players));
   let cleanedCount = 0;
 
@@ -607,20 +666,20 @@ const cleanupIntervalId = setInterval(cleanupStaleData, config.CLEANUP_INTERVAL_
 // ERROR HANDLING
 // ============================================
 
-app.use((err, _req, res, _next) => {
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   Logger.error('Express error:', err.message);
   res.status(500).json({ error: 'Internal server error' });
 });
 
-process.on('uncaughtException', (err) => {
+process.on('uncaughtException', (err: Error) => {
   Logger.error('Uncaught Exception:', err);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) => {
   Logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-io.engine.on('connection_error', (err) => {
+io.engine.on('connection_error', (err: Error) => {
   Logger.error('Socket.io connection error:', err.message);
 });
 
@@ -652,7 +711,7 @@ process.on('SIGINT', () => {
 
 // Load scores before starting server to prevent race conditions
 persistence.loadScores().then(() => {
-  server.listen(config.PORT, config.HOST, () => {
+  server.listen(Number(config.PORT), config.HOST, () => {
     const localIP = getLocalIP() || 'localhost';
     console.log(`
 ╔══════════════════════════════════════════════════════════════════╗
@@ -681,3 +740,7 @@ persistence.loadScores().then(() => {
     `);
   });
 });
+
+// Export for testing
+export { app, server, io, gameState };
+

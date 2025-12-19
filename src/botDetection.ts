@@ -4,15 +4,21 @@
 // Bots click at very consistent intervals (low variance)
 // Humans have natural variance in their click timing
 
-const config = require('./config');
+import config from './config';
 
-const clickIntervals = {}; // { socketId: [interval1, interval2, ...] }
-const lastClickTime = {}; // { socketId: timestamp }
+interface SuspiciousResult {
+  suspicious: boolean;
+  reason: string | null;
+  cv: number | null;
+}
+
+const clickIntervals: Record<string, number[]> = {};
+const lastClickTime: Record<string, number> = {};
 
 /**
  * Record a click interval for analysis
  */
-function recordClickInterval(socketId) {
+export function recordClickInterval(socketId: string): void {
   const now = Date.now();
 
   if (lastClickTime[socketId]) {
@@ -35,7 +41,7 @@ function recordClickInterval(socketId) {
 /**
  * Calculate coefficient of variation
  */
-function calculateCV(intervals) {
+export function calculateCV(intervals: number[]): number | null {
   if (intervals.length < config.MIN_CLICKS_FOR_ANALYSIS) {
     return null;
   }
@@ -53,7 +59,7 @@ function calculateCV(intervals) {
 /**
  * Check if a player's click pattern is suspicious
  */
-function isSuspiciousClicker(socketId) {
+export function isSuspiciousClicker(socketId: string): SuspiciousResult {
   const intervals = clickIntervals[socketId];
   if (!intervals || intervals.length < config.MIN_CLICKS_FOR_ANALYSIS) {
     return { suspicious: false, reason: null, cv: null };
@@ -78,7 +84,7 @@ function isSuspiciousClicker(socketId) {
 /**
  * Reset bot detection data for a socket
  */
-function resetBotDetectionData(socketId) {
+export function resetBotDetectionData(socketId: string): void {
   delete clickIntervals[socketId];
   delete lastClickTime[socketId];
 }
@@ -86,7 +92,7 @@ function resetBotDetectionData(socketId) {
 /**
  * Cleanup bot detection data for inactive sockets
  */
-function cleanupBotDetectionData(activeSocketIds) {
+export function cleanupBotDetectionData(activeSocketIds: Set<string>): number {
   let cleaned = 0;
 
   for (const socketId of Object.keys(clickIntervals)) {
@@ -109,16 +115,7 @@ function cleanupBotDetectionData(activeSocketIds) {
 /**
  * Get all data (for testing)
  */
-function getAllData() {
+export function getAllData(): { clickIntervals: Record<string, number[]>; lastClickTime: Record<string, number> } {
   return { clickIntervals, lastClickTime };
 }
-
-module.exports = {
-  recordClickInterval,
-  calculateCV,
-  isSuspiciousClicker,
-  resetBotDetectionData,
-  cleanupBotDetectionData,
-  getAllData,
-};
 

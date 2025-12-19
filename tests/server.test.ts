@@ -14,11 +14,35 @@
  * We wait for actual socket events or state changes, not setTimeout.
  */
 
-const { createServer } = require('http');
-const { Server } = require('socket.io');
-const Client = require('socket.io-client');
-const fs = require('fs');
-const path = require('path');
+import { createServer, Server as HttpServer } from 'http';
+import { AddressInfo } from 'net';
+import { Server } from 'socket.io';
+import { io as Client, Socket as ClientSocket } from 'socket.io-client';
+import fs from 'fs';
+import path from 'path';
+
+// Type for game state
+interface GameState {
+  status: 'waiting' | 'countdown' | 'bidding' | 'finished';
+  timeRemaining: number;
+  leaderboard: Array<{
+    id: string;
+    name: string;
+    clicks: number;
+    color: string;
+    suspicious?: boolean;
+  }>;
+  winner: { name: string; id: string } | null;
+  winnerAd: string | null;
+  round: number;
+  playerCount: number;
+  allTimeLeaderboard: Array<{
+    name: string;
+    wins: number;
+    totalClicks: number;
+    bestRound: number;
+  }>;
+}
 
 // Test configuration - use 0 to let OS assign available port
 const TEST_SCORES_FILE = path.join(__dirname, 'test-scores.json');
@@ -33,12 +57,12 @@ jest.setTimeout(30000);
 /**
  * Wait for a specific socket event
  */
-const waitFor = (socket, event, timeout = 5000) => {
+const waitFor = <T = unknown>(socket: ClientSocket, event: string, timeout = 5000): Promise<T> => {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error(`Timeout waiting for event: ${event}`));
     }, timeout);
-    socket.once(event, (data) => {
+    socket.once(event, (data: T) => {
       clearTimeout(timer);
       resolve(data);
     });
@@ -48,14 +72,14 @@ const waitFor = (socket, event, timeout = 5000) => {
 /**
  * Wait for gameState with specific status
  */
-const waitForStatus = (socket, targetStatus, timeout = 10000) => {
+const waitForStatus = (socket: ClientSocket, targetStatus: GameState['status'], timeout = 10000): Promise<GameState> => {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       socket.off('gameState', handler);
       reject(new Error(`Timeout waiting for status: ${targetStatus}`));
     }, timeout);
 
-    const handler = (state) => {
+    const handler = (state: GameState) => {
       if (state.status === targetStatus) {
         clearTimeout(timer);
         socket.off('gameState', handler);
@@ -70,14 +94,14 @@ const waitForStatus = (socket, targetStatus, timeout = 10000) => {
 /**
  * Wait for gameState matching a condition
  */
-const waitForCondition = (socket, conditionFn, timeout = 5000) => {
+const waitForCondition = (socket: ClientSocket, conditionFn: (state: GameState) => boolean, timeout = 5000): Promise<GameState> => {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       socket.off('gameState', handler);
       reject(new Error('Timeout waiting for condition'));
     }, timeout);
 
-    const handler = (state) => {
+    const handler = (state: GameState) => {
       if (conditionFn(state)) {
         clearTimeout(timer);
         socket.off('gameState', handler);
@@ -92,7 +116,7 @@ const waitForCondition = (socket, conditionFn, timeout = 5000) => {
 /**
  * Wait for player count to reach a specific number
  */
-const waitForPlayerCount = (socket, count, timeout = 5000) => {
+const waitForPlayerCount = (socket: ClientSocket, count: number, timeout = 5000): Promise<GameState> => {
   return waitForCondition(socket, (state) => state.playerCount === count, timeout);
 };
 
@@ -100,20 +124,75 @@ const waitForPlayerCount = (socket, count, timeout = 5000) => {
  * Emit and wait for acknowledgment via gameState update
  * This replaces arbitrary delays after emit
  */
-const emitAndWait = async (socket, event, data, waitCondition, timeout = 5000) => {
+const emitAndWait = async (socket: ClientSocket, event: string, data: unknown, waitCondition: (state: GameState) => boolean, timeout = 5000): Promise<GameState> => {
   const promise = waitForCondition(socket, waitCondition, timeout);
   socket.emit(event, data);
   return promise;
 };
 
+// Additional response types
+interface SessionCreatedResponse {
+  token: string;
+}
+
+interface RejoinSuccessResponse {
+  token: string;
+  playerData: {
+    name: string;
+    clicks: number;
+    color: string;
+  };
+}
+
+interface ErrorResponse {
+  message: string;
+}
+
+interface ClickUpdateResponse {
+  playerId: string;
+  playerName: string;
+  clicks: number;
+  color: string;
+  suspicious: boolean;
+}
+
+// Test server state type
+interface TestGameState {
+  status: 'waiting' | 'countdown' | 'bidding' | 'finished';
+  players: Record<string, {
+    name: string;
+    clicks: number;
+    color: string;
+    adContent: string;
+    suspicious?: boolean;
+    suspicionReason?: string | null;
+  }>;
+  auctionDuration: number;
+  countdownDuration: number;
+  timeRemaining: number;
+  winner: { name: string; id: string; color: string; clicks: number } | null;
+  winnerAd: string | null;
+  round: number;
+  finalLeaderboard: Array<{
+    id: string;
+    name: string;
+    clicks: number;
+    color: string;
+    suspicious: boolean;
+  }>;
+}
+
 describe('Click Auction Server', () => {
-  let io, httpServer, serverUrl;
-  let gameState, allTimeStats;
-  let connectedClients = [];
+  let io: Server;
+  let httpServer: HttpServer;
+  let serverUrl: string;
+  let gameState: TestGameState;
+  let allTimeStats: Record<string, { wins: number; totalClicks: number; roundsPlayed: number; bestRound: number; lastPlayed: string | null }>;
+  let connectedClients: ClientSocket[] = [];
 
   // Store interval references
-  let countdownInterval = null;
-  let biddingInterval = null;
+  let countdownInterval: ReturnType<typeof setInterval> | null = null;
+  let biddingInterval: ReturnType<typeof setInterval> | null = null;
 
   // Game logic functions (extracted for testing)
   const DSP_COLORS = [
@@ -157,13 +236,14 @@ describe('Click Auction Server', () => {
     colorIndex = 0;
   };
 
-  const getLeaderboard = () => {
+  const getLeaderboard = (): Array<{ id: string; name: string; clicks: number; color: string; suspicious: boolean }> => {
     return Object.entries(gameState.players)
       .map(([id, player]) => ({
         id,
         name: player.name,
         clicks: player.clicks,
         color: player.color,
+        suspicious: player.suspicious || false,
       }))
       .sort((a, b) => b.clicks - a.clicks);
   };
@@ -174,7 +254,7 @@ describe('Click Auction Server', () => {
       .sort((a, b) => b.wins - a.wins || b.totalClicks - a.totalClicks);
   };
 
-  const updatePlayerStats = (name, clicks, isWinner) => {
+  const updatePlayerStats = (name: string, clicks: number, isWinner: boolean): void => {
     if (!allTimeStats[name]) {
       allTimeStats[name] = {
         wins: 0,
@@ -220,7 +300,7 @@ describe('Click Auction Server', () => {
       broadcastState();
 
       if (gameState.timeRemaining <= 0) {
-        clearInterval(biddingInterval);
+        if (biddingInterval) clearInterval(biddingInterval);
         biddingInterval = null;
         endAuction();
       }
@@ -260,7 +340,7 @@ describe('Click Auction Server', () => {
   };
 
   // Helper to close all tracked clients
-  const closeAllClients = () => {
+  const closeAllClients = (): void => {
     connectedClients.forEach(client => {
       if (client.connected) {
         client.close();
@@ -270,12 +350,32 @@ describe('Click Auction Server', () => {
   };
 
   // Helper to safely close a specific client
-  const closeClient = (client) => {
+  const closeClient = (client: ClientSocket): void => {
     connectedClients = connectedClients.filter(c => c !== client);
     if (client.connected) {
       client.close();
     }
   };
+
+  /**
+   * Type guard to ensure socket ID is defined
+   */
+  function assertSocketId(socket: ClientSocket): asserts socket is ClientSocket & { id: string } {
+    if (typeof socket.id !== 'string') {
+      throw new Error('Socket ID is not defined - socket may not be connected');
+    }
+  }
+
+  /**
+   * Get player from game state with proper type narrowing
+   */
+  function getPlayer(socketId: string): TestGameState['players'][string] {
+    const player = gameState.players[socketId];
+    if (!player) {
+      throw new Error(`Player with socket ID ${socketId} not found in game state`);
+    }
+    return player;
+  }
 
   beforeAll((done) => {
     // Clean up test scores file
@@ -292,14 +392,19 @@ describe('Click Auction Server', () => {
     allTimeStats = {};
 
     // Session management for reconnection
-    const playerSessions = {};
-    const socketToSession = {};
+    interface TestSession {
+      playerId: string | null;
+      playerData: TestGameState['players'][string];
+      disconnectedAt: number | null;
+    }
+    const playerSessions: Record<string, TestSession> = {};
+    const socketToSession: Record<string, string> = {};
 
-    function generateSessionToken() {
+    function generateSessionToken(): string {
       return 'sess_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
     }
 
-    function createSession(socketId, playerData) {
+    function createSession(socketId: string, playerData: TestGameState['players'][string]): string {
       const token = generateSessionToken();
       playerSessions[token] = {
         playerId: socketId,
@@ -310,7 +415,7 @@ describe('Click Auction Server', () => {
       return token;
     }
 
-    function markSessionDisconnected(socketId) {
+    function markSessionDisconnected(socketId: string): string | null {
       const token = socketToSession[socketId];
       if (!token || !playerSessions[token]) return null;
 
@@ -325,7 +430,7 @@ describe('Click Auction Server', () => {
       return token;
     }
 
-    function restoreSession(token, newSocketId) {
+    function restoreSession(token: string, newSocketId: string): TestGameState['players'][string] | null {
       const session = playerSessions[token];
       if (!session) return null;
 
@@ -349,9 +454,9 @@ describe('Click Auction Server', () => {
         allTimeLeaderboard: getAllTimeLeaderboard().slice(0, 20),
       });
 
-      socket.on('joinGame', (data) => {
+      socket.on('joinGame', (data: { name?: string; adContent?: string } | null) => {
         const { name, adContent } = data || {};
-        const playerData = {
+        const playerData: TestGameState['players'][string] = {
           name: name || `DSP-${socket.id.substr(0, 4)}`,
           clicks: 0,
           color: getNextColor(),
@@ -366,7 +471,7 @@ describe('Click Auction Server', () => {
         broadcastState();
       });
 
-      socket.on('rejoinGame', (data) => {
+      socket.on('rejoinGame', (data: { token?: string } | null) => {
         const safeData = data && typeof data === 'object' ? data : {};
         const token = safeData.token;
 
@@ -416,7 +521,7 @@ describe('Click Auction Server', () => {
         }
       });
 
-      socket.on('startAuction', (settings) => {
+      socket.on('startAuction', (settings?: { duration?: number }) => {
         // Clear any existing intervals first (prevents multiple timers)
         clearAllIntervals();
 
@@ -444,7 +549,7 @@ describe('Click Auction Server', () => {
           broadcastState();
 
           if (gameState.timeRemaining <= 0) {
-            clearInterval(countdownInterval);
+            if (countdownInterval) clearInterval(countdownInterval);
             countdownInterval = null;
             startBidding();
           }
@@ -482,7 +587,9 @@ describe('Click Auction Server', () => {
     // Listen on port 0 to get random available port
     httpServer.listen(0, () => {
       const address = httpServer.address();
-      serverUrl = `http://localhost:${address.port}`;
+      if (address && typeof address !== 'string') {
+        serverUrl = `http://localhost:${address.port}`;
+      }
       done();
     });
   });
@@ -683,8 +790,8 @@ describe('Click Auction Server', () => {
 
       await emitAndWait(player, 'joinGame', { name: 'Bidder' }, (s) => s.playerCount === 1);
 
-      const statuses = [];
-      player.on('gameState', (state) => {
+      const statuses: GameState['status'][] = [];
+      player.on('gameState', (state: GameState) => {
         if (!statuses.includes(state.status)) {
           statuses.push(state.status);
         }
@@ -725,10 +832,13 @@ describe('Click Auction Server', () => {
 
       await emitAndWait(player, 'joinGame', { name: 'Clicker' }, (s) => s.playerCount === 1);
 
+      // After connect, socket ID is guaranteed to exist
+      assertSocketId(player);
+
       // Click during waiting - should not count (check gameState directly, it's synchronous)
       player.emit('click');
       player.emit('click');
-      expect(gameState.players[player.id]?.clicks || 0).toBe(0);
+      expect(getPlayer(player.id).clicks).toBe(0);
 
       host.emit('startAuction', { duration: 2 });
 
@@ -737,25 +847,25 @@ describe('Click Auction Server', () => {
       player.emit('click');
       player.emit('click');
       // Clicks during countdown shouldn't register
-      expect(gameState.players[player.id].clicks).toBe(0);
+      expect(getPlayer(player.id).clicks).toBe(0);
 
       // Wait for bidding, then click - should count
       await waitForStatus(player, 'bidding', 3000);
 
       // Click and wait for clickUpdate event to confirm it was processed
-      const clickPromise1 = waitFor(player, 'clickUpdate');
+      const clickPromise1 = waitFor<ClickUpdateResponse>(player, 'clickUpdate');
       player.emit('click');
       await clickPromise1;
 
-      const clickPromise2 = waitFor(player, 'clickUpdate');
+      const clickPromise2 = waitFor<ClickUpdateResponse>(player, 'clickUpdate');
       player.emit('click');
       await clickPromise2;
 
-      const clickPromise3 = waitFor(player, 'clickUpdate');
+      const clickPromise3 = waitFor<ClickUpdateResponse>(player, 'clickUpdate');
       player.emit('click');
       await clickPromise3;
 
-      expect(gameState.players[player.id].clicks).toBe(3);
+      expect(getPlayer(player.id).clicks).toBe(3);
 
       // Wait for finish
       await waitForStatus(player, 'finished', 5000);
@@ -793,12 +903,13 @@ describe('Click Auction Server', () => {
       await waitFor(player, 'connect');
 
       await emitAndWait(player, 'joinGame', { name: 'Resetter' }, (s) => s.playerCount === 1);
+      assertSocketId(player);
 
       host.emit('startAuction', { duration: 3 });
       await waitForStatus(host, 'bidding', 5000);
 
       // Click and wait for confirmation
-      const clickPromise = waitFor(player, 'clickUpdate');
+      const clickPromise = waitFor<ClickUpdateResponse>(player, 'clickUpdate');
       player.emit('click');
       await clickPromise;
 
@@ -809,7 +920,7 @@ describe('Click Auction Server', () => {
       expect(state.status).toBe('waiting');
       expect(state.winner).toBeNull();
       expect(state.timeRemaining).toBe(0);
-      expect(gameState.players[player.id].clicks).toBe(0);
+      expect(getPlayer(player.id).clicks).toBe(0);
     });
   });
 
@@ -932,8 +1043,8 @@ describe('Click Auction Server', () => {
 
       host.emit('startAuction', { duration: 2 });
 
-      const times = [];
-      const handler = (state) => {
+      const times: number[] = [];
+      const handler = (state: GameState): void => {
         if (state.status === 'bidding') {
           times.push(state.timeRemaining);
         }
@@ -984,7 +1095,10 @@ describe('Click Auction Server', () => {
 
       await waitForStatus(fast, 'finished', 5000);
 
-      expect(gameState.winner.name).toBe('FastClicker');
+      expect(gameState.winner).not.toBeNull();
+      if (gameState.winner) {
+        expect(gameState.winner.name).toBe('FastClicker');
+      }
       expect(gameState.winnerAd).toBe('I win!');
     });
 
@@ -1052,7 +1166,9 @@ describe('Click Auction Server', () => {
 
       // Winner should be one of them (deterministic based on sort order)
       expect(gameState.winner).not.toBeNull();
-      expect(['TiePlayer1', 'TiePlayer2']).toContain(gameState.winner.name);
+      if (gameState.winner) {
+        expect(['TiePlayer1', 'TiePlayer2']).toContain(gameState.winner.name);
+      }
     });
 
     test('final leaderboard preserved after winner disconnects', async () => {
@@ -1091,7 +1207,10 @@ describe('Click Auction Server', () => {
       // Final leaderboard should still show winner
       expect(gameState.finalLeaderboard.length).toBe(2);
       expect(gameState.finalLeaderboard[0].name).toBe('Winner');
-      expect(gameState.winner.name).toBe('Winner');
+      expect(gameState.winner).not.toBeNull();
+      if (gameState.winner) {
+        expect(gameState.winner.name).toBe('Winner');
+      }
     });
   });
 
@@ -1104,7 +1223,7 @@ describe('Click Auction Server', () => {
       const player = createClient();
       await waitFor(player, 'connect');
 
-      const sessionPromise = waitFor(player, 'sessionCreated');
+      const sessionPromise = waitFor<SessionCreatedResponse>(player, 'sessionCreated');
       player.emit('joinGame', { name: 'SessionPlayer' });
 
       const sessionData = await sessionPromise;
@@ -1118,7 +1237,7 @@ describe('Click Auction Server', () => {
       await waitFor(player, 'connect');
 
       // Join and get session token
-      const sessionPromise = waitFor(player, 'sessionCreated');
+      const sessionPromise = waitFor<SessionCreatedResponse>(player, 'sessionCreated');
       await emitAndWait(player, 'joinGame', { name: 'RejoinerTest' }, (s) => s.playerCount === 1);
       const sessionData = await sessionPromise;
       const token = sessionData.token;
@@ -1131,7 +1250,7 @@ describe('Click Auction Server', () => {
       const player2 = createClient();
       await waitFor(player2, 'connect');
 
-      const rejoinPromise = waitFor(player2, 'rejoinSuccess');
+      const rejoinPromise = waitFor<RejoinSuccessResponse>(player2, 'rejoinSuccess');
       player2.emit('rejoinGame', { token });
 
       const rejoinData = await rejoinPromise;
@@ -1141,45 +1260,46 @@ describe('Click Auction Server', () => {
     });
 
     test('click count preserved during reconnection', async () => {
+      // Test the full reconnection flow through socket events
       const host = createClient();
       const player = createClient();
 
       await waitFor(host, 'connect');
       await waitFor(player, 'connect');
 
-      // Join and get session token
-      const sessionPromise = waitFor(player, 'sessionCreated');
-      await emitAndWait(player, 'joinGame', { name: 'ClickPreserver' }, (s) => s.playerCount === 1);
+      // Join and capture session token
+      const sessionPromise = waitFor<SessionCreatedResponse>(player, 'sessionCreated');
+      player.emit('joinGame', { name: 'ClickPreserver' });
       const sessionData = await sessionPromise;
       const token = sessionData.token;
 
+      // Wait for join confirmation
+      await waitForCondition(host, (s) => s.playerCount === 1);
+
       // Start auction
-      host.emit('startAuction', { duration: 5 });
+      host.emit('startAuction', { duration: 10 });
       await waitForStatus(player, 'bidding', 3000);
 
-      // Make some clicks
+      // Make clicks and verify each one
       for (let i = 0; i < 5; i++) {
-        const clickPromise = waitFor(player, 'clickUpdate');
+        const clickPromise = waitFor<ClickUpdateResponse>(player, 'clickUpdate');
         player.emit('click');
-        await clickPromise;
+        const update = await clickPromise;
+        expect(update.clicks).toBe(i + 1);
       }
 
-      // Verify clicks are recorded
-      const state = await waitFor(player, 'gameState');
-      const playerEntry = state.leaderboard.find(p => p.name === 'ClickPreserver');
-      expect(playerEntry.clicks).toBe(5);
+      // Close player socket (not using closeClient to avoid cleanup issues)
+      player.disconnect();
+      
+      // Wait for server to process disconnect
+      await waitForCondition(host, (s) => s.playerCount === 0);
 
-      // Disconnect
-      closeClient(player);
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Reconnect with new socket
+      // Create new socket and rejoin
       const player2 = createClient();
       await waitFor(player2, 'connect');
 
-      const rejoinPromise = waitFor(player2, 'rejoinSuccess');
+      const rejoinPromise = waitFor<RejoinSuccessResponse>(player2, 'rejoinSuccess');
       player2.emit('rejoinGame', { token });
-
       const rejoinData = await rejoinPromise;
 
       // Clicks should be preserved
@@ -1191,7 +1311,7 @@ describe('Click Auction Server', () => {
       const player = createClient();
       await waitFor(player, 'connect');
 
-      const errorPromise = waitFor(player, 'rejoinError');
+      const errorPromise = waitFor<ErrorResponse>(player, 'rejoinError');
       player.emit('rejoinGame', { token: 'sess_invalid_token_12345' });
 
       const errorData = await errorPromise;
@@ -1203,7 +1323,7 @@ describe('Click Auction Server', () => {
       const player = createClient();
       await waitFor(player, 'connect');
 
-      const errorPromise = waitFor(player, 'rejoinError');
+      const errorPromise = waitFor<ErrorResponse>(player, 'rejoinError');
       player.emit('rejoinGame', {});
 
       const errorData = await errorPromise;
@@ -1215,7 +1335,7 @@ describe('Click Auction Server', () => {
       const player = createClient();
       await waitFor(player, 'connect');
 
-      const errorPromise = waitFor(player, 'rejoinError');
+      const errorPromise = waitFor<ErrorResponse>(player, 'rejoinError');
       player.emit('rejoinGame', null);
 
       const errorData = await errorPromise;
@@ -1229,7 +1349,7 @@ describe('Click Auction Server', () => {
       await waitFor(player, 'connect');
 
       // Join and get session token
-      const sessionPromise = waitFor(player, 'sessionCreated');
+      const sessionPromise = waitFor<SessionCreatedResponse>(player, 'sessionCreated');
       await emitAndWait(player, 'joinGame', { name: 'LeaderboardRejoiner' }, (s) => s.playerCount === 1);
       const sessionData = await sessionPromise;
       const token = sessionData.token;
@@ -1247,7 +1367,7 @@ describe('Click Auction Server', () => {
       const player2 = createClient();
       await waitFor(player2, 'connect');
 
-      const rejoinPromise = waitFor(player2, 'rejoinSuccess');
+      const rejoinPromise = waitFor<RejoinSuccessResponse>(player2, 'rejoinSuccess');
       player2.emit('rejoinGame', { token });
       const rejoinData = await rejoinPromise;
 
@@ -1268,7 +1388,7 @@ describe('Click Auction Server', () => {
       await waitFor(player, 'connect');
 
       // Join and get session token
-      const sessionPromise = waitFor(player, 'sessionCreated');
+      const sessionPromise = waitFor<SessionCreatedResponse>(player, 'sessionCreated');
       await emitAndWait(player, 'joinGame', { name: 'ClickContinuer' }, (s) => s.playerCount === 1);
       const sessionData = await sessionPromise;
       const token = sessionData.token;
@@ -1279,7 +1399,7 @@ describe('Click Auction Server', () => {
 
       // Make 3 clicks
       for (let i = 0; i < 3; i++) {
-        const clickPromise = waitFor(player, 'clickUpdate');
+        const clickPromise = waitFor<ClickUpdateResponse>(player, 'clickUpdate');
         player.emit('click');
         await clickPromise;
       }
@@ -1292,21 +1412,21 @@ describe('Click Auction Server', () => {
       const player2 = createClient();
       await waitFor(player2, 'connect');
 
-      const rejoinPromise = waitFor(player2, 'rejoinSuccess');
+      const rejoinPromise = waitFor<RejoinSuccessResponse>(player2, 'rejoinSuccess');
       player2.emit('rejoinGame', { token });
       await rejoinPromise;
 
       // Continue clicking - should add to existing count
       for (let i = 0; i < 2; i++) {
-        const clickPromise = waitFor(player2, 'clickUpdate');
+        const clickPromise = waitFor<ClickUpdateResponse>(player2, 'clickUpdate');
         player2.emit('click');
         await clickPromise;
       }
 
       // Should now have 5 total clicks
-      const state = await waitFor(player2, 'gameState');
+      const state = await waitFor<GameState>(player2, 'gameState');
       const playerEntry = state.leaderboard.find(p => p.name === 'ClickContinuer');
-      expect(playerEntry.clicks).toBe(5);
+      expect(playerEntry?.clicks).toBe(5);
     });
   });
 
@@ -1314,12 +1434,31 @@ describe('Click Auction Server', () => {
   // LEADERBOARD TESTS (Pure Unit Tests - No Network)
   // ==========================================
 
+  // Factory to create mock player data
+  const createMockPlayer = (overrides: Partial<TestGameState['players'][string]> = {}): TestGameState['players'][string] => ({
+    name: 'Player',
+    clicks: 0,
+    color: '#fff',
+    adContent: 'Test ad',
+    ...overrides,
+  });
+
+  // Factory to create mock all-time stats
+  const createMockStats = (overrides: Partial<typeof allTimeStats[string]> = {}): typeof allTimeStats[string] => ({
+    wins: 0,
+    totalClicks: 0,
+    roundsPlayed: 1,
+    bestRound: 0,
+    lastPlayed: new Date().toISOString(),
+    ...overrides,
+  });
+
   describe('Leaderboard', () => {
     test('leaderboard sorts by clicks descending', () => {
       gameState.players = {
-        'id1': { name: 'Low', clicks: 10, color: '#fff' },
-        'id2': { name: 'High', clicks: 50, color: '#fff' },
-        'id3': { name: 'Mid', clicks: 30, color: '#fff' },
+        'id1': createMockPlayer({ name: 'Low', clicks: 10 }),
+        'id2': createMockPlayer({ name: 'High', clicks: 50 }),
+        'id3': createMockPlayer({ name: 'Mid', clicks: 30 }),
       };
 
       const leaderboard = getLeaderboard();
@@ -1331,9 +1470,9 @@ describe('Click Auction Server', () => {
 
     test('all-time leaderboard sorts by wins then clicks', () => {
       allTimeStats = {
-        'ManyWins': { wins: 5, totalClicks: 50 },
-        'FewWinsManyClicks': { wins: 2, totalClicks: 200 },
-        'FewWinsFewClicks': { wins: 2, totalClicks: 100 },
+        'ManyWins': createMockStats({ wins: 5, totalClicks: 50 }),
+        'FewWinsManyClicks': createMockStats({ wins: 2, totalClicks: 200 }),
+        'FewWinsFewClicks': createMockStats({ wins: 2, totalClicks: 100 }),
       };
 
       const leaderboard = getAllTimeLeaderboard();
@@ -1405,8 +1544,8 @@ describe('Click Auction Server', () => {
       await waitFor(host, 'connect');
 
       allTimeStats = {
-        'Player1': { wins: 5, totalClicks: 100 },
-        'Player2': { wins: 3, totalClicks: 50 },
+        'Player1': createMockStats({ wins: 5, totalClicks: 100 }),
+        'Player2': createMockStats({ wins: 3, totalClicks: 50 }),
       };
 
       // Wait for gameState update after reset
@@ -1503,13 +1642,14 @@ describe('Click Auction Server', () => {
       // Rapid fire clicks and count how many register
       const clickCount = 50;
       for (let i = 0; i < clickCount; i++) {
-        const p = waitFor(clicker, 'clickUpdate');
+        const p = waitFor<ClickUpdateResponse>(clicker, 'clickUpdate');
         clicker.emit('click');
         await p;
       }
 
       // All clicks should be registered since we waited for each
-      expect(gameState.players[clicker.id].clicks).toBe(clickCount);
+      assertSocketId(clicker);
+      expect(getPlayer(clicker.id).clicks).toBe(clickCount);
 
       await waitForStatus(host, 'finished', 5000);
     });
@@ -1621,7 +1761,10 @@ describe('Click Auction Server', () => {
 
       await waitForStatus(solo, 'finished', 5000);
 
-      expect(gameState.winner.name).toBe('SoloPlayer');
+      expect(gameState.winner).not.toBeNull();
+      if (gameState.winner) {
+        expect(gameState.winner.name).toBe('SoloPlayer');
+      }
       expect(gameState.finalLeaderboard.length).toBe(1);
     });
   });
@@ -1632,8 +1775,8 @@ describe('Click Auction Server', () => {
 
   describe('State Broadcasting', () => {
     test('all clients receive state updates', async () => {
-      const clients = [];
-      const statePromises = [];
+      const clients: ClientSocket[] = [];
+      const statePromises: Promise<GameState>[] = [];
 
       for (let i = 0; i < 3; i++) {
         const client = createClient();
@@ -1643,7 +1786,7 @@ describe('Click Auction Server', () => {
 
       // Set up listeners for next gameState on each client
       clients.forEach(client => {
-        statePromises.push(waitFor(client, 'gameState'));
+        statePromises.push(waitFor<GameState>(client, 'gameState'));
       });
 
       // Trigger a broadcast by having client 0 join
@@ -1667,7 +1810,7 @@ describe('Click Auction Server', () => {
       await emitAndWait(clicker, 'joinGame', { name: 'Clicker' }, (s) => s.playerCount === 1);
 
       // Set up observer to listen for clickUpdate
-      const clickUpdatePromise = waitFor(observer, 'clickUpdate', 3000);
+      const clickUpdatePromise = waitFor<ClickUpdateResponse>(observer, 'clickUpdate', 3000);
 
       host.emit('startAuction', { duration: 2 });
       await waitForStatus(clicker, 'bidding', 3000);
@@ -1776,13 +1919,13 @@ describe('File Corruption Handling', () => {
 
   test('handles array instead of object', () => {
     const arrayData = '["not", "an", "object"]';
-    let allTimeStats = { existing: true };
+    let allTimeStats: Record<string, unknown> = { existing: true };
     let rejected = false;
 
     try {
-      const parsed = JSON.parse(arrayData);
+      const parsed = JSON.parse(arrayData) as unknown;
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        allTimeStats = parsed;
+        allTimeStats = parsed as Record<string, unknown>;
       } else {
         throw new Error('Invalid scores format');
       }
@@ -1796,14 +1939,15 @@ describe('File Corruption Handling', () => {
   });
 
   test('accepts valid scores object', () => {
+    interface StatsEntry { wins: number; totalClicks: number }
     const validData = '{"Player1": {"wins": 5, "totalClicks": 100}}';
-    let allTimeStats = {};
+    let allTimeStats: Record<string, StatsEntry> = {};
     let accepted = false;
 
     try {
-      const parsed = JSON.parse(validData);
+      const parsed = JSON.parse(validData) as unknown;
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        allTimeStats = parsed;
+        allTimeStats = parsed as Record<string, StatsEntry>;
         accepted = true;
       } else {
         throw new Error('Invalid scores format');
@@ -1814,7 +1958,7 @@ describe('File Corruption Handling', () => {
 
     expect(accepted).toBe(true);
     expect(allTimeStats).toHaveProperty('Player1');
-    expect(allTimeStats.Player1.wins).toBe(5);
+    expect(allTimeStats['Player1'].wins).toBe(5);
   });
 
   test('handles null parsed value', () => {
@@ -1841,50 +1985,56 @@ describe('File Corruption Handling', () => {
 
 describe('HTTP Endpoints', () => {
   // Unit tests for endpoint logic (mocked requests)
+  
+  // Mock request type
+  interface MockRequest {
+    headers: Record<string, string>;
+    protocol: string;
+  }
 
   describe('/api/config', () => {
     test('returns baseUrl and mode for localhost', async () => {
       // This is a unit test of the logic
-      const mockReq = {
+      const mockReq: MockRequest = {
         headers: { host: 'localhost:3000' },
         protocol: 'http',
       };
 
       const protocol = mockReq.headers['x-forwarded-proto'] || mockReq.protocol || 'http';
-      const host = mockReq.headers['x-forwarded-host'] || mockReq.headers.host;
+      const host = mockReq.headers['x-forwarded-host'] || mockReq.headers['host'];
       const baseUrl = `${protocol}://${host}`;
-      const mode = host.includes('localhost') || host.match(/^\d+\.\d+\.\d+\.\d+/) ? 'local' : 'production';
+      const mode = host.includes('localhost') || /^\d+\.\d+\.\d+\.\d+/.test(host) ? 'local' : 'production';
 
       expect(baseUrl).toBe('http://localhost:3000');
       expect(mode).toBe('local');
     });
 
     test('returns production mode for domain', async () => {
-      const mockReq = {
+      const mockReq: MockRequest = {
         headers: {
-          host: 'click-auction.onrender.com',
+          'host': 'click-auction.onrender.com',
           'x-forwarded-proto': 'https',
         },
         protocol: 'https',
       };
 
       const protocol = mockReq.headers['x-forwarded-proto'] || mockReq.protocol || 'http';
-      const host = mockReq.headers['x-forwarded-host'] || mockReq.headers.host;
+      const host = mockReq.headers['x-forwarded-host'] || mockReq.headers['host'];
       const baseUrl = `${protocol}://${host}`;
-      const mode = host.includes('localhost') || host.match(/^\d+\.\d+\.\d+\.\d+/) ? 'local' : 'production';
+      const mode = host.includes('localhost') || /^\d+\.\d+\.\d+\.\d+/.test(host) ? 'local' : 'production';
 
       expect(baseUrl).toBe('https://click-auction.onrender.com');
       expect(mode).toBe('production');
     });
 
     test('returns local mode for IP address', async () => {
-      const mockReq = {
-        headers: { host: '192.168.1.100:3000' },
+      const mockReq: MockRequest = {
+        headers: { 'host': '192.168.1.100:3000' },
         protocol: 'http',
       };
 
-      const host = mockReq.headers.host;
-      const mode = host.includes('localhost') || host.match(/^\d+\.\d+\.\d+\.\d+/) ? 'local' : 'production';
+      const host = mockReq.headers['host'];
+      const mode = host.includes('localhost') || /^\d+\.\d+\.\d+\.\d+/.test(host) ? 'local' : 'production';
 
       expect(mode).toBe('local');
     });
@@ -1943,7 +2093,7 @@ describe('HTTP Endpoints', () => {
 describe('Max Players Limit', () => {
   test('max players limit logic works correctly', () => {
     const MAX_PLAYERS = 100;
-    const players = {};
+    const players: Record<string, { name: string }> = {};
 
     // Should allow join when under limit
     for (let i = 0; i < MAX_PLAYERS; i++) {
@@ -1963,10 +2113,10 @@ describe('Max Players Limit', () => {
 // ==========================================
 describe('Memory Cleanup Logic', () => {
   test('cleanup removes data for non-active players', () => {
-    const activePlayers = { 'socket1': {}, 'socket2': {} };
+    const activePlayers: Record<string, object> = { 'socket1': {}, 'socket2': {} };
     const activeSocketIds = new Set(Object.keys(activePlayers));
 
-    const clickTimestamps = {
+    const clickTimestamps: Record<string, number[]> = {
       'socket1': [1000, 2000],
       'socket2': [1500],
       'socket3': [3000], // Disconnected player
@@ -1984,10 +2134,10 @@ describe('Memory Cleanup Logic', () => {
   });
 
   test('cleanup preserves data for active players', () => {
-    const activePlayers = { 'socket1': {}, 'socket2': {} };
+    const activePlayers: Record<string, object> = { 'socket1': {}, 'socket2': {} };
     const activeSocketIds = new Set(Object.keys(activePlayers));
 
-    const clickIntervals = {
+    const clickIntervals: Record<string, number[]> = {
       'socket1': [100, 120, 110],
       'socket2': [80, 90, 85],
     };
@@ -2009,7 +2159,7 @@ describe('Memory Cleanup Logic', () => {
 // ==========================================
 describe('Connection Limiting Logic', () => {
   test('tracks connections by IP correctly', () => {
-    const connectionsByIP = {};
+    const connectionsByIP: Record<string, number> = {};
     const MAX_CONNECTIONS_PER_IP = 10;
 
     const ip = '192.168.1.100';
@@ -2025,7 +2175,7 @@ describe('Connection Limiting Logic', () => {
   });
 
   test('blocks connections over limit', () => {
-    const connectionsByIP = {};
+    const connectionsByIP: Record<string, number> = {};
     const MAX_CONNECTIONS_PER_IP = 10;
 
     const ip = '192.168.1.100';
@@ -2036,7 +2186,7 @@ describe('Connection Limiting Logic', () => {
   });
 
   test('different IPs have separate limits', () => {
-    const connectionsByIP = {};
+    const connectionsByIP: Record<string, number> = {};
     const MAX_CONNECTIONS_PER_IP = 10;
 
     connectionsByIP['192.168.1.100'] = 10; // At limit
@@ -2047,7 +2197,7 @@ describe('Connection Limiting Logic', () => {
   });
 
   test('cleanup decrements connection count', () => {
-    const connectionsByIP = {};
+    const connectionsByIP: Record<string, number> = {};
     const ip = '192.168.1.100';
 
     connectionsByIP[ip] = 5;
@@ -2062,7 +2212,7 @@ describe('Connection Limiting Logic', () => {
   });
 
   test('cleanup removes IP when count reaches zero', () => {
-    const connectionsByIP = {};
+    const connectionsByIP: Record<string, number> = {};
     const ip = '192.168.1.100';
 
     connectionsByIP[ip] = 1;
@@ -2097,10 +2247,10 @@ describe('IP Extraction Logic', () => {
   });
 
   test('falls back to socket address when no forwarded header', () => {
-    const headers = {};
+    const headers: Record<string, string> = {};
     const address = '192.168.1.50';
 
-    const getClientIP = () => {
+    const getClientIP = (): string => {
       const forwarded = headers['x-forwarded-for'];
       if (forwarded) {
         return forwarded.split(',')[0].trim();
@@ -2147,11 +2297,16 @@ describe('Host PIN Authentication Logic', () => {
     expect(token1).not.toBe(token2);
   });
 
+  interface HostAuthToken {
+    createdAt: number;
+    expiresAt: number;
+  }
+
   test('creates and validates host auth tokens', () => {
-    const hostAuthTokens = {};
+    const hostAuthTokens: Record<string, HostAuthToken> = {};
     const HOST_AUTH_EXPIRY_MS = 24 * 60 * 60 * 1000;
 
-    const createHostAuthToken = () => {
+    const createHostAuthToken = (): string => {
       const token = 'host_test123';
       const now = Date.now();
       hostAuthTokens[token] = {
@@ -2161,7 +2316,7 @@ describe('Host PIN Authentication Logic', () => {
       return token;
     };
 
-    const isValidHostAuthToken = (token) => {
+    const isValidHostAuthToken = (token: string | null): boolean => {
       if (!token || !hostAuthTokens[token]) return false;
       if (Date.now() > hostAuthTokens[token].expiresAt) {
         delete hostAuthTokens[token];
@@ -2177,14 +2332,14 @@ describe('Host PIN Authentication Logic', () => {
   });
 
   test('expires old host auth tokens', () => {
-    const hostAuthTokens = {
+    const hostAuthTokens: Record<string, HostAuthToken> = {
       'host_old': {
         createdAt: Date.now() - 48 * 60 * 60 * 1000, // 48 hours ago
         expiresAt: Date.now() - 24 * 60 * 60 * 1000,  // Expired 24 hours ago
       },
     };
 
-    const isValidHostAuthToken = (token) => {
+    const isValidHostAuthToken = (token: string): boolean => {
       if (!token || !hostAuthTokens[token]) return false;
       if (Date.now() > hostAuthTokens[token].expiresAt) {
         delete hostAuthTokens[token];
@@ -2200,7 +2355,7 @@ describe('Host PIN Authentication Logic', () => {
   test('PIN verification logic', () => {
     const HOST_PIN = 'secret123';
 
-    const verifyPin = (inputPin) => {
+    const verifyPin = (inputPin: string | null): boolean => {
       return inputPin === HOST_PIN;
     };
 
@@ -2212,8 +2367,21 @@ describe('Host PIN Authentication Logic', () => {
 });
 
 describe('Session Management Logic', () => {
+  interface TestPlayerData {
+    name: string;
+    clicks: number;
+    color: string;
+  }
+
+  interface TestSessionData {
+    playerId: string | null;
+    playerData: TestPlayerData;
+    disconnectedAt: number | null;
+    timeoutId: ReturnType<typeof setTimeout> | null;
+  }
+
   test('generates unique session tokens', () => {
-    const generateSessionToken = () => {
+    const generateSessionToken = (): string => {
       return 'sess_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
     };
 
@@ -2226,10 +2394,10 @@ describe('Session Management Logic', () => {
   });
 
   test('creates and retrieves sessions', () => {
-    const playerSessions = {};
-    const socketToSession = {};
+    const playerSessions: Record<string, TestSessionData> = {};
+    const socketToSession: Record<string, string> = {};
 
-    const createSession = (socketId, playerData) => {
+    const createSession = (socketId: string, playerData: TestPlayerData): string => {
       const token = 'sess_test123';
       playerSessions[token] = {
         playerId: socketId,
@@ -2249,7 +2417,7 @@ describe('Session Management Logic', () => {
   });
 
   test('marks session as disconnected', () => {
-    const playerSessions = {
+    const playerSessions: Record<string, { playerId: string | null; playerData: { name: string }; disconnectedAt: number | null; timeoutId: null }> = {
       'sess_test123': {
         playerId: 'socket1',
         playerData: { name: 'Player1' },
@@ -2257,9 +2425,9 @@ describe('Session Management Logic', () => {
         timeoutId: null,
       },
     };
-    const socketToSession = { 'socket1': 'sess_test123' };
+    const socketToSession: Record<string, string> = { 'socket1': 'sess_test123' };
 
-    const markDisconnected = (socketId) => {
+    const markDisconnected = (socketId: string): string | null => {
       const token = socketToSession[socketId];
       if (!token || !playerSessions[token]) return null;
 
@@ -2272,13 +2440,15 @@ describe('Session Management Logic', () => {
     const token = markDisconnected('socket1');
 
     expect(token).toBe('sess_test123');
-    expect(playerSessions[token].playerId).toBeNull();
-    expect(playerSessions[token].disconnectedAt).toBeTruthy();
+    if (token) {
+      expect(playerSessions[token].playerId).toBeNull();
+      expect(playerSessions[token].disconnectedAt).toBeTruthy();
+    }
     expect(socketToSession['socket1']).toBeUndefined();
   });
 
   test('restores session with new socket', () => {
-    const playerSessions = {
+    const playerSessions: Record<string, { playerId: string | null; playerData: { name: string; clicks: number }; disconnectedAt: number | null; timeoutId: null }> = {
       'sess_test123': {
         playerId: null,
         playerData: { name: 'Player1', clicks: 10 },
@@ -2286,9 +2456,9 @@ describe('Session Management Logic', () => {
         timeoutId: null,
       },
     };
-    const socketToSession = {};
+    const socketToSession: Record<string, string> = {};
 
-    const restoreSession = (token, newSocketId) => {
+    const restoreSession = (token: string, newSocketId: string): { name: string; clicks: number } | null => {
       const session = playerSessions[token];
       if (!session) return null;
 
@@ -2301,14 +2471,24 @@ describe('Session Management Logic', () => {
 
     const playerData = restoreSession('sess_test123', 'socket2');
 
-    expect(playerData.name).toBe('Player1');
-    expect(playerData.clicks).toBe(10);
+    expect(playerData).not.toBeNull();
+    if (playerData) {
+      expect(playerData.name).toBe('Player1');
+      expect(playerData.clicks).toBe(10);
+    }
     expect(playerSessions['sess_test123'].playerId).toBe('socket2');
     expect(socketToSession['socket2']).toBe('sess_test123');
   });
 
+  interface SessionInfo {
+    playerId: string | null;
+    playerData: { name: string };
+    disconnectedAt: number | null;
+    timeoutId: null;
+  }
+
   test('expires session after timeout', () => {
-    const playerSessions = {
+    const playerSessions: Record<string, SessionInfo> = {
       'sess_test123': {
         playerId: null,
         playerData: { name: 'Player1' },
@@ -2319,8 +2499,8 @@ describe('Session Management Logic', () => {
 
     const GRACE_PERIOD = 30000; // 30 seconds
 
-    const isExpired = (session) => {
-      return session.disconnectedAt &&
+    const isExpired = (session: SessionInfo): boolean => {
+      return session.disconnectedAt !== null &&
              (Date.now() - session.disconnectedAt) > GRACE_PERIOD;
     };
 
@@ -2328,7 +2508,7 @@ describe('Session Management Logic', () => {
   });
 
   test('does not expire active session', () => {
-    const playerSessions = {
+    const playerSessions: Record<string, SessionInfo> = {
       'sess_test123': {
         playerId: 'socket1', // Still connected
         playerData: { name: 'Player1' },
@@ -2339,7 +2519,7 @@ describe('Session Management Logic', () => {
 
     const GRACE_PERIOD = 30000;
 
-    const isExpired = (session) => {
+    const isExpired = (session: SessionInfo): boolean => {
       if (!session.disconnectedAt) return false;
       return (Date.now() - session.disconnectedAt) > GRACE_PERIOD;
     };
@@ -2352,7 +2532,7 @@ describe('Session Management Logic', () => {
     const playerData = { name: 'Player1', clicks: 25, color: '#00C9A7' };
 
     // Create session
-    const session = {
+    const session: { playerId: string | null; playerData: typeof playerData; disconnectedAt: number | null } = {
       playerId: 'socket1',
       playerData: { ...playerData },
       disconnectedAt: null,
@@ -2380,19 +2560,19 @@ describe('Input Validation', () => {
   const MIN_AUCTION_DURATION = 1;
   const MAX_AUCTION_DURATION = 300;
 
-  function sanitizeString(str, maxLength) {
+  function sanitizeString(str: unknown, maxLength: number): string {
     if (typeof str !== 'string') return '';
     return str.trim().slice(0, maxLength);
   }
 
-  function validateAuctionDuration(duration) {
+  function validateAuctionDuration(duration: unknown): number {
     const num = Number(duration);
     if (isNaN(num) || num < MIN_AUCTION_DURATION) return MIN_AUCTION_DURATION;
     if (num > MAX_AUCTION_DURATION) return MAX_AUCTION_DURATION;
     return Math.floor(num);
   }
 
-  function isValidSocketId(id) {
+  function isValidSocketId(id: unknown): boolean {
     return typeof id === 'string' && id.length > 0 && id.length < 50;
   }
 
@@ -2475,7 +2655,7 @@ describe('Input Validation', () => {
     const MIN_COUNTDOWN_DURATION = 1;
     const MAX_COUNTDOWN_DURATION = 10;
 
-    function validateCountdownDuration(duration) {
+    function validateCountdownDuration(duration: unknown): number {
       const num = Number(duration);
       if (isNaN(num) || num < MIN_COUNTDOWN_DURATION) return MIN_COUNTDOWN_DURATION;
       if (num > MAX_COUNTDOWN_DURATION) return MAX_COUNTDOWN_DURATION;
@@ -2508,9 +2688,9 @@ describe('Input Validation', () => {
 
   describe('Rate Limiting', () => {
     const MAX_CLICKS_PER_SECOND = 20;
-    const clickTimestamps = {};
+    const clickTimestamps: Record<string, number[]> = {};
 
-    function isRateLimited(socketId) {
+    function isRateLimited(socketId: string): boolean {
       const now = Date.now();
       const oneSecondAgo = now - 1000;
 
@@ -2518,7 +2698,7 @@ describe('Input Validation', () => {
         clickTimestamps[socketId] = [];
       }
 
-      clickTimestamps[socketId] = clickTimestamps[socketId].filter(ts => ts > oneSecondAgo);
+      clickTimestamps[socketId] = clickTimestamps[socketId].filter((ts: number) => ts > oneSecondAgo);
 
       if (clickTimestamps[socketId].length >= MAX_CLICKS_PER_SECOND) {
         return true;
@@ -2528,7 +2708,7 @@ describe('Input Validation', () => {
       return false;
     }
 
-    function cleanupRateLimitData(socketId) {
+    function cleanupRateLimitData(socketId: string): void {
       delete clickTimestamps[socketId];
     }
 
@@ -2575,22 +2755,22 @@ describe('Input Validation', () => {
     const MIN_HUMAN_CV = 0.15;
     const MIN_CLICKS_FOR_ANALYSIS = 10;
 
-    function calculateCV(intervals) {
+    function calculateCV(intervals: number[]): number | null {
       if (intervals.length < MIN_CLICKS_FOR_ANALYSIS) {
         return null;
       }
 
-      const mean = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+      const mean = intervals.reduce((a: number, b: number) => a + b, 0) / intervals.length;
       if (mean === 0) return null;
 
-      const squaredDiffs = intervals.map(x => Math.pow(x - mean, 2));
-      const variance = squaredDiffs.reduce((a, b) => a + b, 0) / intervals.length;
+      const squaredDiffs = intervals.map((x: number) => Math.pow(x - mean, 2));
+      const variance = squaredDiffs.reduce((a: number, b: number) => a + b, 0) / intervals.length;
       const stdDev = Math.sqrt(variance);
 
       return stdDev / mean;
     }
 
-    function isSuspiciousClicker(intervals) {
+    function isSuspiciousClicker(intervals: number[] | null): { suspicious: boolean; reason: string | null; cv: number | null } {
       if (!intervals || intervals.length < MIN_CLICKS_FOR_ANALYSIS) {
         return { suspicious: false, reason: null, cv: null };
       }
@@ -2703,21 +2883,46 @@ describe('Input Validation', () => {
 // ==========================================
 
 describe('Input Validation Integration', () => {
-  let io, httpServer, serverUrl;
-  let gameState;
-  let connectedClients = [];
+  // Types for this test suite
+  interface ValidationGamePlayer {
+    name: string;
+    clicks: number;
+    color: string;
+    adContent: string;
+  }
+  
+  interface ValidationGameState {
+    players: Record<string, ValidationGamePlayer>;
+    status: string;
+    auctionDuration: number;
+  }
+
+  interface ValidationStateResponse {
+    playerCount: number;
+    leaderboard: Array<{ id: string; name: string }>;
+  }
+
+  interface AuctionStartedResponse {
+    duration: number;
+  }
+
+  let ioValidation: Server;
+  let httpServerValidation: HttpServer;
+  let serverUrlValidation: string;
+  let gameStateValidation: ValidationGameState;
+  let connectedClientsValidation: ClientSocket[] = [];
 
   const MAX_NAME_LENGTH = 50;
   const MAX_AD_CONTENT_LENGTH = 200;
   const MIN_AUCTION_DURATION = 1;
   const MAX_AUCTION_DURATION = 300;
 
-  function sanitizeString(str, maxLength) {
+  function sanitizeString(str: unknown, maxLength: number): string {
     if (typeof str !== 'string') return '';
     return str.trim().slice(0, maxLength);
   }
 
-  function validateAuctionDuration(duration) {
+  function validateAuctionDuration(duration: unknown): number {
     const num = Number(duration);
     if (isNaN(num) || num < MIN_AUCTION_DURATION) return MIN_AUCTION_DURATION;
     if (num > MAX_AUCTION_DURATION) return MAX_AUCTION_DURATION;
@@ -2727,149 +2932,153 @@ describe('Input Validation Integration', () => {
   const DSP_COLORS = ['#00C9A7', '#E91E8C', '#6B3FA0'];
   let colorIndex = 0;
 
-  const getNextColor = () => {
+  const getNextColor = (): string => {
     const color = DSP_COLORS[colorIndex % DSP_COLORS.length];
     colorIndex++;
     return color;
   };
 
-  const createClient = () => {
-    const client = Client(serverUrl, { transports: ['websocket'], forceNew: true });
-    connectedClients.push(client);
+  const createClientValidation = (): ClientSocket => {
+    const client = Client(serverUrlValidation, { transports: ['websocket'], forceNew: true });
+    connectedClientsValidation.push(client);
     return client;
   };
 
-  const closeAllClients = () => {
-    connectedClients.forEach(c => c.connected && c.close());
-    connectedClients = [];
+  const closeAllClientsValidation = (): void => {
+    connectedClientsValidation.forEach(c => c.connected && c.close());
+    connectedClientsValidation = [];
   };
 
   beforeAll((done) => {
-    httpServer = createServer();
-    io = new Server(httpServer);
+    httpServerValidation = createServer();
+    ioValidation = new Server(httpServerValidation);
 
-    gameState = { players: {}, status: 'waiting', auctionDuration: 10 };
+    gameStateValidation = { players: {}, status: 'waiting', auctionDuration: 10 };
     colorIndex = 0;
 
-    io.on('connection', (socket) => {
-      socket.on('joinGame', (data) => {
+    ioValidation.on('connection', (socket) => {
+      socket.on('joinGame', (data: unknown) => {
         // With validation
-        const safeData = data && typeof data === 'object' ? data : {};
+        const safeData = data && typeof data === 'object' && !Array.isArray(data) ? data as Record<string, unknown> : {};
         const name = sanitizeString(safeData.name, MAX_NAME_LENGTH);
         const adContent = sanitizeString(safeData.adContent, MAX_AD_CONTENT_LENGTH);
         const playerName = name || `DSP-${socket.id.substr(0, 4)}`;
 
-        gameState.players[socket.id] = {
+        gameStateValidation.players[socket.id] = {
           name: playerName,
           clicks: 0,
           color: getNextColor(),
           adContent: adContent || `${playerName} wins!`,
         };
 
-        io.emit('gameState', {
-          playerCount: Object.keys(gameState.players).length,
-          leaderboard: Object.entries(gameState.players).map(([id, p]) => ({ id, ...p })),
+        ioValidation.emit('gameState', {
+          playerCount: Object.keys(gameStateValidation.players).length,
+          leaderboard: Object.entries(gameStateValidation.players).map(([id, p]) => ({ id, ...p })),
         });
       });
 
-      socket.on('startAuction', (settings) => {
-        if (settings && typeof settings === 'object' && settings.duration !== undefined) {
-          gameState.auctionDuration = validateAuctionDuration(settings.duration);
+      socket.on('startAuction', (settings: unknown) => {
+        if (settings && typeof settings === 'object' && !Array.isArray(settings)) {
+          const settingsObj = settings as Record<string, unknown>;
+          if (settingsObj.duration !== undefined) {
+            gameStateValidation.auctionDuration = validateAuctionDuration(settingsObj.duration);
+          }
         }
-        io.emit('auctionStarted', { duration: gameState.auctionDuration });
+        ioValidation.emit('auctionStarted', { duration: gameStateValidation.auctionDuration });
       });
 
       socket.on('disconnect', () => {
-        delete gameState.players[socket.id];
+        delete gameStateValidation.players[socket.id];
       });
     });
 
-    httpServer.listen(0, () => {
-      serverUrl = `http://localhost:${httpServer.address().port}`;
+    httpServerValidation.listen(0, () => {
+      const addr = httpServerValidation.address() as AddressInfo;
+      serverUrlValidation = `http://localhost:${addr.port}`;
       done();
     });
   });
 
   afterAll((done) => {
-    closeAllClients();
-    io.close();
-    httpServer.close(done);
+    closeAllClientsValidation();
+    ioValidation.close();
+    httpServerValidation.close(done);
   });
 
   beforeEach(() => {
-    gameState = { players: {}, status: 'waiting', auctionDuration: 10 };
+    gameStateValidation = { players: {}, status: 'waiting', auctionDuration: 10 };
     colorIndex = 0;
   });
 
   afterEach(() => {
-    closeAllClients();
+    closeAllClientsValidation();
   });
 
   test('truncates very long player name', async () => {
-    const client = createClient();
+    const client = createClientValidation();
     await waitFor(client, 'connect');
 
     const longName = 'A'.repeat(100);
     client.emit('joinGame', { name: longName });
-    const state = await waitFor(client, 'gameState');
+    const state = await waitFor<ValidationStateResponse>(client, 'gameState');
 
     expect(state.leaderboard[0].name.length).toBe(MAX_NAME_LENGTH);
   });
 
   test('handles malformed joinGame data', async () => {
-    const client = createClient();
+    const client = createClientValidation();
     await waitFor(client, 'connect');
 
     // Send various malformed data
     client.emit('joinGame', 'just a string');
-    const state1 = await waitFor(client, 'gameState');
+    const state1 = await waitFor<ValidationStateResponse>(client, 'gameState');
     expect(state1.leaderboard[0].name).toMatch(/^DSP-/);
   });
 
   test('handles null joinGame data', async () => {
-    const client = createClient();
+    const client = createClientValidation();
     await waitFor(client, 'connect');
 
     client.emit('joinGame', null);
-    const state = await waitFor(client, 'gameState');
+    const state = await waitFor<ValidationStateResponse>(client, 'gameState');
     expect(state.leaderboard[0].name).toMatch(/^DSP-/);
   });
 
   test('handles array as joinGame data', async () => {
-    const client = createClient();
+    const client = createClientValidation();
     await waitFor(client, 'connect');
 
     client.emit('joinGame', [1, 2, 3]);
-    const state = await waitFor(client, 'gameState');
+    const state = await waitFor<ValidationStateResponse>(client, 'gameState');
     expect(state.leaderboard[0].name).toMatch(/^DSP-/);
   });
 
   test('clamps negative auction duration to minimum', async () => {
-    const client = createClient();
+    const client = createClientValidation();
     await waitFor(client, 'connect');
 
     client.emit('startAuction', { duration: -10 });
-    const result = await waitFor(client, 'auctionStarted');
+    const result = await waitFor<AuctionStartedResponse>(client, 'auctionStarted');
 
     expect(result.duration).toBe(MIN_AUCTION_DURATION);
   });
 
   test('clamps excessive auction duration to maximum', async () => {
-    const client = createClient();
+    const client = createClientValidation();
     await waitFor(client, 'connect');
 
     client.emit('startAuction', { duration: 9999 });
-    const result = await waitFor(client, 'auctionStarted');
+    const result = await waitFor<AuctionStartedResponse>(client, 'auctionStarted');
 
     expect(result.duration).toBe(MAX_AUCTION_DURATION);
   });
 
   test('handles non-numeric auction duration', async () => {
-    const client = createClient();
+    const client = createClientValidation();
     await waitFor(client, 'connect');
 
     client.emit('startAuction', { duration: 'not a number' });
-    const result = await waitFor(client, 'auctionStarted');
+    const result = await waitFor<AuctionStartedResponse>(client, 'auctionStarted');
 
     expect(result.duration).toBe(MIN_AUCTION_DURATION);
   });

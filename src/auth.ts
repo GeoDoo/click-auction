@@ -2,22 +2,33 @@
 // HOST AUTHENTICATION (PIN Protection)
 // ============================================
 
-const crypto = require('crypto');
-const config = require('./config');
+import crypto from 'crypto';
+import config from './config';
 
-const hostAuthTokens = {}; // { token: { createdAt, expiresAt } }
+interface TokenData {
+  createdAt: number;
+  expiresAt: number;
+}
+
+interface VerifyResult {
+  success: boolean;
+  token: string | null;
+  message: string;
+}
+
+const hostAuthTokens: Record<string, TokenData> = {};
 
 /**
  * Generate a unique host auth token
  */
-function generateHostAuthToken() {
+export function generateHostAuthToken(): string {
   return 'host_' + Math.random().toString(36).substr(2, 16) + Date.now().toString(36);
 }
 
 /**
  * Create a new host auth token
  */
-function createHostAuthToken() {
+export function createHostAuthToken(): string {
   const token = generateHostAuthToken();
   const now = Date.now();
   hostAuthTokens[token] = {
@@ -30,7 +41,7 @@ function createHostAuthToken() {
 /**
  * Check if a host auth token is valid
  */
-function isValidHostAuthToken(token) {
+export function isValidHostAuthToken(token: string | null | undefined): boolean {
   if (!token || !hostAuthTokens[token]) return false;
   if (Date.now() > hostAuthTokens[token].expiresAt) {
     delete hostAuthTokens[token];
@@ -42,7 +53,7 @@ function isValidHostAuthToken(token) {
 /**
  * Cleanup expired host tokens
  */
-function cleanupExpiredHostTokens() {
+export function cleanupExpiredHostTokens(): void {
   const now = Date.now();
   for (const [token, data] of Object.entries(hostAuthTokens)) {
     if (now > data.expiresAt) {
@@ -54,7 +65,7 @@ function cleanupExpiredHostTokens() {
 /**
  * Constant-time string comparison to prevent timing attacks
  */
-function safeCompare(a, b) {
+function safeCompare(a: string, b: string): boolean {
   if (typeof a !== 'string' || typeof b !== 'string') return false;
   if (a.length !== b.length) {
     // Still do a comparison to maintain constant time even for length mismatch
@@ -67,7 +78,7 @@ function safeCompare(a, b) {
 /**
  * Verify PIN and create token if valid
  */
-function verifyPinAndCreateToken(pin) {
+export function verifyPinAndCreateToken(pin: string | null | undefined): VerifyResult {
   if (!config.HOST_PIN) {
     return { success: true, token: null, message: 'No PIN required' };
   }
@@ -83,16 +94,7 @@ function verifyPinAndCreateToken(pin) {
 /**
  * Get all tokens (for testing)
  */
-function getAllTokens() {
+export function getAllTokens(): Record<string, TokenData> {
   return hostAuthTokens;
 }
-
-module.exports = {
-  generateHostAuthToken,
-  createHostAuthToken,
-  isValidHostAuthToken,
-  cleanupExpiredHostTokens,
-  verifyPinAndCreateToken,
-  getAllTokens,
-};
 

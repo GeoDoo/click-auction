@@ -3,7 +3,9 @@
  * @module Logger
  */
 
-const levels = {
+type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'none';
+
+const levels: Record<LogLevel, number> = {
   debug: 0,
   info: 1,
   warn: 2,
@@ -12,26 +14,21 @@ const levels = {
 };
 
 // Default to 'info' in production, 'debug' in development
-const currentLevel = process.env.NODE_ENV === 'production' ? 'info' : 'debug';
+const currentLevel: LogLevel = process.env.NODE_ENV === 'production' ? 'info' : 'debug';
 
 /**
  * Check if a level should be logged
- * @param {string} level
- * @returns {boolean}
  */
-function shouldLog(level) {
+function shouldLog(level: LogLevel): boolean {
   return levels[level] >= levels[currentLevel];
 }
 
 /**
  * Format log message with timestamp and emoji
- * @param {string} level
- * @param {string} message
- * @returns {string}
  */
-function format(level, message) {
+function format(level: LogLevel, message: string): string {
   const timestamp = new Date().toISOString();
-  const prefixes = {
+  const prefixes: Record<string, string> = {
     debug: '🔍',
     info: 'ℹ️ ',
     warn: '⚠️ ',
@@ -40,13 +37,21 @@ function format(level, message) {
   return `${prefixes[level] || ''} [${timestamp}] ${message}`;
 }
 
-const Logger = {
+interface ILogger {
+  debug(message: string, ...args: unknown[]): void;
+  info(message: string, ...args: unknown[]): void;
+  warn(message: string, ...args: unknown[]): void;
+  error(message: string, ...args: unknown[]): void;
+  playerAction(action: string, playerName: string, details?: Record<string, unknown>): void;
+  gameEvent(event: string, details?: Record<string, unknown>): void;
+  security(event: string, ip: string, details?: Record<string, unknown>): void;
+}
+
+const Logger: ILogger = {
   /**
    * Debug level log - development only
-   * @param {string} message
-   * @param {...any} args
    */
-  debug(message, ...args) {
+  debug(message: string, ...args: unknown[]): void {
     if (shouldLog('debug')) {
       console.log(format('debug', message), ...args);
     }
@@ -54,10 +59,8 @@ const Logger = {
 
   /**
    * Info level log
-   * @param {string} message
-   * @param {...any} args
    */
-  info(message, ...args) {
+  info(message: string, ...args: unknown[]): void {
     if (shouldLog('info')) {
       console.info(format('info', message), ...args);
     }
@@ -65,10 +68,8 @@ const Logger = {
 
   /**
    * Warning level log
-   * @param {string} message
-   * @param {...any} args
    */
-  warn(message, ...args) {
+  warn(message: string, ...args: unknown[]): void {
     if (shouldLog('warn')) {
       console.warn(format('warn', message), ...args);
     }
@@ -76,10 +77,8 @@ const Logger = {
 
   /**
    * Error level log
-   * @param {string} message
-   * @param {...any} args
    */
-  error(message, ...args) {
+  error(message: string, ...args: unknown[]): void {
     if (shouldLog('error')) {
       console.error(format('error', message), ...args);
     }
@@ -87,33 +86,25 @@ const Logger = {
 
   /**
    * Log player action
-   * @param {string} action
-   * @param {string} playerName
-   * @param {Object} details
    */
-  playerAction(action, playerName, details = {}) {
+  playerAction(action: string, playerName: string, details: Record<string, unknown> = {}): void {
     this.info(`Player [${playerName}] ${action}`, details);
   },
 
   /**
    * Log game event
-   * @param {string} event
-   * @param {Object} details
    */
-  gameEvent(event, details = {}) {
+  gameEvent(event: string, details: Record<string, unknown> = {}): void {
     this.info(`Game: ${event}`, details);
   },
 
   /**
    * Log security event
-   * @param {string} event
-   * @param {string} ip
-   * @param {Object} details
    */
-  security(event, ip, details = {}) {
+  security(event: string, ip: string, details: Record<string, unknown> = {}): void {
     this.warn(`Security [${ip}]: ${event}`, details);
   },
 };
 
-module.exports = Logger;
+export default Logger;
 

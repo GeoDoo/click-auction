@@ -2,16 +2,28 @@
 // PERSISTENT SCORES (survives server restarts)
 // ============================================
 
-const path = require('path');
-const fs = require('fs');
-const { Redis } = require('@upstash/redis');
-const config = require('./config');
-const Logger = require('./logger');
+import path from 'path';
+import fs from 'fs';
+import { Redis } from '@upstash/redis';
+import config from './config';
+import Logger from './logger';
 
 const SCORES_FILE = path.join(__dirname, '..', 'scores.json');
 
+export interface PlayerStats {
+  wins: number;
+  totalClicks: number;
+  roundsPlayed: number;
+  bestRound: number;
+  lastPlayed: string | null;
+}
+
+export interface LeaderboardEntry extends PlayerStats {
+  name: string;
+}
+
 // Initialize Redis if credentials are provided
-let redis = null;
+let redis: Redis | null = null;
 if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
   redis = new Redis({
     url: process.env.UPSTASH_REDIS_REST_URL,
@@ -23,16 +35,16 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
 }
 
 // All-time stats structure: { "PlayerName": { wins, totalClicks, roundsPlayed, bestRound, lastPlayed } }
-let allTimeStats = {};
+let allTimeStats: Record<string, PlayerStats> = {};
 
 /**
  * Load scores from storage
  */
-async function loadScores() {
+export async function loadScores(): Promise<void> {
   try {
     if (redis) {
       Logger.info('🔍 Attempting to load scores from Redis...');
-      const data = await redis.get(config.REDIS_KEY);
+      const data = await redis.get<string | Record<string, PlayerStats>>(config.REDIS_KEY);
       Logger.info(`🔍 Redis returned: ${data ? 'data found' : 'null/empty'}, type: ${typeof data}`);
       if (data) {
         allTimeStats = typeof data === 'string' ? JSON.parse(data) : data;
@@ -59,8 +71,9 @@ async function loadScores() {
       }
     }
   } catch (err) {
-    Logger.error('❌ CRITICAL: Error loading scores:', err.message);
-    Logger.error('❌ Stack:', err.stack);
+    const error = err as Error;
+    Logger.error('❌ CRITICAL: Error loading scores:', error.message);
+    Logger.error('❌ Stack:', error.stack || '');
     allTimeStats = {};
   }
 }
@@ -68,7 +81,7 @@ async function loadScores() {
 /**
  * Save scores to storage
  */
-async function saveScores() {
+export async function saveScores(): Promise<void> {
   try {
     if (redis) {
       const recordCount = Object.keys(allTimeStats).length;
@@ -93,7 +106,7 @@ async function saveScores() {
 /**
  * Update stats for a player after a round
  */
-function updatePlayerStats(name, clicks, isWinner) {
+export function updatePlayerStats(name: string, clicks: number, isWinner: boolean): void {
   if (!allTimeStats[name]) {
     allTimeStats[name] = {
       wins: 0,
@@ -117,7 +130,7 @@ function updatePlayerStats(name, clicks, isWinner) {
 /**
  * Get all-time leaderboard
  */
-function getAllTimeLeaderboard() {
+export function getAllTimeLeaderboard(): LeaderboardEntry[] {
   return Object.entries(allTimeStats)
     .map(([name, stats]) => ({
       name,
@@ -129,7 +142,7 @@ function getAllTimeLeaderboard() {
 /**
  * Reset all stats (and force save)
  */
-async function resetAllStats() {
+export async function resetAllStats(): Promise<void> {
   Logger.warn('🗑️ Resetting ALL stats (intentional)');
   allTimeStats = {};
   // Force save the empty state
@@ -142,16 +155,7 @@ async function resetAllStats() {
 /**
  * Get stats (for testing)
  */
-function getStats() {
+export function getStats(): Record<string, PlayerStats> {
   return allTimeStats;
 }
-
-module.exports = {
-  loadScores,
-  saveScores,
-  updatePlayerStats,
-  getAllTimeLeaderboard,
-  resetAllStats,
-  getStats,
-};
 

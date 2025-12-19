@@ -2,23 +2,39 @@
 // SESSION MANAGEMENT (Reconnection Support)
 // ============================================
 
-const config = require('./config');
-const Logger = require('./logger');
+import config from './config';
+import Logger from './logger';
 
-const playerSessions = {}; // { sessionToken: { playerId, playerData, disconnectedAt, timeoutId } }
-const socketToSession = {}; // { socketId: sessionToken }
+export interface PlayerData {
+  name: string;
+  color: string;
+  clicks: number;
+  adContent: string;
+  joinedAt?: number;
+  disconnectedRound?: number;
+}
+
+export interface Session {
+  playerId: string | null;
+  playerData: PlayerData;
+  disconnectedAt: number | null;
+  timeoutId: ReturnType<typeof setTimeout> | null;
+}
+
+const playerSessions: Record<string, Session> = {};
+const socketToSession: Record<string, string> = {};
 
 /**
  * Generate a unique session token
  */
-function generateSessionToken() {
+export function generateSessionToken(): string {
   return 'sess_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
 }
 
 /**
  * Create a new session for a player
  */
-function createSession(socketId, playerData) {
+export function createSession(socketId: string, playerData: PlayerData): string {
   const token = generateSessionToken();
   playerSessions[token] = {
     playerId: socketId,
@@ -33,7 +49,7 @@ function createSession(socketId, playerData) {
 /**
  * Mark a session as disconnected (starts grace period)
  */
-function markSessionDisconnected(socketId) {
+export function markSessionDisconnected(socketId: string): string | null {
   const token = socketToSession[socketId];
   if (!token || !playerSessions[token]) return null;
 
@@ -53,7 +69,7 @@ function markSessionDisconnected(socketId) {
 /**
  * Restore a disconnected session
  */
-function restoreSession(token, newSocketId) {
+export function restoreSession(token: string, newSocketId: string): PlayerData | null {
   const session = playerSessions[token];
   if (!session) return null;
 
@@ -74,7 +90,7 @@ function restoreSession(token, newSocketId) {
 /**
  * Expire and remove a session
  */
-function expireSession(token) {
+export function expireSession(token: string): void {
   const session = playerSessions[token];
   if (session) {
     Logger.debug(`🕐 Session expired: ${session.playerData?.name || 'Unknown'}`);
@@ -88,14 +104,14 @@ function expireSession(token) {
 /**
  * Get session by token
  */
-function getSessionByToken(token) {
+export function getSessionByToken(token: string): Session | null {
   return playerSessions[token] || null;
 }
 
 /**
  * Cleanup expired sessions
  */
-function cleanupExpiredSessions() {
+export function cleanupExpiredSessions(): void {
   const now = Date.now();
   for (const [token, session] of Object.entries(playerSessions)) {
     if (session.disconnectedAt && now - session.disconnectedAt > config.RECONNECT_GRACE_PERIOD_MS) {
@@ -107,18 +123,7 @@ function cleanupExpiredSessions() {
 /**
  * Get all sessions (for testing)
  */
-function getAllSessions() {
+export function getAllSessions(): { playerSessions: Record<string, Session>; socketToSession: Record<string, string> } {
   return { playerSessions, socketToSession };
 }
-
-module.exports = {
-  generateSessionToken,
-  createSession,
-  markSessionDisconnected,
-  restoreSession,
-  expireSession,
-  getSessionByToken,
-  cleanupExpiredSessions,
-  getAllSessions,
-};
 
