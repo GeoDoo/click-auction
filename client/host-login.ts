@@ -2,20 +2,28 @@
 // Host Login Page - PIN Authentication
 // ==========================================
 
-const form = document.getElementById('loginForm');
-const pinInput = document.getElementById('pin');
-const submitBtn = document.getElementById('submitBtn');
+import { Logger } from './lib/logger';
+
+interface AuthResponse {
+  success: boolean;
+  token?: string;
+  message?: string;
+}
+
+const form = document.getElementById('loginForm') as HTMLFormElement | null;
+const pinInput = document.getElementById('pin') as HTMLInputElement | null;
+const submitBtn = document.getElementById('submitBtn') as HTMLButtonElement | null;
 const errorMessage = document.getElementById('errorMessage');
 
-form.addEventListener('submit', async (e) => {
+form?.addEventListener('submit', async (e: Event) => {
   e.preventDefault();
 
-  const pin = pinInput.value.trim();
-  if (!pin) return;
+  const pin = pinInput?.value.trim();
+  if (!pin || !submitBtn || !pinInput) return;
 
   submitBtn.disabled = true;
   submitBtn.textContent = 'Verifying...';
-  errorMessage.textContent = '';
+  if (errorMessage) errorMessage.textContent = '';
   pinInput.classList.remove('error');
 
   try {
@@ -25,26 +33,25 @@ form.addEventListener('submit', async (e) => {
       body: JSON.stringify({ pin }),
     });
 
-    const data = await response.json();
+    const data: AuthResponse = await response.json();
 
     if (data.success) {
-      // Store token in cookie for future visits
       if (data.token) {
         document.cookie = `hostAuth=${data.token}; path=/; max-age=86400; SameSite=Lax`;
-        // Redirect with token in URL (immediate, no cookie timing issues)
         window.location.href = `/host?auth=${encodeURIComponent(data.token)}`;
       } else {
-        // No PIN required
         window.location.href = '/host';
       }
     } else {
       throw new Error(data.message || 'Invalid PIN');
     }
   } catch (err) {
-    errorMessage.textContent = err.message || 'Authentication failed';
+    const message = err instanceof Error ? err.message : 'Authentication failed';
+    if (errorMessage) errorMessage.textContent = message;
     pinInput.classList.add('error');
     pinInput.value = '';
     pinInput.focus();
+    Logger.warn('Auth failed:', message);
   } finally {
     submitBtn.disabled = false;
     submitBtn.textContent = '🚀 Access Host Panel';
@@ -52,5 +59,5 @@ form.addEventListener('submit', async (e) => {
 });
 
 // Focus PIN input on load
-pinInput.focus();
+pinInput?.focus();
 
