@@ -38,8 +38,10 @@ socket.on('hostAuthenticated', (data) => {
     Logger.debug('Host socket authenticated');
     document.getElementById('startBtn').disabled = false;
   } else {
-    Logger.error('Host socket authentication failed');
-    alert('Authentication failed. Please refresh and log in again.');
+    // Session expired (server restarted or token expired)
+    // Silently redirect to login instead of annoying alert
+    Logger.warn('Host session expired, redirecting to login');
+    window.location.href = '/host-login';
   }
 });
 
