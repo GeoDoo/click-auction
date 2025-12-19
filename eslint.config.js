@@ -1,7 +1,7 @@
 module.exports = [
-  // Ignore minified/dist files
+  // Ignore build artifacts and TypeScript files (use tsc for those)
   {
-    ignores: ['node_modules/**', 'coverage/**', 'public/js/dist/**'],
+    ignores: ['node_modules/**', 'coverage/**', 'dist/**', 'public/js/**', 'client/**'],
   },
   {
     files: ['**/*.js'],
