@@ -13,7 +13,6 @@ module.exports = {
   testMatch: ['**/tests/**/*.test.ts'],
   collectCoverageFrom: [
     'src/**/*.ts',
-    'server.ts',
     '!**/node_modules/**',
     '!**/dist/**',
   ],
