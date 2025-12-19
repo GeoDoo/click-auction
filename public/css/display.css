@@ -586,17 +586,7 @@ footer {
     0 0 120px rgba(0, 201, 167, 0.1);
 }
 
-.billboard-frame::before,
-.billboard-frame::after {
-  content: '';
-  position: absolute;
-  width: 6px; height: 6px;
-  background: radial-gradient(circle at 30% 30%, #6a6d80, #3a3d50);
-  border-radius: 50%;
-}
-
-.billboard-frame::before { top: 6px; left: 6px; }
-.billboard-frame::after { top: 6px; right: 6px; }
+/* Corner dots removed */
 
 .screen-bezel {
   background: #0a0a0a;
@@ -605,21 +595,7 @@ footer {
   position: relative;
 }
 
-.screen-bezel::after {
-  content: '';
-  position: absolute;
-  top: -6px; right: 16px;
-  width: 5px; height: 5px;
-  background: var(--primary);
-  border-radius: 50%;
-  box-shadow: 0 0 8px var(--primary);
-  animation: ledBlink 2s infinite;
-}
-
-@keyframes ledBlink {
-  0%, 90%, 100% { opacity: 1; }
-  95% { opacity: 0.3; }
-}
+/* LED indicator removed */
 
 .led-screen {
   position: relative;
@@ -697,19 +673,7 @@ footer {
   z-index: 1;
 }
 
-.frame-brand {
-  position: absolute;
-  bottom: -24px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-family: 'Orbitron', sans-serif;
-  font-size: 0.7rem;
-  font-weight: 900;
-  background: linear-gradient(90deg, var(--primary), var(--accent));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  letter-spacing: 0.3em;
-}
+/* frame-brand removed */
 
 /* Podium */
 .podium-section {
