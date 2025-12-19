@@ -22,30 +22,19 @@ Perfect for conferences, events, and any gathering where you want to gamify prog
 
 ## 🚀 Quick Start
 
-### Local Development
-
 ```bash
 # Install dependencies
 npm install
 
-# Start development server (TypeScript with hot reload)
-npm run dev
+# Build and start (same for dev and production)
+npm run build
+npm start
 ```
 
 Open your browser:
 - **Main Display (QR + Leaderboard):** http://localhost:3000
 - **Player View:** http://localhost:3000/play
 - **Host Control:** http://localhost:3000/host
-
-### Production Build
-
-```bash
-# Build everything (client + server)
-npm run build
-
-# Start production server
-npm start
-```
 
 ### Cloud Deployment (Render)
 
@@ -211,14 +200,14 @@ Tests run automatically during Render's build step. **If tests fail, deployment 
 3. Test with a few people before the main event
 4. Use fullscreen mode (F11) for the best experience
 
-## 🎨 Branding
+## 🎨 Customization
 
-The game features **VIOOH's brand colors**:
+The game uses CSS variables for easy theming:
 - Primary: `#00C9A7` (Teal)
 - Secondary: `#845EC2` (Purple)  
 - Accent: `#F15BB5` (Pink)
 
-Customize in any HTML file's `:root` CSS variables.
+Customize colors in any HTML file's `:root` CSS variables.
 
 ## 🏆 Prize Ideas
 
@@ -280,14 +269,9 @@ click-auction/
 | Script | Description |
 |--------|-------------|
 | `npm start` | Run production server (requires build first) |
-| `npm run dev` | Run development server with TypeScript |
 | `npm run build` | Build client (Vite) + server (tsc) |
 | `npm test` | Run all tests |
 | `npm run lint` | Run ESLint |
-
-## 🤝 Credits
-
-Built for **VIOOH** - The world's leading premium digital out-of-home (DOOH) supply-side platform.
 
 ---
 

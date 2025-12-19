@@ -119,3 +119,4 @@ export function getAllData(): { clickIntervals: Record<string, number[]>; lastCl
   return { clickIntervals, lastClickTime };
 }
 
+
