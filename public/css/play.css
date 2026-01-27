@@ -49,22 +49,6 @@
   gap: 2rem;
 }
 
-.loading-logo {
-  width: 200px;
-  max-width: 60vw;
-  animation: logoPulse 2s ease-in-out infinite;
-}
-
-@keyframes logoPulse {
-  0%, 100% { 
-    opacity: 1;
-    filter: drop-shadow(0 0 10px rgba(0, 201, 167, 0.3));
-  }
-  50% { 
-    opacity: 0.8;
-    filter: drop-shadow(0 0 30px rgba(233, 30, 140, 0.5));
-  }
-}
 
 .loading-visual {
   width: 280px;
