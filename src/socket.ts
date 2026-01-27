@@ -16,6 +16,7 @@ import {
   startBidding,
   setCountdownInterval,
   clearCountdownInterval,
+  recordReactionTime,
 } from './game';
 import { CustomSocket, Player } from './types';
 
@@ -175,6 +176,7 @@ export function setupSocketIO(io: Server): void {
 
     // Click
     socket.on('click', () => {
+      // Stage 1: Bidding phase - count clicks
       if (gameState.status === 'bidding' && gameState.players[socket.id]) {
         if (validation.isRateLimited(socket.id)) {
           return;
@@ -196,6 +198,18 @@ export function setupSocketIO(io: Server): void {
           color: gameState.players[socket.id].color,
           suspicious: suspicionCheck.suspicious,
         });
+      }
+      // Stage 2: Tap phase - record reaction time
+      else if (gameState.status === 'stage2_tap' && gameState.players[socket.id]) {
+        const recorded = recordReactionTime(socket.id);
+        if (recorded) {
+          io.emit('reactionTimeRecorded', {
+            playerId: socket.id,
+            playerName: gameState.players[socket.id].name,
+            reactionTime: gameState.players[socket.id].reactionTime,
+          });
+          broadcastState();
+        }
       }
     });
 

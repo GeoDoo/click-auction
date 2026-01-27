@@ -11,6 +11,8 @@ interface Player {
   name: string;
   clicks: number;
   color: string;
+  reactionTime?: number | null;
+  finalScore?: number;
 }
 
 interface AllTimePlayer {
@@ -20,7 +22,7 @@ interface AllTimePlayer {
 }
 
 interface GameState {
-  status: 'waiting' | 'countdown' | 'bidding' | 'finished';
+  status: 'waiting' | 'countdown' | 'bidding' | 'stage2_countdown' | 'stage2_tap' | 'finished';
   round: number;
   timeRemaining: number;
   playerCount: number;
@@ -104,7 +106,8 @@ setInterval(loadAllTimeStats, 10000);
 
 function updateUI(state: GameState): void {
   const bg = document.getElementById('bg');
-  if (bg) bg.className = 'bg' + (state.status === 'bidding' ? ' bidding' : '');
+  const isBiddingPhase = state.status === 'bidding' || state.status === 'stage2_tap';
+  if (bg) bg.className = 'bg' + (isBiddingPhase ? ' bidding' : '');
 
   const roundBadge = document.getElementById('roundBadge');
   if (roundBadge) roundBadge.textContent = `Round ${state.round}`;
@@ -115,7 +118,9 @@ function updateUI(state: GameState): void {
     const statusTexts: Record<string, string> = {
       waiting: 'Waiting',
       countdown: 'Starting...',
-      bidding: 'LIVE!',
+      bidding: 'Stage 1: LIVE!',
+      stage2_countdown: 'Stage 2...',
+      stage2_tap: 'FASTEST FINGER!',
       finished: 'Complete',
     };
     badge.textContent = statusTexts[state.status] || state.status;
@@ -123,6 +128,7 @@ function updateUI(state: GameState): void {
 
   const countdownOverlay = document.getElementById('countdownOverlay');
   const countdownNumber = document.getElementById('countdownNumber');
+  const countdownLabel = document.getElementById('countdownLabel');
 
   if (state.status === 'waiting') {
     if (countdownOverlay) countdownOverlay.className = 'countdown-overlay';
@@ -138,9 +144,28 @@ function updateUI(state: GameState): void {
         countdownNumber.style.animation = 'countdown-pop 1s ease-out';
       }
     }
+    if (countdownLabel) countdownLabel.textContent = 'GET READY';
   } else if (state.status === 'bidding') {
     if (countdownOverlay) countdownOverlay.className = 'countdown-overlay';
     if (lastStatus !== 'bidding') SoundManager.go();
+  } else if (state.status === 'stage2_countdown') {
+    if (countdownOverlay) countdownOverlay.className = 'countdown-overlay active';
+    if (countdownNumber) {
+      countdownNumber.textContent = String(state.timeRemaining);
+      if (lastCountdown !== state.timeRemaining) {
+        lastCountdown = state.timeRemaining;
+        SoundManager.countdownTick();
+        countdownNumber.style.animation = 'none';
+        void countdownNumber.offsetHeight;
+        countdownNumber.style.animation = 'countdown-pop 1s ease-out';
+      }
+    }
+    if (countdownLabel) countdownLabel.textContent = 'FASTEST FINGER';
+  } else if (state.status === 'stage2_tap') {
+    if (countdownOverlay) countdownOverlay.className = 'countdown-overlay active';
+    if (countdownNumber) countdownNumber.textContent = 'TAP!';
+    if (countdownLabel) countdownLabel.textContent = '';
+    if (lastStatus !== 'stage2_tap') SoundManager.go();
   } else if (state.status === 'finished') {
     if (countdownOverlay) countdownOverlay.className = 'countdown-overlay';
   }
@@ -158,18 +183,29 @@ function updateUI(state: GameState): void {
       list.innerHTML =
         '<div class="empty-leaderboard"><div class="icon">👥</div><div>Waiting for DSPs to join...</div></div>';
     } else {
+      // Use finalScore if available (after Stage 2), otherwise clicks
+      const maxScore = state.leaderboard.length > 0 
+        ? Math.max(...state.leaderboard.map(p => p.finalScore ?? p.clicks))
+        : 1;
+      
       list.innerHTML = state.leaderboard
         .slice(0, 10)
         .map(
-          (player, index) => `
+          (player, index) => {
+            const score = player.finalScore ?? player.clicks;
+            const reactionDisplay = player.reactionTime != null 
+              ? `<span class="reaction-time">${player.reactionTime}ms</span>` 
+              : '';
+            return `
             <div class="leaderboard-item">
               <div class="rank">${index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}</div>
               <div class="player-color" style="background: ${player.color}"></div>
               <div class="player-name">${escapeHtml(player.name)}</div>
-              <div class="player-clicks">${player.clicks}</div>
-              <div class="click-bar" style="width: ${maxClicks > 0 ? (player.clicks / maxClicks) * 100 : 0}%; background: ${player.color}"></div>
+              <div class="player-clicks">${score}${reactionDisplay}</div>
+              <div class="click-bar" style="width: ${maxScore > 0 ? (score / maxScore) * 100 : 0}%; background: ${player.color}"></div>
             </div>
-          `
+          `;
+          }
         )
         .join('');
     }
@@ -202,9 +238,11 @@ function showWinnerScreen(state: GameState): void {
   const adAuthor = document.getElementById('adAuthor');
   const podiumRound = document.getElementById('podiumRound');
 
+  const winnerScore = winner?.finalScore ?? winner?.clicks ?? 0;
+
   if (winnerName) winnerName.textContent = winner ? winner.name : '-';
   if (winnerScoreText) {
-    winnerScoreText.textContent = winner ? `${winner.clicks} clicks • Round ${state.round} Champion` : '';
+    winnerScoreText.textContent = winner ? `${winnerScore} points • Round ${state.round} Champion` : '';
   }
   if (adContent) adContent.textContent = state.winnerAd ? `"${state.winnerAd}"` : '"We Won! 🎉"';
   if (adAuthor) adAuthor.textContent = winner ? `— ${winner.name}` : '';
@@ -215,9 +253,10 @@ function showWinnerScreen(state: GameState): void {
     const player = lb[i - 1];
     const podiumName = document.getElementById(`podiumName${i}`);
     const podiumScore = document.getElementById(`podiumScore${i}`);
+    const score = player?.finalScore ?? player?.clicks ?? 0;
 
     if (podiumName) podiumName.textContent = player ? player.name : '-';
-    if (podiumScore) podiumScore.textContent = player ? `${player.clicks} clicks` : '0';
+    if (podiumScore) podiumScore.textContent = player ? `${score} pts` : '0';
   }
 }
 

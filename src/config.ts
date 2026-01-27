@@ -45,6 +45,11 @@ export interface Config {
   RATE_LIMIT_WINDOW_MS: number;
   STATIC_CACHE_MAX_AGE: number;
 
+  // Stage 2 settings
+  STAGE2_COUNTDOWN_DURATION: number;
+  STAGE2_TAP_TIMEOUT_MS: number;
+  STAGE2_MULTIPLIERS: number[];
+
   // VIOOH-inspired DSP colors
   DSP_COLORS: string[];
 }
@@ -91,6 +96,11 @@ const config: Config = {
   TICK_INTERVAL_MS: 1000, // 1 second tick for countdown/bidding
   RATE_LIMIT_WINDOW_MS: 1000, // 1 second window for rate limiting
   STATIC_CACHE_MAX_AGE: 3600, // 1 hour cache for static assets
+
+  // Stage 2 settings
+  STAGE2_COUNTDOWN_DURATION: 3, // 3 second countdown before "TAP NOW"
+  STAGE2_TAP_TIMEOUT_MS: 5000, // 5 seconds to tap before timeout
+  STAGE2_MULTIPLIERS: [2.0, 1.5, 1.25], // Multipliers for 1st, 2nd, 3rd fastest reaction
 
   // VIOOH-inspired DSP colors
   DSP_COLORS: [

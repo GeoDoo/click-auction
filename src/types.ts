@@ -12,6 +12,7 @@ export interface Player {
   suspicious?: boolean;
   suspicionReason?: string | null;
   disconnectedRound?: number;
+  reactionTime?: number | null;
 }
 
 export interface LeaderboardEntry {
@@ -20,6 +21,8 @@ export interface LeaderboardEntry {
   clicks: number;
   color: string;
   suspicious: boolean;
+  reactionTime: number | null;
+  finalScore: number;
 }
 
 export interface Winner extends Player {
@@ -27,7 +30,7 @@ export interface Winner extends Player {
 }
 
 export interface GameState {
-  status: 'waiting' | 'countdown' | 'bidding' | 'finished';
+  status: 'waiting' | 'countdown' | 'bidding' | 'stage2_countdown' | 'stage2_tap' | 'finished';
   players: Record<string, Player>;
   auctionDuration: number;
   countdownDuration: number;
@@ -36,6 +39,9 @@ export interface GameState {
   winnerAd: string | null;
   round: number;
   finalLeaderboard: LeaderboardEntry[];
+  stage1Scores: Record<string, number>;
+  stage2StartTime: number | null;
+  stage2CountdownDuration: number;
 }
 
 

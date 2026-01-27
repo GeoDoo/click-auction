@@ -10,13 +10,16 @@ interface Player {
   name: string;
   clicks: number;
   color: string;
+  reactionTime?: number | null;
+  finalScore?: number;
 }
 
 interface GameState {
-  status: 'waiting' | 'countdown' | 'bidding' | 'finished';
+  status: 'waiting' | 'countdown' | 'bidding' | 'stage2_countdown' | 'stage2_tap' | 'finished';
   timeRemaining: number;
   leaderboard: Player[];
   winner: Player | null;
+  stage1Scores?: Record<string, number>;
 }
 
 interface SessionData {
@@ -227,19 +230,38 @@ adContentInput?.addEventListener('keypress', (e: KeyboardEvent) => {
 // Bid button click
 const bidButton = document.getElementById('bidButton') as HTMLButtonElement | null;
 
+let hasRecordedReaction = false;
+
 function handleBid(e: MouseEvent | TouchEvent): void {
-  if (gameStatus !== 'bidding' || !bidButton) return;
+  if (!bidButton) return;
 
-  myClicks++;
-  socket.emit('click');
+  // Stage 1: Bidding phase - count clicks
+  if (gameStatus === 'bidding') {
+    myClicks++;
+    socket.emit('click');
 
-  SoundManager.tap();
+    SoundManager.tap();
 
-  const counter = document.getElementById('clickCounter');
-  if (counter) {
-    counter.textContent = String(myClicks);
-    counter.classList.add('bump');
-    setTimeout(() => counter.classList.remove('bump'), 50);
+    const counter = document.getElementById('clickCounter');
+    if (counter) {
+      counter.textContent = String(myClicks);
+      counter.classList.add('bump');
+      setTimeout(() => counter.classList.remove('bump'), 50);
+    }
+  }
+  // Stage 2: Tap phase - record reaction time (only first tap counts)
+  else if (gameStatus === 'stage2_tap' && !hasRecordedReaction) {
+    hasRecordedReaction = true;
+    socket.emit('click');
+
+    SoundManager.tap();
+
+    // Update button to show tap recorded
+    bidButton.className = 'bid-button stage2-tapped';
+    bidButton.innerHTML = '✓ TAPPED!';
+    bidButton.disabled = true;
+  } else {
+    return; // Not in a clickable state
   }
 
   // Ripple effect
@@ -278,16 +300,27 @@ function updateUI(state: GameState): void {
   gameStatus = state.status;
 
   const bg = document.getElementById('bg');
-  if (bg) bg.className = 'bg' + (state.status === 'bidding' ? ' bidding' : '');
+  if (bg) {
+    const isBiddingPhase = state.status === 'bidding' || state.status === 'stage2_tap';
+    bg.className = 'bg' + (isBiddingPhase ? ' bidding' : '');
+  }
 
   const badge = document.getElementById('gameStatusBadge');
   if (badge) {
     badge.className = 'game-status-badge status-' + state.status;
-    badge.textContent = state.status.charAt(0).toUpperCase() + state.status.slice(1);
+    const statusLabels: Record<string, string> = {
+      waiting: 'Waiting',
+      countdown: 'Countdown',
+      bidding: 'Stage 1: BID!',
+      stage2_countdown: 'Stage 2',
+      stage2_tap: 'TAP NOW!',
+      finished: 'Finished',
+    };
+    badge.textContent = statusLabels[state.status] || state.status;
   }
 
   // Play sounds for state changes
-  if (state.status === 'countdown') {
+  if (state.status === 'countdown' || state.status === 'stage2_countdown') {
     if (lastCountdown !== state.timeRemaining) {
       lastCountdown = state.timeRemaining;
       SoundManager.countdownTick();
@@ -295,6 +328,11 @@ function updateUI(state: GameState): void {
   } else if (state.status === 'bidding') {
     if (previousStatus !== 'bidding') {
       SoundManager.go();
+    }
+  } else if (state.status === 'stage2_tap') {
+    if (previousStatus !== 'stage2_tap') {
+      SoundManager.go();
+      hasRecordedReaction = false; // Reset for new Stage 2
     }
   }
 
@@ -307,11 +345,13 @@ function updateUI(state: GameState): void {
       bidButton.className = 'bid-button waiting';
       bidButton.textContent = 'Waiting...';
       bidButton.disabled = true;
+      hasRecordedReaction = false;
     } else if (state.status === 'countdown') {
       bidButton.className = 'bid-button countdown-state';
       bidButton.innerHTML = `<span style="font-size: 3rem;">${state.timeRemaining}</span><br>GET READY`;
       bidButton.disabled = true;
       myClicks = 0;
+      hasRecordedReaction = false;
       const counter = document.getElementById('clickCounter');
       if (counter) counter.textContent = '0';
     } else if (state.status === 'bidding') {
@@ -321,6 +361,16 @@ function updateUI(state: GameState): void {
           ? `<span style="font-size: 2rem; color: #ff3366;">${state.timeRemaining}s</span><br>BID!`
           : 'BID!';
       bidButton.disabled = false;
+    } else if (state.status === 'stage2_countdown') {
+      bidButton.className = 'bid-button stage2-countdown';
+      bidButton.innerHTML = `<span style="font-size: 3rem;">${state.timeRemaining}</span><br>FASTEST FINGER`;
+      bidButton.disabled = true;
+    } else if (state.status === 'stage2_tap') {
+      if (!hasRecordedReaction) {
+        bidButton.className = 'bid-button stage2-tap';
+        bidButton.innerHTML = '<span style="font-size: 2rem;">TAP NOW!</span>';
+        bidButton.disabled = false;
+      }
     } else if (state.status === 'finished') {
       bidButton.className = 'bid-button disabled';
       bidButton.textContent = 'Done';
@@ -381,9 +431,14 @@ function updateUI(state: GameState): void {
       const yourRank = document.getElementById('yourRank');
       const yourResultLabel = document.getElementById('yourResultLabel');
 
+      // Find my entry in leaderboard for final score
+      const myEntry = state.leaderboard.find((p) => p.name === myName);
+      const myFinalScore = myEntry?.finalScore ?? myClicks;
+      const winnerFinalScore = state.winner.finalScore ?? state.winner.clicks;
+
       if (winnerNameBig) winnerNameBig.textContent = state.winner.name + ' wins!';
-      if (winnerClicksBig) winnerClicksBig.textContent = state.winner.clicks + ' clicks';
-      if (yourResultValue) yourResultValue.textContent = myClicks + ' clicks';
+      if (winnerClicksBig) winnerClicksBig.textContent = winnerFinalScore + ' points';
+      if (yourResultValue) yourResultValue.textContent = myFinalScore + ' points';
       if (yourRank) yourRank.textContent = myRank > 0 ? `You placed #${myRank} of ${totalPlayers}` : '';
       if (yourResultLabel) yourResultLabel.textContent = isWinner ? '' : 'Your Score';
     }

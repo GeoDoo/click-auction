@@ -16,11 +16,16 @@ export const gameState: GameState = {
   winnerAd: null,
   round: 0,
   finalLeaderboard: [],
+  stage1Scores: {},
+  stage2StartTime: null,
+  stage2CountdownDuration: 3,
 };
 
 // Intervals
 let countdownInterval: ReturnType<typeof setInterval> | null = null;
 let biddingInterval: ReturnType<typeof setInterval> | null = null;
+let stage2CountdownInterval: ReturnType<typeof setInterval> | null = null;
+let stage2TapTimeout: ReturnType<typeof setTimeout> | null = null;
 let colorIndex = 0;
 
 // Socket.io instance (set by server.ts)
@@ -39,6 +44,14 @@ export function clearAllIntervals(): void {
     clearInterval(biddingInterval);
     biddingInterval = null;
   }
+  if (stage2CountdownInterval) {
+    clearInterval(stage2CountdownInterval);
+    stage2CountdownInterval = null;
+  }
+  if (stage2TapTimeout) {
+    clearTimeout(stage2TapTimeout);
+    stage2TapTimeout = null;
+  }
 }
 
 export function getNextColor(): string {
@@ -56,6 +69,7 @@ export function resetGame(): void {
       gameState.players[id].clicks = 0;
       gameState.players[id].suspicious = false;
       gameState.players[id].suspicionReason = null;
+      gameState.players[id].reactionTime = null;
       botDetection.resetBotDetectionData(id);
     }
   });
@@ -64,6 +78,8 @@ export function resetGame(): void {
   gameState.winnerAd = null;
   gameState.timeRemaining = 0;
   gameState.finalLeaderboard = [];
+  gameState.stage1Scores = {};
+  gameState.stage2StartTime = null;
 }
 
 export function getLeaderboard(): LeaderboardEntry[] {
@@ -74,8 +90,44 @@ export function getLeaderboard(): LeaderboardEntry[] {
       clicks: player.clicks,
       color: player.color,
       suspicious: player.suspicious || false,
+      reactionTime: player.reactionTime ?? null,
+      finalScore: player.clicks, // Default to clicks, updated after Stage 2
     }))
     .sort((a, b) => b.clicks - a.clicks);
+}
+
+export function calculateFinalScores(): LeaderboardEntry[] {
+  const entries = Object.entries(gameState.players).map(([id, player]) => ({
+    id,
+    name: player.name,
+    clicks: player.clicks,
+    color: player.color,
+    suspicious: player.suspicious || false,
+    reactionTime: player.reactionTime ?? null,
+    stage1Score: gameState.stage1Scores[id] || player.clicks,
+  }));
+
+  // Sort by reaction time (fastest first, null/no-tap last)
+  const sortedByReaction = [...entries].sort((a, b) => {
+    if (a.reactionTime === null) return 1;
+    if (b.reactionTime === null) return -1;
+    return a.reactionTime - b.reactionTime;
+  });
+
+  // Apply multipliers based on reaction time ranking
+  const withMultipliers = sortedByReaction.map((entry, index) => {
+    const multiplier = entry.reactionTime !== null
+      ? (config.STAGE2_MULTIPLIERS[index] || 1.0)
+      : 1.0; // No multiplier if didn't tap
+    
+    return {
+      ...entry,
+      finalScore: Math.round(entry.stage1Score * multiplier),
+    };
+  });
+
+  // Sort by final score (highest first) for winner determination
+  return withMultipliers.sort((a, b) => b.finalScore - a.finalScore);
 }
 
 export function broadcastState(): void {
@@ -92,6 +144,8 @@ export function broadcastState(): void {
     round: gameState.round,
     playerCount: Object.keys(gameState.players).length,
     allTimeLeaderboard: persistence.getAllTimeLeaderboard().slice(0, 20),
+    stage1Scores: gameState.stage1Scores,
+    stage2StartTime: gameState.stage2StartTime,
   });
 }
 
@@ -122,19 +176,93 @@ export function startBidding(): void {
         clearInterval(biddingInterval);
         biddingInterval = null;
       }
-      endAuction();
+      endStage1();
     }
   }, config.TICK_INTERVAL_MS);
 }
 
-export function endAuction(): void {
+export function endStage1(): void {
+  // Preserve Stage 1 scores
+  gameState.stage1Scores = {};
+  Object.entries(gameState.players).forEach(([id, player]) => {
+    gameState.stage1Scores[id] = player.clicks;
+    // Reset reaction time for Stage 2
+    player.reactionTime = null;
+  });
+
+  // Start Stage 2 countdown
+  gameState.status = 'stage2_countdown';
+  gameState.timeRemaining = gameState.stage2CountdownDuration;
+
+  broadcastState();
+
+  stage2CountdownInterval = setInterval(() => {
+    gameState.timeRemaining--;
+    broadcastState();
+
+    if (gameState.timeRemaining <= 0) {
+      if (stage2CountdownInterval) {
+        clearInterval(stage2CountdownInterval);
+        stage2CountdownInterval = null;
+      }
+      startStage2Tap();
+    }
+  }, config.TICK_INTERVAL_MS);
+}
+
+export function startStage2Tap(): void {
+  gameState.status = 'stage2_tap';
+  gameState.stage2StartTime = Date.now();
+
+  broadcastState();
+
+  // Set timeout for Stage 2 (players have limited time to tap)
+  stage2TapTimeout = setTimeout(() => {
+    endStage2();
+  }, config.STAGE2_TAP_TIMEOUT_MS);
+}
+
+export function recordReactionTime(socketId: string): boolean {
+  // Only record if player hasn't already tapped
+  if (gameState.status !== 'stage2_tap') return false;
+  if (!gameState.players[socketId]) return false;
+  if (gameState.players[socketId].reactionTime !== null && gameState.players[socketId].reactionTime !== undefined) {
+    return false; // Already recorded
+  }
+
+  const reactionTime = Date.now() - (gameState.stage2StartTime || Date.now());
+  gameState.players[socketId].reactionTime = reactionTime;
+
+  // Check if all players have tapped
+  const allTapped = Object.values(gameState.players).every(
+    (player) => player.reactionTime !== null && player.reactionTime !== undefined
+  );
+
+  if (allTapped) {
+    if (stage2TapTimeout) {
+      clearTimeout(stage2TapTimeout);
+      stage2TapTimeout = null;
+    }
+    endStage2();
+  }
+
+  return true;
+}
+
+export function endStage2(): void {
+  if (stage2TapTimeout) {
+    clearTimeout(stage2TapTimeout);
+    stage2TapTimeout = null;
+  }
+
   gameState.status = 'finished';
 
-  const leaderboard = getLeaderboard();
+  // Calculate final scores with Stage 2 multipliers
+  const leaderboard = calculateFinalScores();
   gameState.finalLeaderboard = leaderboard;
 
   let winnerName: string | null = null;
-  if (leaderboard.length > 0 && leaderboard[0].clicks > 0) {
+  if (leaderboard.length > 0 && leaderboard[0].finalScore > 0) {
     const winnerId = leaderboard[0].id;
     gameState.winner = {
       ...gameState.players[winnerId],
@@ -145,16 +273,20 @@ export function endAuction(): void {
   }
 
   leaderboard.forEach((player) => {
-    persistence.updatePlayerStats(player.name, player.clicks, player.name === winnerName);
+    // Use finalScore for stats tracking
+    persistence.updatePlayerStats(player.name, player.finalScore, player.name === winnerName);
   });
 
   persistence.saveScores().catch((err) => {
-    // Logger is imported at module level - no circular dependency issue
-    // since this catch handler runs asynchronously after module initialization
     Logger.error('Failed to save scores:', err);
   });
 
   broadcastState();
+}
+
+// Legacy alias for backwards compatibility
+export function endAuction(): void {
+  endStage1();
 }
 
 export function setCountdownInterval(interval: ReturnType<typeof setInterval>): void {
