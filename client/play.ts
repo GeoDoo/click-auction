@@ -235,6 +235,9 @@ let hasRecordedReaction = false;
 
 function handleBid(e: MouseEvent | TouchEvent): void {
   if (!bidButton) return;
+  
+  // Double-check: button must be enabled AND in correct game state
+  if (bidButton.disabled) return;
 
   // Stage 1: Bidding phase - count clicks
   if (gameStatus === 'bidding') {
@@ -539,6 +542,19 @@ function updateUI(state: GameState): void {
 }
 
 socket.on('gameState', updateUI);
+
+// Sync click count with server (in case of missed clicks or race conditions)
+socket.on('clickUpdate', (data: { playerId: string; clicks: number }) => {
+  // Check if this update is for me by comparing socket ID
+  if (socket.id === data.playerId) {
+    // Server's count is authoritative - sync if different
+    if (myClicks !== data.clicks) {
+      myClicks = data.clicks;
+      const counter = document.getElementById('clickCounter');
+      if (counter) counter.textContent = String(myClicks);
+    }
+  }
+});
 
 socket.on('joinError', (data: { message: string }) => {
   const joinBtn = document.getElementById('joinBtn') as HTMLButtonElement | null;

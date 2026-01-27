@@ -291,10 +291,19 @@ html {
   overflow: hidden;
 }
 
+.bid-button.disabled,
+.bid-button:disabled,
+.bid-button.waiting,
+.bid-button.countdown-state,
+.bid-button.stage2-countdown {
+  pointer-events: none;
+  touch-action: none;
+  cursor: not-allowed;
+}
+
 .bid-button.disabled {
   background: linear-gradient(145deg, #333, #222);
   color: #555;
-  cursor: not-allowed;
   box-shadow: none;
 }
 
