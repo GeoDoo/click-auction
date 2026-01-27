@@ -328,25 +328,32 @@ function updateUI(state: GameState): void {
   const stageScore = document.getElementById('stageScore');
   const stageNext = document.getElementById('stageNext');
   
-  if (previousStatus === 'bidding' && state.status === 'stage2_countdown') {
-    // Store Stage 1 score for later display
+  // Always store Stage 1 score when entering stage2_countdown
+  if (state.status === 'stage2_countdown' && previousStatus === 'bidding') {
     myStage1Taps = myClicks;
-    
-    // Show "Click Auction Complete" overlay briefly
+  }
+  
+  // Show transition overlay ONLY briefly - don't block the countdown
+  if (previousStatus === 'bidding' && state.status === 'stage2_countdown') {
     if (stageOverlay && stageScore && stageNext) {
       const stageTitle = document.getElementById('stageTitle');
       if (stageTitle) stageTitle.textContent = 'CLICK AUCTION COMPLETE!';
       stageScore.textContent = `Your taps: ${myStage1Taps}`;
-      stageNext.textContent = 'Get ready for FASTEST FINGER...';
+      stageNext.textContent = 'FASTEST FINGER next!';
       stageOverlay.classList.add('active');
       
-      // Hide after 2 seconds (Stage 2 countdown is 3 seconds)
+      // Hide after just 1 second so users can see the countdown
       setTimeout(() => {
         stageOverlay.classList.remove('active');
-      }, 2000);
+      }, 1000);
     }
     
     SoundManager.countdownTick();
+  }
+  
+  // Always hide overlay when stage2_tap starts (in case it's still showing)
+  if (state.status === 'stage2_tap' && stageOverlay) {
+    stageOverlay.classList.remove('active');
   }
 
   // Play sounds for state changes

@@ -98,7 +98,7 @@ const config: Config = {
   STATIC_CACHE_MAX_AGE: 3600, // 1 hour cache for static assets
 
   // Stage 2 settings
-  STAGE2_COUNTDOWN_DURATION: 3, // 3 second countdown before "TAP NOW"
+  STAGE2_COUNTDOWN_DURATION: 5, // 5 second countdown before "TAP NOW" (gives users time to prepare)
   STAGE2_TAP_TIMEOUT_MS: 5000, // 5 seconds to tap before timeout
   STAGE2_MULTIPLIERS: [2.0, 1.5, 1.25], // Multipliers for 1st, 2nd, 3rd fastest reaction
 

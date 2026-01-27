@@ -136,16 +136,22 @@ function updateUI(state: GameState): void {
 
   // Handle Click Auction Complete transition
   if (lastStatus === 'bidding' && state.status === 'stage2_countdown') {
-    // Show Click Auction Complete briefly before Fastest Finger countdown
+    // Show Click Auction Complete briefly - then show the countdown
     if (stageTransitionOverlay && stageTransitionTitle && stageTransitionSubtitle) {
       stageTransitionTitle.textContent = 'CLICK AUCTION COMPLETE!';
-      stageTransitionSubtitle.textContent = 'FASTEST FINGER coming up...';
+      stageTransitionSubtitle.textContent = 'FASTEST FINGER in...';
       stageTransitionOverlay.classList.add('active');
       
+      // Hide quickly so countdown is visible
       setTimeout(() => {
         stageTransitionOverlay.classList.remove('active');
-      }, 1500);
+      }, 1000);
     }
+  }
+  
+  // Always hide transition overlay when stage2_tap starts
+  if (state.status === 'stage2_tap' && stageTransitionOverlay) {
+    stageTransitionOverlay.classList.remove('active');
   }
 
   if (state.status === 'waiting') {
