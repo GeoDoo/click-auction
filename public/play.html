@@ -63,6 +63,14 @@
     </div>
   </div>
 
+  <!-- Stage Transition Overlay -->
+  <div class="stage-overlay" id="stageOverlay" role="alert" aria-live="assertive">
+    <div class="stage-icon" id="stageIcon">✅</div>
+    <div class="stage-title" id="stageTitle">CLICK AUCTION COMPLETE!</div>
+    <div class="stage-score" id="stageScore">Your taps: 0</div>
+    <div class="stage-next" id="stageNext">Get ready for FASTEST FINGER...</div>
+  </div>
+
   <!-- Results Overlay -->
   <div class="winner-overlay" id="winnerOverlay" role="dialog" aria-modal="true" aria-labelledby="winnerTitle">
     <div class="winner-trophy" id="winnerTrophy" aria-hidden="true">🏆</div>
@@ -71,7 +79,8 @@
     <div class="winner-clicks-big" id="winnerClicksBig"></div>
     <div class="your-result" id="yourResult">
       <div class="your-result-label" id="yourResultLabel">Your Score</div>
-      <div class="your-result-value" id="yourResultValue" aria-live="polite">0 clicks</div>
+      <div class="score-breakdown" id="scoreBreakdown"></div>
+      <div class="your-result-value" id="yourResultValue" aria-live="polite">0 points</div>
       <div class="your-rank" id="yourRank" style="margin-top: 0.5rem; font-size: 1.2rem; color: #888;"></div>
     </div>
   </div>

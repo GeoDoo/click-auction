@@ -117,9 +117,9 @@ function updateUI(state: GameState): void {
     badge.className = 'status-badge status-' + state.status;
     const statusTexts: Record<string, string> = {
       waiting: 'Waiting',
-      countdown: 'Starting...',
-      bidding: 'Stage 1: LIVE!',
-      stage2_countdown: 'Stage 2...',
+      countdown: 'Click Auction...',
+      bidding: 'CLICK AUCTION!',
+      stage2_countdown: 'Fastest Finger...',
       stage2_tap: 'FASTEST FINGER!',
       finished: 'Complete',
     };
@@ -129,9 +129,28 @@ function updateUI(state: GameState): void {
   const countdownOverlay = document.getElementById('countdownOverlay');
   const countdownNumber = document.getElementById('countdownNumber');
   const countdownLabel = document.getElementById('countdownLabel');
+  const countdownSublabel = document.getElementById('countdownSublabel');
+  const stageTransitionOverlay = document.getElementById('stageTransitionOverlay');
+  const stageTransitionTitle = document.getElementById('stageTransitionTitle');
+  const stageTransitionSubtitle = document.getElementById('stageTransitionSubtitle');
+
+  // Handle Click Auction Complete transition
+  if (lastStatus === 'bidding' && state.status === 'stage2_countdown') {
+    // Show Click Auction Complete briefly before Fastest Finger countdown
+    if (stageTransitionOverlay && stageTransitionTitle && stageTransitionSubtitle) {
+      stageTransitionTitle.textContent = 'CLICK AUCTION COMPLETE!';
+      stageTransitionSubtitle.textContent = 'FASTEST FINGER coming up...';
+      stageTransitionOverlay.classList.add('active');
+      
+      setTimeout(() => {
+        stageTransitionOverlay.classList.remove('active');
+      }, 1500);
+    }
+  }
 
   if (state.status === 'waiting') {
     if (countdownOverlay) countdownOverlay.className = 'countdown-overlay';
+    if (stageTransitionOverlay) stageTransitionOverlay.classList.remove('active');
   } else if (state.status === 'countdown') {
     if (countdownOverlay) countdownOverlay.className = 'countdown-overlay active';
     if (countdownNumber) {
@@ -144,12 +163,13 @@ function updateUI(state: GameState): void {
         countdownNumber.style.animation = 'countdown-pop 1s ease-out';
       }
     }
-    if (countdownLabel) countdownLabel.textContent = 'GET READY';
+    if (countdownLabel) countdownLabel.textContent = 'CLICK AUCTION';
+    if (countdownSublabel) countdownSublabel.textContent = 'Tap as fast as you can!';
   } else if (state.status === 'bidding') {
     if (countdownOverlay) countdownOverlay.className = 'countdown-overlay';
     if (lastStatus !== 'bidding') SoundManager.go();
   } else if (state.status === 'stage2_countdown') {
-    if (countdownOverlay) countdownOverlay.className = 'countdown-overlay active';
+    if (countdownOverlay) countdownOverlay.className = 'countdown-overlay active stage2';
     if (countdownNumber) {
       countdownNumber.textContent = String(state.timeRemaining);
       if (lastCountdown !== state.timeRemaining) {
@@ -161,10 +181,12 @@ function updateUI(state: GameState): void {
       }
     }
     if (countdownLabel) countdownLabel.textContent = 'FASTEST FINGER';
+    if (countdownSublabel) countdownSublabel.textContent = 'One tap only - be the quickest!';
   } else if (state.status === 'stage2_tap') {
-    if (countdownOverlay) countdownOverlay.className = 'countdown-overlay active';
-    if (countdownNumber) countdownNumber.textContent = 'TAP!';
+    if (countdownOverlay) countdownOverlay.className = 'countdown-overlay active stage2-tap';
+    if (countdownNumber) countdownNumber.textContent = '⚡ TAP! ⚡';
     if (countdownLabel) countdownLabel.textContent = '';
+    if (countdownSublabel) countdownSublabel.textContent = '';
     if (lastStatus !== 'stage2_tap') SoundManager.go();
   } else if (state.status === 'finished') {
     if (countdownOverlay) countdownOverlay.className = 'countdown-overlay';
@@ -188,6 +210,15 @@ function updateUI(state: GameState): void {
         ? Math.max(...state.leaderboard.map(p => p.finalScore ?? p.clicks))
         : 1;
       
+      // Get multiplier for display
+      const getMultiplierBadge = (index: number, reactionTime: number | null | undefined): string => {
+        if (reactionTime == null) return '';
+        if (index === 0) return '<span class="multiplier-badge gold">2x</span>';
+        if (index === 1) return '<span class="multiplier-badge silver">1.5x</span>';
+        if (index === 2) return '<span class="multiplier-badge bronze">1.25x</span>';
+        return '';
+      };
+      
       list.innerHTML = state.leaderboard
         .slice(0, 10)
         .map(
@@ -196,12 +227,13 @@ function updateUI(state: GameState): void {
             const reactionDisplay = player.reactionTime != null 
               ? `<span class="reaction-time">${player.reactionTime}ms</span>` 
               : '';
+            const multiplierBadge = state.status === 'finished' ? getMultiplierBadge(index, player.reactionTime) : '';
             return `
             <div class="leaderboard-item">
               <div class="rank">${index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}</div>
               <div class="player-color" style="background: ${player.color}"></div>
               <div class="player-name">${escapeHtml(player.name)}</div>
-              <div class="player-clicks">${score}${reactionDisplay}</div>
+              <div class="player-clicks">${score}${reactionDisplay}${multiplierBadge}</div>
               <div class="click-bar" style="width: ${maxScore > 0 ? (score / maxScore) * 100 : 0}%; background: ${player.color}"></div>
             </div>
           `;
@@ -239,14 +271,19 @@ function showWinnerScreen(state: GameState): void {
   const podiumRound = document.getElementById('podiumRound');
 
   const winnerScore = winner?.finalScore ?? winner?.clicks ?? 0;
+  const winnerReactionTime = winner?.reactionTime;
 
   if (winnerName) winnerName.textContent = winner ? winner.name : '-';
   if (winnerScoreText) {
-    winnerScoreText.textContent = winner ? `${winnerScore} points • Round ${state.round} Champion` : '';
+    const reactionText = winnerReactionTime != null ? ` • ${winnerReactionTime}ms reaction` : '';
+    winnerScoreText.textContent = winner ? `${winnerScore} points${reactionText} • Round ${state.round}` : '';
   }
   if (adContent) adContent.textContent = state.winnerAd ? `"${state.winnerAd}"` : '"We Won! 🎉"';
   if (adAuthor) adAuthor.textContent = winner ? `— ${winner.name}` : '';
   if (podiumRound) podiumRound.textContent = String(state.round);
+
+  // Multiplier labels
+  const multiplierLabels = ['2x', '1.5x', '1.25x'];
 
   // Podium
   for (let i = 1; i <= 3; i++) {
@@ -254,9 +291,15 @@ function showWinnerScreen(state: GameState): void {
     const podiumName = document.getElementById(`podiumName${i}`);
     const podiumScore = document.getElementById(`podiumScore${i}`);
     const score = player?.finalScore ?? player?.clicks ?? 0;
+    const reactionTime = player?.reactionTime;
 
     if (podiumName) podiumName.textContent = player ? player.name : '-';
-    if (podiumScore) podiumScore.textContent = player ? `${score} pts` : '0';
+    if (podiumScore) {
+      const reactionInfo = reactionTime != null ? `${reactionTime}ms • ${multiplierLabels[i-1]}` : '';
+      podiumScore.innerHTML = player 
+        ? `${score} pts${reactionInfo ? `<br><span style="font-size: 0.5rem; opacity: 0.8;">${reactionInfo}</span>` : ''}` 
+        : '0';
+    }
   }
 }
 

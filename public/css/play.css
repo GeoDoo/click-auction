@@ -528,6 +528,128 @@ html {
   }
 }
 
+/* Stage 2 button states */
+.bid-button.stage2-countdown {
+  background: linear-gradient(145deg, var(--viooh-purple), #8B5CF6);
+  color: white;
+  box-shadow: 0 10px 40px rgba(107, 63, 160, 0.5);
+  animation: pulse-stage2 1s infinite;
+}
+
+.bid-button.stage2-tap {
+  background: linear-gradient(145deg, #FF3366, #FF6B9D);
+  color: white;
+  box-shadow: 
+    0 10px 40px rgba(255, 51, 102, 0.5),
+    0 0 80px rgba(255, 51, 102, 0.3);
+  animation: pulse-stage2-tap 0.3s infinite;
+}
+
+.bid-button.stage2-tapped {
+  background: linear-gradient(145deg, var(--success), #00cc6a);
+  color: var(--dark);
+  box-shadow: 0 10px 40px rgba(0, 255, 136, 0.4);
+  animation: none;
+}
+
+@keyframes pulse-stage2 {
+  0%, 100% { box-shadow: 0 10px 40px rgba(107, 63, 160, 0.5); }
+  50% { box-shadow: 0 10px 60px rgba(107, 63, 160, 0.7); }
+}
+
+@keyframes pulse-stage2-tap {
+  0%, 100% { transform: scale(1); box-shadow: 0 10px 40px rgba(255, 51, 102, 0.5); }
+  50% { transform: scale(1.02); box-shadow: 0 10px 60px rgba(255, 51, 102, 0.7); }
+}
+
+/* Stage Transition Overlay */
+.stage-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 900;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  text-align: center;
+  padding: 2rem;
+}
+
+.stage-overlay.active { display: flex; }
+
+.stage-icon {
+  font-size: 5rem;
+  margin-bottom: 1rem;
+  animation: stage-icon-pop 0.5s ease-out;
+}
+
+@keyframes stage-icon-pop {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.stage-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 2rem;
+  font-weight: 900;
+  color: var(--success);
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+  text-shadow: 0 0 30px rgba(0, 255, 136, 0.5);
+}
+
+.stage-score {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.5rem;
+  color: var(--primary);
+  margin-bottom: 1.5rem;
+}
+
+.stage-next {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.2rem;
+  color: var(--accent);
+  animation: pulse-text 1s infinite;
+}
+
+@keyframes pulse-text {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Score breakdown in results */
+.score-breakdown {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.9rem;
+  color: #888;
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+
+.score-breakdown .multiplier {
+  color: var(--warning);
+  font-weight: 700;
+}
+
+.score-breakdown .reaction {
+  color: var(--accent);
+}
+
+/* Status badges for Stage 2 */
+.status-stage2_countdown { 
+  background: rgba(107, 63, 160, 0.2); 
+  color: var(--viooh-purple); 
+}
+
+.status-stage2_tap { 
+  background: rgba(255, 51, 102, 0.2); 
+  color: var(--danger);
+  animation: pulse 0.3s infinite;
+}
+
 /* Safe area for notched phones */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .game-screen {

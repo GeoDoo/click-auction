@@ -40,6 +40,7 @@ let myName = '';
 let gameStatus: GameState['status'] = 'waiting';
 let lastCountdown: number | null = null;
 let sessionToken: string | null = localStorage.getItem('clickAuctionSession');
+let myStage1Taps = 0; // Store Stage 1 score for display
 
 // ==========================================
 // SESSION MANAGEMENT
@@ -310,17 +311,48 @@ function updateUI(state: GameState): void {
     badge.className = 'game-status-badge status-' + state.status;
     const statusLabels: Record<string, string> = {
       waiting: 'Waiting',
-      countdown: 'Countdown',
-      bidding: 'Stage 1: BID!',
-      stage2_countdown: 'Stage 2',
+      countdown: 'Get Ready',
+      bidding: 'CLICK AUCTION',
+      stage2_countdown: 'FASTEST FINGER',
       stage2_tap: 'TAP NOW!',
       finished: 'Finished',
     };
     badge.textContent = statusLabels[state.status] || state.status;
   }
 
+  // Handle Stage 1 Complete transition overlay
+  const stageOverlay = document.getElementById('stageOverlay');
+  const stageScore = document.getElementById('stageScore');
+  const stageNext = document.getElementById('stageNext');
+  
+  if (previousStatus === 'bidding' && state.status === 'stage2_countdown') {
+    // Store Stage 1 score for later display
+    myStage1Taps = myClicks;
+    
+    // Show "Click Auction Complete" overlay briefly
+    if (stageOverlay && stageScore && stageNext) {
+      const stageTitle = document.getElementById('stageTitle');
+      if (stageTitle) stageTitle.textContent = 'CLICK AUCTION COMPLETE!';
+      stageScore.textContent = `Your taps: ${myStage1Taps}`;
+      stageNext.textContent = 'Get ready for FASTEST FINGER...';
+      stageOverlay.classList.add('active');
+      
+      // Hide after 2 seconds (Stage 2 countdown is 3 seconds)
+      setTimeout(() => {
+        stageOverlay.classList.remove('active');
+      }, 2000);
+    }
+    
+    SoundManager.countdownTick();
+  }
+
   // Play sounds for state changes
-  if (state.status === 'countdown' || state.status === 'stage2_countdown') {
+  if (state.status === 'countdown') {
+    if (lastCountdown !== state.timeRemaining) {
+      lastCountdown = state.timeRemaining;
+      SoundManager.countdownTick();
+    }
+  } else if (state.status === 'stage2_countdown') {
     if (lastCountdown !== state.timeRemaining) {
       lastCountdown = state.timeRemaining;
       SoundManager.countdownTick();
@@ -333,11 +365,23 @@ function updateUI(state: GameState): void {
     if (previousStatus !== 'stage2_tap') {
       SoundManager.go();
       hasRecordedReaction = false; // Reset for new Stage 2
+      // Hide stage overlay if still visible
+      if (stageOverlay) stageOverlay.classList.remove('active');
     }
   }
 
   const errorOverlay = document.getElementById('errorOverlay');
   if (errorOverlay) errorOverlay.classList.remove('active');
+
+  // Update click label based on stage
+  const clickLabel = document.getElementById('clickLabel');
+  if (clickLabel) {
+    if (state.status === 'stage2_countdown' || state.status === 'stage2_tap') {
+      clickLabel.textContent = 'Stage 1 Taps';
+    } else {
+      clickLabel.textContent = 'Your Bids';
+    }
+  }
 
   // Update bid button
   if (bidButton) {
@@ -348,9 +392,10 @@ function updateUI(state: GameState): void {
       hasRecordedReaction = false;
     } else if (state.status === 'countdown') {
       bidButton.className = 'bid-button countdown-state';
-      bidButton.innerHTML = `<span style="font-size: 3rem;">${state.timeRemaining}</span><br>GET READY`;
+      bidButton.innerHTML = `<span style="font-size: 3rem;">${state.timeRemaining}</span><br>CLICK AUCTION`;
       bidButton.disabled = true;
       myClicks = 0;
+      myStage1Taps = 0;
       hasRecordedReaction = false;
       const counter = document.getElementById('clickCounter');
       if (counter) counter.textContent = '0';
@@ -358,17 +403,17 @@ function updateUI(state: GameState): void {
       bidButton.className = 'bid-button ready';
       bidButton.innerHTML =
         state.timeRemaining <= 3
-          ? `<span style="font-size: 2rem; color: #ff3366;">${state.timeRemaining}s</span><br>BID!`
-          : 'BID!';
+          ? `<span style="font-size: 2rem; color: #ff3366;">${state.timeRemaining}s</span><br>TAP!`
+          : 'TAP!';
       bidButton.disabled = false;
     } else if (state.status === 'stage2_countdown') {
       bidButton.className = 'bid-button stage2-countdown';
-      bidButton.innerHTML = `<span style="font-size: 3rem;">${state.timeRemaining}</span><br>FASTEST FINGER`;
+      bidButton.innerHTML = `<span style="font-size: 3rem;">${state.timeRemaining}</span><br>FASTEST<br>FINGER`;
       bidButton.disabled = true;
     } else if (state.status === 'stage2_tap') {
       if (!hasRecordedReaction) {
         bidButton.className = 'bid-button stage2-tap';
-        bidButton.innerHTML = '<span style="font-size: 2rem;">TAP NOW!</span>';
+        bidButton.innerHTML = '<span style="font-size: 1.5rem;">⚡ TAP NOW! ⚡</span>';
         bidButton.disabled = false;
       }
     } else if (state.status === 'finished') {
@@ -430,14 +475,60 @@ function updateUI(state: GameState): void {
       const yourResultValue = document.getElementById('yourResultValue');
       const yourRank = document.getElementById('yourRank');
       const yourResultLabel = document.getElementById('yourResultLabel');
+      const scoreBreakdown = document.getElementById('scoreBreakdown');
 
-      // Find my entry in leaderboard for final score
+      // Find my entry in leaderboard for final score and reaction time
       const myEntry = state.leaderboard.find((p) => p.name === myName);
       const myFinalScore = myEntry?.finalScore ?? myClicks;
+      const myReactionTime = myEntry?.reactionTime;
       const winnerFinalScore = state.winner.finalScore ?? state.winner.clicks;
+      const winnerReactionTime = state.winner.reactionTime;
+
+      // Calculate multiplier based on rank
+      const getMultiplier = (rank: number, reactionTime: number | null | undefined): number => {
+        if (reactionTime == null) return 1.0;
+        if (rank === 1) return 2.0;
+        if (rank === 2) return 1.5;
+        if (rank === 3) return 1.25;
+        return 1.0;
+      };
+
+      const myMultiplier = getMultiplier(myRank, myReactionTime);
+      const winnerMultiplier = getMultiplier(1, winnerReactionTime);
 
       if (winnerNameBig) winnerNameBig.textContent = state.winner.name + ' wins!';
-      if (winnerClicksBig) winnerClicksBig.textContent = winnerFinalScore + ' points';
+      
+      // Show winner score with reaction time
+      if (winnerClicksBig) {
+        const winnerReactionText = winnerReactionTime != null ? ` • ${winnerReactionTime}ms` : '';
+        winnerClicksBig.textContent = `${winnerFinalScore} points${winnerReactionText}`;
+      }
+      
+      // Show score breakdown for current player
+      if (scoreBreakdown && !isWinner) {
+        const stage1Taps = myStage1Taps > 0 ? myStage1Taps : myClicks;
+        if (myReactionTime != null) {
+          scoreBreakdown.innerHTML = `
+            <div><span class="reaction">${myReactionTime}ms</span> reaction</div>
+            <div>${stage1Taps} taps × <span class="multiplier">${myMultiplier}x</span></div>
+          `;
+        } else {
+          scoreBreakdown.innerHTML = `
+            <div>No tap recorded</div>
+            <div>${stage1Taps} taps × <span class="multiplier">1x</span></div>
+          `;
+        }
+      } else if (scoreBreakdown) {
+        // Winner's breakdown
+        const stage1Taps = myStage1Taps > 0 ? myStage1Taps : myClicks;
+        if (myReactionTime != null) {
+          scoreBreakdown.innerHTML = `
+            <div><span class="reaction">${myReactionTime}ms</span> • <span class="multiplier">${myMultiplier}x multiplier</span></div>
+          `;
+        }
+        scoreBreakdown.style.display = 'block';
+      }
+      
       if (yourResultValue) yourResultValue.textContent = myFinalScore + ' points';
       if (yourRank) yourRank.textContent = myRank > 0 ? `You placed #${myRank} of ${totalPlayers}` : '';
       if (yourResultLabel) yourResultLabel.textContent = isWinner ? '' : 'Your Score';
