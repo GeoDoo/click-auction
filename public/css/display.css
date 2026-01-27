@@ -436,6 +436,11 @@ footer {
   gap: 0.75rem;
 }
 
+.footer-logo {
+  height: 24px;
+  width: auto;
+}
+
 .footer-brand .viooh {
   font-family: 'Orbitron', sans-serif;
   font-size: 1.3rem;
@@ -888,6 +893,11 @@ footer {
   padding: 1rem;
   background: rgba(0, 0, 0, 0.3);
   border-radius: 12px;
+}
+
+.viooh-logo-img {
+  height: 28px;
+  width: auto;
 }
 
 .viooh-logo-text {
