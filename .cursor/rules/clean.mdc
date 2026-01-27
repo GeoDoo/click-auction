@@ -1,0 +1,39 @@
+---
+description: "Clean code guardrails: DRY, YAGNI, KISS, readability-first, maintainable design"
+alwaysApply: true
+---
+
+# Clean Code Rules (DRY / YAGNI / KISS)
+
+## DRY (Don't Repeat Yourself)
+- Prefer extracting shared logic only when:
+  - duplication is meaningful (same behaviour), AND
+  - it appears in at least 2–3 places, AND
+  - the abstraction remains clearer than repetition.
+- Do not over-abstract early; small duplication is acceptable to keep code readable.
+
+## YAGNI (You Aren't Gonna Need It)
+- Do not build features, hooks, flags, or general frameworks “just in case”.
+- Implement only what is required to satisfy the current tests/requirements.
+
+## KISS (Keep It Simple)
+- Choose the simplest implementation that meets correctness and quality.
+- Avoid cleverness, deep inheritance, heavy meta-programming, and unnecessary indirection.
+
+## Readability & Maintainability
+- Prefer explicit names and straightforward control flow.
+- Keep functions small and single-purpose.
+- Make error handling explicit; avoid silent failures.
+- Keep public APIs stable; avoid breaking changes unless requested.
+
+## Dependency Discipline
+- Do not add new dependencies unless:
+  - the user requests it, OR
+  - there is a clear, material benefit and no simpler native option.
+- If proposing a new dependency, explain why and alternatives.
+
+## Review Gate
+Before presenting code:
+- confirm it matches repo conventions
+- confirm no unnecessary complexity
+- confirm no speculative features

@@ -1,0 +1,98 @@
+---
+description: "Collaboration flow: verify → think → find → options → feedback → ask → discuss → execute → verify → reflect"
+alwaysApply: true
+---
+
+# Collaboration Flow Rules (Mandatory)
+
+You must follow this flow for non-trivial work (design, refactors, bugfixes, ambiguous tasks, multi-file changes).
+For trivial requests, you may compress steps but must still verify correctness.
+
+---
+
+## The Flow (ALWAYS)
+
+### 1) VERIFY (Inputs & Ground Truth)
+- Restate the request in your own words.
+- Identify what evidence exists (code, tests, logs, examples).
+- If anything is missing, request the smallest artifact needed (one thing at a time).
+
+### 2) THINK (Constraints & Success Criteria)
+- List explicit constraints (scope, performance, security, backwards compatibility, style).
+- Define “done” in observable terms (tests passing, output matches, etc.).
+- State assumptions clearly.
+
+### 3) FIND (Locate Relevant Code)
+- Identify the most relevant files and entry points.
+- Cite file paths + symbols (functions/classes).
+- Summarize current behaviour and where change should happen.
+
+### 4) OPTIONS (Generate 2–3 Approaches)
+Provide options when trade-offs exist:
+- Option A: minimal change
+- Option B: slightly larger but cleaner
+- Option C: only if needed (performance/architecture)
+
+For each option include:
+- pros/cons
+- risk level
+- estimated scope
+- test impact
+
+### 5) FEEDBACK (Recommend + Rationale)
+- Recommend one option and explain why it best fits constraints.
+- Call out risks and mitigations.
+
+### 6) ASK (Decision Gate)
+If the choice materially affects architecture, API behaviour, or scope:
+- Ask the user which option to proceed with.
+If low-risk and obvious:
+- Proceed with the recommended option.
+
+### 7) DISCUSS (Edge Cases & Acceptance)
+- List key edge cases and failure modes.
+- Confirm acceptance criteria.
+- Pause and clarify if uncertainty exists.
+
+### 8) EXECUTE (Implement in Small Steps)
+- Make minimal diffs.
+- Prefer TDD: test → minimal fix → refactor.
+- Avoid unrelated refactors.
+- Explain changes briefly.
+
+### 9) VERIFY AGAIN (Proof)
+- Provide exact commands/tests to run.
+- State expected results.
+- If verification can’t be run here, provide a verification plan.
+
+### 10) REFLECT (Learning Loop)
+After completing the task, briefly reflect:
+- What was the root cause or core challenge?
+- What assumption was most important?
+- Could a test, tool, or rule have caught this earlier?
+- Suggest one small improvement to code, tests, or workflow (optional, not a refactor)
+
+Keep reflection concise (max 4 bullets).
+
+---
+
+## Output Template (Use this structure)
+
+1. **Verify**  
+2. **Think**  
+3. **Find**  
+4. **Options**  
+5. **Feedback**  
+6. **Ask / Proceed**  
+7. **Discuss**  
+8. **Execute**  
+9. **Verify Again**  
+10. **Reflect**
+
+---
+
+## Hard Rules
+- Never skip verification for bug reports.
+- Never hide assumptions.
+- Never claim certainty without a verification path.
+- Prefer small, shippable increments over large changes.

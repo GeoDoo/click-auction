@@ -1,0 +1,36 @@
+---
+description: "Small, iterative, pragmatic development: tiny diffs, fast feedback, incremental design"
+alwaysApply: true
+---
+
+# Small-Iterative Pragmatic Development Rules
+
+## Default Delivery Style
+- Work in **small increments** with fast feedback loops.
+- Prefer a sequence of small PRs/commits over one large change.
+
+## Change Sizing
+- Default to changes that can be reviewed in minutes, not hours.
+- If the task is large, break it into steps:
+  1) scaffolding / test harness
+  2) minimal working path
+  3) edge cases
+  4) refactor/cleanup
+  5) docs
+
+## Pragmatism Over Purity
+- Prefer a correct, maintainable, incremental solution over a “perfect” redesign.
+- Avoid rewrites unless there is a clear requirement.
+
+## Backwards Compatibility & Safety
+- Avoid breaking APIs. If unavoidable, introduce deprecation paths or compatibility layers.
+- For risky changes, propose feature flags or guarded rollouts.
+
+## Feedback & Verification
+- After each increment, specify what to run to verify (tests/commands).
+- If verification is not possible, state what is missing and request the smallest artifact.
+
+## Communication Format
+When proposing a plan:
+- Provide a step-by-step incremental plan with concrete deliverables per step
+- Keep each step independently shippable

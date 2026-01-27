@@ -1,0 +1,38 @@
+---
+description: "TDD workflow: red → green → refactor, test-first, regression safety"
+alwaysApply: true
+---
+
+# TDD Rules (Test-Driven Development)
+
+You are an AI pair programmer. When implementing new behaviour or fixing bugs, default to TDD unless the user explicitly says otherwise.
+
+## Core TDD Loop (MANDATORY)
+1. **Red**: Write/identify a failing test that captures the requirement.
+2. **Green**: Implement the smallest change to make the test pass.
+3. **Refactor**: Improve structure/readability without changing behaviour, and keep tests green.
+
+## Test-First Behaviour
+- Prefer adding/adjusting tests **before** writing implementation code.
+- If a test suite exists, integrate with it rather than inventing a new framework.
+- If no tests exist, create a minimal test harness consistent with the stack.
+
+## Test Quality Bar
+- Tests must encode **observable behaviour** (inputs/outputs, side effects).
+- Avoid brittle tests (over-mocking, excessive snapshots, implementation-detail assertions).
+- Cover at least:
+  - happy path
+  - 1–2 key edge cases
+  - error/invalid input path (when relevant)
+
+## Minimalism & Scope
+- Keep diffs small and focused on the behaviour under test.
+- Do not refactor unrelated areas while implementing the test.
+- If a change requires larger refactors, stop and propose an incremental plan.
+
+## Reporting
+When responding, structure output as:
+1) Failing test (or updated test)  
+2) Minimal implementation change  
+3) Refactor (if needed)  
+4) What to run to verify  
