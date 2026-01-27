@@ -7,24 +7,30 @@
    CSS VARIABLES (VIOOH Brand Palette)
    ============================================ */
 :root {
-  /* Brand Colors */
+  /* Brand Colors - VIOOH Player Emulator Theme */
   --viooh-teal: #00C9A7;
   --viooh-cyan: #00D4D4;
   --viooh-purple: #6B3FA0;
   --viooh-magenta: #E91E8C;
-  --viooh-navy: #0A0B1E;
-  --viooh-dark: #060714;
+  --viooh-navy: #0d1117;
+  --viooh-dark: #010409;
 
   /* Semantic Colors */
   --primary: var(--viooh-teal);
   --secondary: var(--viooh-purple);
   --accent: var(--viooh-magenta);
-  --success: #00E896;
-  --warning: #FFD700;
-  --danger: #FF3366;
+  --success: #2ea44f;
+  --warning: #d29922;
+  --danger: #f85149;
   --dark: var(--viooh-navy);
   --darker: var(--viooh-dark);
-  --card-bg: rgba(10, 11, 30, 0.95);
+  --card-bg: #161b22;
+  --card-border: rgba(0, 201, 167, 0.2);
+  --input-bg: #0d1117;
+  --input-border: rgba(0, 201, 167, 0.3);
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
 
   /* Typography */
   --font-display: 'Orbitron', sans-serif;
@@ -72,7 +78,7 @@ html {
 body {
   font-family: var(--font-body);
   background: var(--darker);
-  color: #e0e0e0;
+  color: var(--text-primary);
   min-height: 100vh;
   min-height: -webkit-fill-available;
   overflow-x: hidden;
@@ -91,31 +97,19 @@ body {
   width: 100%;
   height: 100%;
   z-index: -1;
-  background: 
-    radial-gradient(ellipse at 50% 50%, rgba(123, 44, 191, 0.15) 0%, transparent 60%),
-    var(--darker);
+  background: var(--darker);
   transition: background var(--transition-slow);
   pointer-events: none;
 }
 
 .bg.bidding {
   background: 
-    radial-gradient(ellipse at 50% 50%, rgba(0, 255, 136, 0.2) 0%, transparent 60%),
+    radial-gradient(ellipse at 50% 50%, rgba(0, 201, 167, 0.08) 0%, transparent 60%),
     var(--darker);
 }
 
 .grid-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: -1;
-  background-image: 
-    linear-gradient(rgba(0, 201, 167, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 201, 167, 0.03) 1px, transparent 1px);
-  background-size: 80px 80px;
-  pointer-events: none;
+  display: none; /* Cleaner look without grid */
 }
 
 /* ============================================
@@ -134,15 +128,18 @@ body {
    BUTTONS
    ============================================ */
 .btn {
-  padding: var(--spacing-md) var(--spacing-xl);
-  font-family: var(--font-display);
-  font-size: 1rem;
-  font-weight: 700;
-  text-transform: uppercase;
+  padding: 0.625rem 1.25rem;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 600;
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all var(--transition-normal);
+  transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .btn:disabled {
@@ -156,13 +153,41 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary), var(--viooh-cyan));
-  color: var(--dark);
+  background: var(--success);
+  color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 30px rgba(0, 201, 167, 0.3);
+  background: #3fb950;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #ff6b6b;
+}
+
+.btn-secondary {
+  background: #21262d;
+  color: var(--text-primary);
+  border: 1px solid #30363d;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #30363d;
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+}
+
+.btn-outline:hover:not(:disabled) {
+  background: rgba(0, 201, 167, 0.1);
 }
 
 /* ============================================
@@ -170,8 +195,8 @@ body {
    ============================================ */
 .card {
   background: var(--card-bg);
-  border: 1px solid rgba(0, 245, 212, 0.15);
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
   padding: var(--spacing-lg);
 }
 
@@ -182,56 +207,61 @@ input[type="text"],
 input[type="password"],
 input[type="number"] {
   width: 100%;
-  padding: var(--spacing-md) var(--spacing-lg);
+  padding: 0.75rem 1rem;
   font-family: var(--font-body);
-  font-size: 1.1rem;
-  background: rgba(0, 0, 0, 0.4);
-  border: 2px solid rgba(0, 245, 212, 0.3);
-  border-radius: var(--radius-md);
-  color: white;
+  font-size: 1rem;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
   transition: all var(--transition-normal);
 }
 
 input:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 20px rgba(0, 245, 212, 0.3);
+  box-shadow: 0 0 0 3px rgba(0, 201, 167, 0.15);
 }
 
 input::placeholder {
-  color: #555;
+  color: var(--text-muted);
 }
 
 /* ============================================
    STATUS BADGES
    ============================================ */
 .status-badge {
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: 0.25rem 0.75rem;
   border-radius: var(--radius-full);
-  font-family: var(--font-display);
-  font-size: 0.85rem;
-  font-weight: 700;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
   text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .status-waiting {
-  background: rgba(255, 215, 0, 0.15);
+  background: rgba(210, 153, 34, 0.15);
   color: var(--warning);
+  border: 1px solid rgba(210, 153, 34, 0.3);
 }
 
 .status-countdown {
-  background: rgba(233, 30, 140, 0.2);
+  background: rgba(233, 30, 140, 0.15);
   color: var(--accent);
+  border: 1px solid rgba(233, 30, 140, 0.3);
 }
 
 .status-bidding {
-  background: rgba(0, 232, 150, 0.2);
+  background: rgba(46, 164, 79, 0.15);
   color: var(--success);
+  border: 1px solid rgba(46, 164, 79, 0.3);
 }
 
 .status-finished {
-  background: rgba(0, 201, 167, 0.2);
+  background: rgba(0, 201, 167, 0.15);
   color: var(--primary);
+  border: 1px solid rgba(0, 201, 167, 0.3);
 }
 
 /* ============================================
@@ -319,7 +349,8 @@ input::placeholder {
 .text-center { text-align: center; }
 .text-primary { color: var(--primary); }
 .text-accent { color: var(--accent); }
-.text-muted { color: #666; }
+.text-muted { color: var(--text-muted); }
+.text-secondary { color: var(--text-secondary); }
 
 .mt-sm { margin-top: var(--spacing-sm); }
 .mt-md { margin-top: var(--spacing-md); }
@@ -327,5 +358,32 @@ input::placeholder {
 .mb-sm { margin-bottom: var(--spacing-sm); }
 .mb-md { margin-bottom: var(--spacing-md); }
 .mb-lg { margin-bottom: var(--spacing-lg); }
+
+/* Section headers like the emulator */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.section-header .icon {
+  color: var(--primary);
+}
+
+/* Labels */
+label {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
 
 

@@ -1,21 +1,17 @@
-/* Background */
+/* Background - Clean Emulator Theme */
 .bg {
   position: fixed;
   top: 0; left: 0;
   width: 100%; height: 100%;
   z-index: -2;
-  background: 
-    radial-gradient(ellipse at 20% 80%, rgba(107, 63, 160, 0.2) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(0, 201, 167, 0.15) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 50%, rgba(233, 30, 140, 0.1) 0%, transparent 70%),
-    var(--viooh-dark);
+  background: #010409;
   transition: background 0.5s;
 }
 
 .bg.bidding {
   background: 
-    radial-gradient(ellipse at 50% 50%, rgba(0, 232, 150, 0.25) 0%, transparent 50%),
-    var(--viooh-dark);
+    radial-gradient(ellipse at 50% 50%, rgba(0, 201, 167, 0.08) 0%, transparent 50%),
+    #010409;
 }
 
 .grid-overlay {
