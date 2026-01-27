@@ -126,6 +126,24 @@ header {
   gap: 0.5rem;
 }
 
+/* Leaderboard Header */
+.leaderboard-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  color: #666;
+  letter-spacing: 0.05em;
+}
+
+.header-rank { width: 35px; text-align: center; }
+.header-name { flex: 1; }
+.header-stage1, .header-stage2, .header-total { width: 50px; text-align: center; }
+.header-wins { width: 50px; text-align: center; }
+
 .leaderboard-list {
   flex: 1;
   overflow-y: auto;
@@ -208,6 +226,50 @@ header {
   color: var(--primary);
   min-width: 90px;
   text-align: right;
+}
+
+/* All-Time Leaderboard Stats */
+.player-alltime-stats {
+  display: flex;
+  gap: 0.75rem;
+  margin-left: auto;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.75rem;
+}
+
+.player-alltime-stats .stat {
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  min-width: 50px;
+  text-align: center;
+}
+
+.player-alltime-stats .stage1-stat {
+  background: rgba(0, 232, 150, 0.15);
+  color: var(--success);
+}
+
+.player-alltime-stats .reaction-stat {
+  background: rgba(233, 30, 140, 0.15);
+  color: var(--accent);
+}
+
+.player-alltime-stats .total-stat {
+  background: rgba(0, 201, 167, 0.2);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.wins-badge {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.8rem;
+  color: var(--warning);
+  margin-left: 0.5rem;
+}
+
+.alltime-item .player-name {
+  min-width: 100px;
+  max-width: 120px;
 }
 
 .click-bar {

@@ -19,6 +19,9 @@ interface AllTimePlayer {
   name: string;
   wins: number;
   bestRound: number;
+  totalStage1Taps?: number;
+  bestReactionTime?: number | null;
+  totalFinalScore?: number;
 }
 
 interface GameState {
@@ -84,16 +87,24 @@ function loadAllTimeStats(): void {
       list.innerHTML = data.allTime
         .slice(0, 8)
         .map(
-          (player, index) => `
-            <div class="leaderboard-item">
+          (player, index) => {
+            const stage1 = player.totalStage1Taps ?? 0;
+            const reaction = player.bestReactionTime != null ? `${player.bestReactionTime}ms` : '-';
+            const total = player.totalFinalScore ?? player.bestRound ?? 0;
+            
+            return `
+            <div class="leaderboard-item alltime-item">
               <div class="rank">${index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}</div>
               <div class="player-name">${escapeHtml(player.name)}</div>
-              <div class="player-stats">
-                <span class="wins">${player.wins} 🏆</span>
-                <span class="best">Best: ${player.bestRound}</span>
+              <div class="player-alltime-stats">
+                <span class="stat stage1-stat" title="Stage 1 Taps">${stage1}</span>
+                <span class="stat reaction-stat" title="Best Reaction">${reaction}</span>
+                <span class="stat total-stat" title="Total Score">${total}</span>
               </div>
+              <div class="wins-badge" title="Wins">${player.wins} 🏆</div>
             </div>
-          `
+          `;
+          }
         )
         .join('');
     })

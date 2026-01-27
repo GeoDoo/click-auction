@@ -32,17 +32,20 @@
             <input type="number" id="duration" value="10" min="5" max="60" aria-describedby="duration-hint">
             <span id="duration-hint" class="sr-only">Enter a value between 5 and 60 seconds</span>
           </div>
-          <div class="btn-group" role="group" aria-label="Auction controls">
-            <button class="btn btn-start" id="startBtn" onclick="startAuction()" aria-label="Start auction">
-              🚀 Start Auction
+          <div class="btn-group" role="group" aria-label="Game controls">
+            <button class="btn btn-new-game" id="newGameBtn" onclick="newGame()" aria-label="New game - open lobby">
+              🎮 New Game
             </button>
-            <button class="btn btn-reset" id="resetBtn" onclick="resetAuction()" aria-label="Reset auction">
-              🔄 Reset
+            <button class="btn btn-start" id="startBtn" onclick="startAuction()" aria-label="Start round">
+              🚀 Start
             </button>
           </div>
+          <p id="gameStatus" style="text-align: center; margin-top: 1rem; color: #888; font-size: 0.85rem;">
+            Click "New Game" to open lobby for players
+          </p>
           <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); text-align: center;">
-            <button class="btn" style="background: rgba(255,51,102,0.15); color: var(--danger); border: 1px solid rgba(255,51,102,0.4); font-size: 0.7rem; padding: 0.4rem 0.8rem; min-width: auto; flex: none;" onclick="resetAllTimeStats()" aria-label="Reset all-time statistics">
-              🗑️ Reset All-Time Stats
+            <button class="btn btn-reset-all" onclick="resetAll()" aria-label="Reset everything">
+              🗑️ Reset All (Clear Everything)
             </button>
           </div>
         </div>

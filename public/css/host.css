@@ -176,6 +176,16 @@ header {
   box-shadow: 0 10px 30px rgba(0, 255, 136, 0.3);
 }
 
+.btn-new-game {
+  background: linear-gradient(135deg, var(--viooh-purple), var(--viooh-magenta));
+  color: white;
+}
+
+.btn-new-game:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(107, 63, 160, 0.4);
+}
+
 .btn-reset {
   background: linear-gradient(135deg, var(--warning), #e6aa00);
   color: var(--dark);
@@ -184,6 +194,21 @@ header {
 .btn-reset:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 10px 30px rgba(255, 190, 11, 0.3);
+}
+
+.btn-reset-all {
+  background: rgba(255, 51, 102, 0.15);
+  color: var(--danger);
+  border: 1px solid rgba(255, 51, 102, 0.4);
+  font-size: 0.75rem;
+  padding: 0.5rem 1rem;
+  min-width: auto;
+  flex: none;
+}
+
+.btn-reset-all:hover:not(:disabled) {
+  background: rgba(255, 51, 102, 0.25);
+  box-shadow: 0 5px 20px rgba(255, 51, 102, 0.2);
 }
 
 .btn:disabled {

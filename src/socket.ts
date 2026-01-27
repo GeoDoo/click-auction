@@ -252,7 +252,36 @@ export function setupSocketIO(io: Server): void {
       setCountdownInterval(interval);
     });
 
-    // Reset auction
+    // New Game - opens lobby for new round, keeps cumulative stats
+    socket.on('newGame', () => {
+      if (!isAuthenticatedHost()) {
+        Logger.security('Unauthorized newGame attempt', socket.id);
+        return;
+      }
+
+      clearAllIntervals();
+      
+      // Reset player clicks for new round but KEEP player data
+      Object.values(gameState.players).forEach((player) => {
+        player.clicks = 0;
+        player.suspicious = false;
+        player.suspicionReason = null;
+        player.reactionTime = null;
+      });
+      
+      gameState.status = 'waiting';
+      gameState.winner = null;
+      gameState.winnerAd = null;
+      gameState.timeRemaining = 0;
+      gameState.finalLeaderboard = [];
+      gameState.stage1Scores = {};
+      gameState.stage2StartTime = null;
+      
+      Logger.gameEvent('New game lobby opened', { round: gameState.round + 1 });
+      broadcastState();
+    });
+
+    // Reset auction (legacy - same as newGame for now)
     socket.on('resetAuction', () => {
       if (!isAuthenticatedHost()) {
         Logger.security('Unauthorized resetAuction attempt', socket.id);

@@ -16,6 +16,10 @@ export interface PlayerStats {
   roundsPlayed: number;
   bestRound: number;
   lastPlayed: string | null;
+  // New cumulative fields for tournament mode
+  totalStage1Taps: number;
+  bestReactionTime: number | null; // Best (fastest) reaction time ever
+  totalFinalScore: number; // Cumulative final score after multipliers
 }
 
 export interface LeaderboardEntry extends PlayerStats {
@@ -106,7 +110,13 @@ export async function saveScores(): Promise<void> {
 /**
  * Update stats for a player after a round
  */
-export function updatePlayerStats(name: string, clicks: number, isWinner: boolean): void {
+export function updatePlayerStats(
+  name: string,
+  stage1Taps: number,
+  reactionTime: number | null,
+  finalScore: number,
+  isWinner: boolean
+): void {
   if (!allTimeStats[name]) {
     allTimeStats[name] = {
       wins: 0,
@@ -114,13 +124,33 @@ export function updatePlayerStats(name: string, clicks: number, isWinner: boolea
       roundsPlayed: 0,
       bestRound: 0,
       lastPlayed: null,
+      totalStage1Taps: 0,
+      bestReactionTime: null,
+      totalFinalScore: 0,
     };
   }
 
-  allTimeStats[name].totalClicks += clicks;
+  // Legacy fields (keep for backwards compatibility)
+  allTimeStats[name].totalClicks += finalScore;
   allTimeStats[name].roundsPlayed += 1;
-  allTimeStats[name].bestRound = Math.max(allTimeStats[name].bestRound, clicks);
+  allTimeStats[name].bestRound = Math.max(allTimeStats[name].bestRound, finalScore);
   allTimeStats[name].lastPlayed = new Date().toISOString();
+
+  // New cumulative fields
+  allTimeStats[name].totalStage1Taps += stage1Taps;
+  allTimeStats[name].totalFinalScore += finalScore;
+  
+  // Best reaction time (lower is better, so we want the minimum)
+  if (reactionTime !== null) {
+    if (allTimeStats[name].bestReactionTime === null) {
+      allTimeStats[name].bestReactionTime = reactionTime;
+    } else {
+      allTimeStats[name].bestReactionTime = Math.min(
+        allTimeStats[name].bestReactionTime,
+        reactionTime
+      );
+    }
+  }
 
   if (isWinner) {
     allTimeStats[name].wins += 1;

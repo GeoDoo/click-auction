@@ -6,17 +6,29 @@ import { io, Socket } from 'socket.io-client';
 import { Logger } from './logger';
 
 interface GameState {
-  status: 'waiting' | 'countdown' | 'bidding' | 'finished';
+  status: 'waiting' | 'countdown' | 'bidding' | 'stage2_countdown' | 'stage2_tap' | 'finished' | 'lobby';
   playerCount: number;
+  round: number;
 }
 
 const socket: Socket = io();
 let isAuthenticated = false;
+let currentStatus: GameState['status'] = 'waiting';
 
 // Get auth token from cookie
 function getAuthToken(): string | null {
   const match = document.cookie.match(/hostAuth=([^;]+)/);
   return match ? match[1] : null;
+}
+
+// New Game - opens lobby for new registrations, keeps existing player data
+function newGame(): void {
+  if (!isAuthenticated) {
+    Logger.warn('Cannot start new game - not authenticated');
+    return;
+  }
+  Logger.debug('Opening lobby for new game');
+  socket.emit('newGame');
 }
 
 function startAuction(): void {
@@ -56,50 +68,71 @@ socket.on('connect_error', (err: Error) => {
   Logger.error('Socket connection error:', err.message);
 });
 
-function resetAuction(): void {
+// Reset All - clears ALL history and leaderboard
+function resetAll(): void {
   if (!isAuthenticated) {
-    Logger.warn('Cannot reset auction - not authenticated');
+    Logger.warn('Cannot reset - not authenticated');
     return;
   }
-  socket.emit('resetAuction');
+  if (confirm('⚠️ This will permanently delete ALL player stats and reset the game. Are you sure?')) {
+    socket.emit('resetAuction');
+    socket.emit('resetAllTimeStats');
+    Logger.info('All data has been reset');
+  }
 }
 
 function updateUI(state: GameState): void {
+  currentStatus = state.status;
+  
   const playerCount = document.getElementById('playerCount');
   if (playerCount) {
     playerCount.textContent = `${state.playerCount} Players Connected`;
   }
 
-  const isLocked = state.status === 'countdown' || state.status === 'bidding';
+  const gameStatus = document.getElementById('gameStatus');
+  const newGameBtn = document.getElementById('newGameBtn') as HTMLButtonElement | null;
   const startBtn = document.getElementById('startBtn') as HTMLButtonElement | null;
-  const resetBtn = document.getElementById('resetBtn') as HTMLButtonElement | null;
 
-  if (startBtn) startBtn.disabled = isLocked;
-  if (resetBtn) resetBtn.disabled = isLocked;
+  // Determine if game is in progress
+  const isGameInProgress = ['countdown', 'bidding', 'stage2_countdown', 'stage2_tap'].includes(state.status);
+  const isLobbyOpen = state.status === 'waiting' || state.status === 'lobby';
+  const isFinished = state.status === 'finished';
+
+  // Update status message
+  if (gameStatus) {
+    const statusMessages: Record<string, string> = {
+      waiting: 'Click "New Game" to open lobby for players',
+      lobby: `🎮 Lobby open! Round ${state.round + 1} • Waiting for players...`,
+      countdown: '⏳ Countdown in progress...',
+      bidding: '🔥 Click Auction in progress!',
+      stage2_countdown: '⏳ Fastest Finger countdown...',
+      stage2_tap: '⚡ Fastest Finger in progress!',
+      finished: `✅ Round ${state.round} complete! Click "New Game" for next round`,
+    };
+    gameStatus.textContent = statusMessages[state.status] || state.status;
+    gameStatus.style.color = isGameInProgress ? 'var(--success)' : isFinished ? 'var(--primary)' : '#888';
+  }
+
+  // Button states
+  if (newGameBtn) {
+    newGameBtn.disabled = isGameInProgress;
+  }
+  if (startBtn) {
+    startBtn.disabled = isGameInProgress || (!isLobbyOpen && !isFinished);
+  }
 }
 
 socket.on('gameState', updateUI);
 
-function resetAllTimeStats(): void {
-  if (!isAuthenticated) {
-    Logger.warn('Cannot reset stats - not authenticated');
-    return;
-  }
-  if (confirm('⚠️ This will permanently delete ALL player stats. Are you sure?')) {
-    socket.emit('resetAllTimeStats');
-    alert('All-time stats have been reset!');
-  }
-}
-
 // Expose functions to window for onclick handlers
 declare global {
   interface Window {
+    newGame: typeof newGame;
     startAuction: typeof startAuction;
-    resetAuction: typeof resetAuction;
-    resetAllTimeStats: typeof resetAllTimeStats;
+    resetAll: typeof resetAll;
   }
 }
+window.newGame = newGame;
 window.startAuction = startAuction;
-window.resetAuction = resetAuction;
-window.resetAllTimeStats = resetAllTimeStats;
+window.resetAll = resetAll;
 

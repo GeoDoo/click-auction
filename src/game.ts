@@ -273,8 +273,15 @@ export function endStage2(): void {
   }
 
   leaderboard.forEach((player) => {
-    // Use finalScore for stats tracking
-    persistence.updatePlayerStats(player.name, player.finalScore, player.name === winnerName);
+    // Track stage1 taps, reaction time, and final score
+    const stage1Taps = player.stage1Score ?? player.clicks;
+    persistence.updatePlayerStats(
+      player.name,
+      stage1Taps,
+      player.reactionTime,
+      player.finalScore,
+      player.name === winnerName
+    );
   });
 
   persistence.saveScores().catch((err) => {

@@ -23,6 +23,7 @@ export interface LeaderboardEntry {
   suspicious: boolean;
   reactionTime: number | null;
   finalScore: number;
+  stage1Score?: number; // Stage 1 taps (may differ from clicks after Stage 2)
 }
 
 export interface Winner extends Player {
