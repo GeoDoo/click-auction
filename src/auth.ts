@@ -19,10 +19,10 @@ interface VerifyResult {
 const hostAuthTokens: Record<string, TokenData> = {};
 
 /**
- * Generate a unique host auth token
+ * Generate a cryptographically secure host auth token
  */
 export function generateHostAuthToken(): string {
-  return 'host_' + Math.random().toString(36).substring(2, 18) + Date.now().toString(36);
+  return 'host_' + crypto.randomBytes(24).toString('base64url');
 }
 
 /**

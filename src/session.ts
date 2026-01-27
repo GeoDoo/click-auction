@@ -2,6 +2,7 @@
 // SESSION MANAGEMENT (Reconnection Support)
 // ============================================
 
+import crypto from 'crypto';
 import config from './config';
 import Logger from './logger';
 
@@ -25,10 +26,10 @@ const playerSessions: Record<string, Session> = {};
 const socketToSession: Record<string, string> = {};
 
 /**
- * Generate a unique session token
+ * Generate a cryptographically secure session token
  */
 export function generateSessionToken(): string {
-  return 'sess_' + Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
+  return 'sess_' + crypto.randomBytes(16).toString('base64url');
 }
 
 /**
