@@ -712,28 +712,6 @@ footer {
   border: 1px solid rgba(0, 201, 167, 0.4);
 }
 
-/* Creative Image in Billboard */
-.ad-creative {
-  width: 100%;
-  max-height: 120px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 0.5rem;
-}
-
-.creative-image {
-  max-width: 100%;
-  max-height: 120px;
-  object-fit: contain;
-  animation: creativeGlow 2s ease-in-out infinite alternate;
-}
-
-@keyframes creativeGlow {
-  0% { filter: drop-shadow(0 0 10px rgba(0, 201, 167, 0.4)); }
-  100% { filter: drop-shadow(0 0 20px rgba(233, 30, 140, 0.6)); }
-}
-
 .ad-content {
   font-family: 'Orbitron', sans-serif;
   font-size: 1.5rem;

@@ -46,22 +46,6 @@ let maxClicks = 1;
 let lastCountdown: number | null = null;
 let lastStatus: GameState['status'] = 'waiting';
 
-// Brand images for winner creatives
-const BRAND_IMAGES = [
-  '/images/turtle-wheels.png',
-  '/images/robot-hand.png',
-  '/images/astronaut-fish.png',
-  '/images/chameleon-plug.png',
-];
-
-// Set random creative for winner billboard
-function setRandomCreative(): void {
-  const creativeImage = document.getElementById('creativeImage') as HTMLImageElement | null;
-  if (creativeImage) {
-    const randomIndex = Math.floor(Math.random() * BRAND_IMAGES.length);
-    creativeImage.src = BRAND_IMAGES[randomIndex];
-  }
-}
 
 // Fetch config for QR code
 fetch('/api/config')
@@ -297,9 +281,6 @@ function updateUI(state: GameState): void {
 function showWinnerScreen(state: GameState): void {
   const lb = state.leaderboard;
   const winner = lb[0];
-
-  // Set random creative image for the billboard
-  setRandomCreative();
 
   const winnerName = document.getElementById('winnerName');
   const winnerScoreText = document.getElementById('winnerScoreText');
