@@ -107,46 +107,9 @@ socket.on('rejoinError', (data: { message: string }) => {
   if (gameScreen) gameScreen.classList.remove('active');
 });
 
-// Try to play video with sound, fallback to muted if browser blocks
-function initLoadingVideo(): void {
-  const loadingVideo = document.getElementById('loadingVideo') as HTMLVideoElement | null;
-  if (!loadingVideo) return;
-  
-  // Try to play with sound first
-  const playPromise = loadingVideo.play();
-  if (playPromise !== undefined) {
-    playPromise.catch(() => {
-      // Autoplay was blocked, try muted
-      loadingVideo.muted = true;
-      loadingVideo.play().catch(() => {
-        // Even muted failed, just show the poster/first frame
-      });
-    });
-  }
-}
-
-// Hide loading screen with minimum display time for branding
-function hideLoadingScreen(): void {
-  const loadingScreen = document.getElementById('loadingScreen');
-  const loadingVideo = document.getElementById('loadingVideo') as HTMLVideoElement | null;
-  
-  if (loadingScreen) {
-    // Minimum 2.5s display for video branding impact
-    setTimeout(() => {
-      loadingScreen.classList.add('hidden');
-      // Pause video when hidden to save resources
-      if (loadingVideo) loadingVideo.pause();
-    }, 2500);
-  }
-}
-
-// Initialize video on page load
-initLoadingVideo();
-
 // Attempt to rejoin on reconnect
 socket.on('connect', () => {
   Logger.debug('Connected to server');
-  hideLoadingScreen();
 
   if (sessionToken) {
     socket.emit('rejoinGame', { token: sessionToken });

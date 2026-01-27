@@ -46,37 +46,13 @@ let maxClicks = 1;
 let lastCountdown: number | null = null;
 let lastStatus: GameState['status'] = 'waiting';
 
-// Brand images for slideshow and winner creatives
+// Brand images for winner creatives
 const BRAND_IMAGES = [
   '/images/turtle-wheels.png',
   '/images/robot-hand.png',
   '/images/astronaut-fish.png',
   '/images/chameleon-plug.png',
 ];
-
-let currentSlideIndex = 0;
-let slideshowInterval: ReturnType<typeof setInterval> | null = null;
-
-// Initialize slideshow
-function startSlideshow(): void {
-  if (slideshowInterval) return;
-  
-  slideshowInterval = setInterval(() => {
-    const images = document.querySelectorAll('.slideshow-image');
-    if (images.length === 0) return;
-    
-    images[currentSlideIndex].classList.remove('active');
-    currentSlideIndex = (currentSlideIndex + 1) % images.length;
-    images[currentSlideIndex].classList.add('active');
-  }, 5000); // Change every 5 seconds
-}
-
-function stopSlideshow(): void {
-  if (slideshowInterval) {
-    clearInterval(slideshowInterval);
-    slideshowInterval = null;
-  }
-}
 
 // Set random creative for winner billboard
 function setRandomCreative(): void {
@@ -86,9 +62,6 @@ function setRandomCreative(): void {
     creativeImage.src = BRAND_IMAGES[randomIndex];
   }
 }
-
-// Start slideshow on page load
-startSlideshow();
 
 // Fetch config for QR code
 fetch('/api/config')
