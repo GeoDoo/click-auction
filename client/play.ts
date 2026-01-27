@@ -107,36 +107,20 @@ socket.on('rejoinError', (data: { message: string }) => {
   if (gameScreen) gameScreen.classList.remove('active');
 });
 
-// Brand images for loading screen
-const BRAND_IMAGES = [
-  '/images/turtle-wheels.png',
-  '/images/robot-hand.png',
-  '/images/astronaut-fish.png',
-  '/images/chameleon-plug.png',
-];
-
-// Set random loading image on page load
-function setRandomLoadingImage(): void {
-  const loadingImage = document.getElementById('loadingImage') as HTMLImageElement | null;
-  if (loadingImage) {
-    const randomIndex = Math.floor(Math.random() * BRAND_IMAGES.length);
-    loadingImage.src = BRAND_IMAGES[randomIndex];
-  }
-}
-
 // Hide loading screen with minimum display time for branding
 function hideLoadingScreen(): void {
   const loadingScreen = document.getElementById('loadingScreen');
+  const loadingVideo = document.getElementById('loadingVideo') as HTMLVideoElement | null;
+  
   if (loadingScreen) {
-    // Minimum 1.5s display for branding impact
+    // Minimum 2s display for video branding impact
     setTimeout(() => {
       loadingScreen.classList.add('hidden');
-    }, 1500);
+      // Pause video when hidden to save resources
+      if (loadingVideo) loadingVideo.pause();
+    }, 2000);
   }
 }
-
-// Initialize loading image
-setRandomLoadingImage();
 
 // Attempt to rejoin on reconnect
 socket.on('connect', () => {
