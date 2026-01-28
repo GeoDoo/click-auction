@@ -201,19 +201,27 @@ function toggleSound(): void {
 function joinGame(): void {
   const nameInput = document.getElementById('playerName') as HTMLInputElement | null;
   const adInput = document.getElementById('adContent') as HTMLInputElement | null;
+  const joinBtn = document.getElementById('joinBtn') as HTMLButtonElement | null;
 
-  const name = nameInput?.value.trim() || 'Anonymous DSP';
+  // Validate inputs
+  const name = nameInput?.value.trim();
+  if (!name) {
+    nameInput?.focus();
+    return;
+  }
+
   const adContent = adInput?.value.trim() || `${name} wins! 🎉`;
 
-  SoundManager.init();
-
-  const joinBtn = document.getElementById('joinBtn') as HTMLButtonElement | null;
+  // Disable button to prevent double-submit
   if (joinBtn) {
     joinBtn.disabled = true;
     joinBtn.textContent = 'Joining...';
   }
 
+  SoundManager.init();
   myName = name;
+
+  Logger.debug('Joining game as:', name);
   socket.emit('joinGame', { name, adContent });
 }
 
@@ -567,7 +575,7 @@ socket.on('joinError', (data: { message: string }) => {
   const joinBtn = document.getElementById('joinBtn') as HTMLButtonElement | null;
   if (joinBtn) {
     joinBtn.disabled = false;
-    joinBtn.textContent = 'Join Game';
+    joinBtn.textContent = 'Enter the Arena';
   }
 
   const errorText = document.getElementById('errorText');

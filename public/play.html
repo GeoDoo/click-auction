@@ -25,17 +25,17 @@
       <div class="rule-item" role="listitem">🏆 <strong>Combined</strong> score wins!</div>
     </div>
     
-    <form class="join-form" id="joinForm" onsubmit="joinGame(); return false;">
+    <form class="join-form" id="joinForm" onsubmit="if(window.joinGame){window.joinGame();return false;}">
       <div class="input-group">
         <label for="playerName">Your DSP Name</label>
-        <input type="text" id="playerName" placeholder="e.g., MegaBidder9000" maxlength="20" autocomplete="off" required aria-required="true">
+        <input type="text" id="playerName" name="playerName" placeholder="e.g., MegaBidder9000" maxlength="20" autocomplete="off" inputmode="text" enterkeyhint="next" required aria-required="true">
       </div>
       <div class="input-group">
-        <label for="adContent">Your Winning Ad Message (shown if you win!)</label>
-        <input type="text" id="adContent" placeholder="e.g., Best DSP in town! 🚀" maxlength="60" autocomplete="off" required aria-required="true">
-        <small style="color: #666; font-size: 0.85rem; margin-top: 0.5rem; display: block;" id="adContentHint">This becomes a generated ad image on the big screen!</small>
+        <label for="adContent">Your Winning Ad Message</label>
+        <input type="text" id="adContent" name="adContent" placeholder="e.g., Best DSP in town! 🚀" maxlength="60" autocomplete="off" inputmode="text" enterkeyhint="go" required aria-required="true">
+        <small class="input-hint">This becomes a generated ad on the big screen!</small>
       </div>
-      <button type="submit" class="btn-join">Enter the Arena</button>
+      <button type="submit" class="btn-join" id="joinBtn">Enter the Arena</button>
     </form>
   </main>
 
