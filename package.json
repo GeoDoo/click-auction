@@ -8,7 +8,10 @@
     "build": "npm run build:client && tsc",
     "build:client": "vite build",
     "test": "jest --detectOpenHandles --forceExit",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "load-test": "npx ts-node tests/load-test.ts",
+    "load-test:local": "npx ts-node tests/load-test.ts --url=http://localhost:3000 --players=200",
+    "load-test:prod": "npx ts-node tests/load-test.ts --url=https://click-auction.onrender.com --players=200"
   },
   "dependencies": {
     "@upstash/redis": "^1.35.8",

@@ -59,8 +59,8 @@ const config: Config = {
   HOST: '0.0.0.0', // Listen on all network interfaces
 
   // Player limits
-  MAX_PLAYERS: 100,
-  MAX_CONNECTIONS_PER_IP: 10,
+  MAX_PLAYERS: 200,
+  MAX_CONNECTIONS_PER_IP: 20,
 
   // Session management
   RECONNECT_GRACE_PERIOD_MS: 30000, // 30 seconds to reconnect
