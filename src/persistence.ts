@@ -17,7 +17,7 @@ export interface PlayerStats {
   bestRound: number;
   lastPlayed: string | null;
   // New cumulative fields for tournament mode
-  totalStage1Taps: number;
+  totalAuctionTaps: number;
   bestReactionTime: number | null; // Best (fastest) reaction time ever
   totalFinalScore: number; // Cumulative final score after multipliers
 }
@@ -112,7 +112,7 @@ export async function saveScores(): Promise<void> {
  */
 export function updatePlayerStats(
   name: string,
-  stage1Taps: number,
+  auctionTaps: number,
   reactionTime: number | null,
   finalScore: number,
   isWinner: boolean
@@ -124,7 +124,7 @@ export function updatePlayerStats(
       roundsPlayed: 0,
       bestRound: 0,
       lastPlayed: null,
-      totalStage1Taps: 0,
+      totalAuctionTaps: 0,
       bestReactionTime: null,
       totalFinalScore: 0,
     };
@@ -137,7 +137,7 @@ export function updatePlayerStats(
   allTimeStats[name].lastPlayed = new Date().toISOString();
 
   // New cumulative fields
-  allTimeStats[name].totalStage1Taps += stage1Taps;
+  allTimeStats[name].totalAuctionTaps += auctionTaps;
   allTimeStats[name].totalFinalScore += finalScore;
   
   // Best reaction time (lower is better, so we want the minimum)

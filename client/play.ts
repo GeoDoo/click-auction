@@ -15,11 +15,11 @@ interface Player {
 }
 
 interface GameState {
-  status: 'waiting' | 'countdown' | 'bidding' | 'stage2_countdown' | 'stage2_tap' | 'finished';
+  status: 'waiting' | 'auction_countdown' | 'auction' | 'fastestFinger_countdown' | 'fastestFinger_tap' | 'finished';
   timeRemaining: number;
   leaderboard: Player[];
   winner: Player | null;
-  stage1Scores?: Record<string, number>;
+  auctionScores?: Record<string, number>;
 }
 
 interface SessionData {
@@ -40,7 +40,7 @@ let myName = '';
 let gameStatus: GameState['status'] = 'waiting';
 let lastCountdown: number | null = null;
 let sessionToken: string | null = localStorage.getItem('clickAuctionSession');
-let myStage1Taps = 0; // Store Stage 1 score for display
+let myAuctionTaps = 0; // Store Click Auction score for display
 
 // ==========================================
 // SESSION MANAGEMENT
@@ -247,8 +247,8 @@ function handleBid(e: MouseEvent | TouchEvent): void {
   // Double-check: button must be enabled AND in correct game state
   if (bidButton.disabled) return;
 
-  // Stage 1: Bidding phase - count clicks
-  if (gameStatus === 'bidding') {
+  // Click Auction phase - count clicks
+  if (gameStatus === 'auction') {
     myClicks++;
     socket.emit('click');
 
@@ -261,15 +261,15 @@ function handleBid(e: MouseEvent | TouchEvent): void {
       setTimeout(() => counter.classList.remove('bump'), 50);
     }
   }
-  // Stage 2: Tap phase - record reaction time (only first tap counts)
-  else if (gameStatus === 'stage2_tap' && !hasRecordedReaction) {
+  // Fastest Finger phase - record reaction time (only first tap counts)
+  else if (gameStatus === 'fastestFinger_tap' && !hasRecordedReaction) {
     hasRecordedReaction = true;
     socket.emit('click');
 
     SoundManager.tap();
 
     // Update button to show tap recorded
-    bidButton.className = 'bid-button stage2-tapped';
+    bidButton.className = 'bid-button fastest-finger-tapped';
     bidButton.innerHTML = '✓ TAPPED!';
     bidButton.disabled = true;
   } else {
@@ -313,7 +313,7 @@ function updateUI(state: GameState): void {
 
   const bg = document.getElementById('bg');
   if (bg) {
-    const isBiddingPhase = state.status === 'bidding' || state.status === 'stage2_tap';
+    const isBiddingPhase = state.status === 'auction' || state.status === 'fastestFinger_tap';
     bg.className = 'bg' + (isBiddingPhase ? ' bidding' : '');
   }
 
@@ -322,31 +322,31 @@ function updateUI(state: GameState): void {
     badge.className = 'game-status-badge status-' + state.status;
     const statusLabels: Record<string, string> = {
       waiting: 'Waiting',
-      countdown: 'Get Ready',
-      bidding: 'CLICK AUCTION',
-      stage2_countdown: 'FASTEST FINGER',
-      stage2_tap: 'TAP NOW!',
+      auction_countdown: 'Get Ready',
+      auction: 'CLICK AUCTION',
+      fastestFinger_countdown: 'FASTEST FINGER',
+      fastestFinger_tap: 'TAP NOW!',
       finished: 'Finished',
     };
     badge.textContent = statusLabels[state.status] || state.status;
   }
 
-  // Handle Stage 1 Complete transition overlay
+  // Handle Click Auction Complete transition overlay
   const stageOverlay = document.getElementById('stageOverlay');
   const stageScore = document.getElementById('stageScore');
   const stageNext = document.getElementById('stageNext');
   
-  // Always store Stage 1 score when entering stage2_countdown
-  if (state.status === 'stage2_countdown' && previousStatus === 'bidding') {
-    myStage1Taps = myClicks;
+  // Always store Click Auction score when entering fastestFinger_countdown
+  if (state.status === 'fastestFinger_countdown' && previousStatus === 'auction') {
+    myAuctionTaps = myClicks;
   }
   
   // Show transition overlay ONLY briefly - don't block the countdown
-  if (previousStatus === 'bidding' && state.status === 'stage2_countdown') {
+  if (previousStatus === 'auction' && state.status === 'fastestFinger_countdown') {
     if (stageOverlay && stageScore && stageNext) {
       const stageTitle = document.getElementById('stageTitle');
       if (stageTitle) stageTitle.textContent = 'CLICK AUCTION COMPLETE!';
-      stageScore.textContent = `Your taps: ${myStage1Taps}`;
+      stageScore.textContent = `Your taps: ${myAuctionTaps}`;
       stageNext.textContent = 'FASTEST FINGER next!';
       stageOverlay.classList.add('active');
       
@@ -359,30 +359,30 @@ function updateUI(state: GameState): void {
     SoundManager.countdownTick();
   }
   
-  // Always hide overlay when stage2_tap starts (in case it's still showing)
-  if (state.status === 'stage2_tap' && stageOverlay) {
+  // Always hide overlay when fastestFinger_tap starts (in case it's still showing)
+  if (state.status === 'fastestFinger_tap' && stageOverlay) {
     stageOverlay.classList.remove('active');
   }
 
   // Play sounds for state changes
-  if (state.status === 'countdown') {
+  if (state.status === 'auction_countdown') {
     if (lastCountdown !== state.timeRemaining) {
       lastCountdown = state.timeRemaining;
       SoundManager.countdownTick();
     }
-  } else if (state.status === 'stage2_countdown') {
+  } else if (state.status === 'fastestFinger_countdown') {
     if (lastCountdown !== state.timeRemaining) {
       lastCountdown = state.timeRemaining;
       SoundManager.countdownTick();
     }
-  } else if (state.status === 'bidding') {
-    if (previousStatus !== 'bidding') {
+  } else if (state.status === 'auction') {
+    if (previousStatus !== 'auction') {
       SoundManager.go();
     }
-  } else if (state.status === 'stage2_tap') {
-    if (previousStatus !== 'stage2_tap') {
+  } else if (state.status === 'fastestFinger_tap') {
+    if (previousStatus !== 'fastestFinger_tap') {
       SoundManager.go();
-      hasRecordedReaction = false; // Reset for new Stage 2
+      hasRecordedReaction = false; // Reset for new Fastest Finger round
       // Hide stage overlay if still visible
       if (stageOverlay) stageOverlay.classList.remove('active');
     }
@@ -394,8 +394,8 @@ function updateUI(state: GameState): void {
   // Update click label based on stage
   const clickLabel = document.getElementById('clickLabel');
   if (clickLabel) {
-    if (state.status === 'stage2_countdown' || state.status === 'stage2_tap') {
-      clickLabel.textContent = 'Stage 1 Taps';
+    if (state.status === 'fastestFinger_countdown' || state.status === 'fastestFinger_tap') {
+      clickLabel.textContent = 'Auction Taps';
     } else {
       clickLabel.textContent = 'Your Bids';
     }
@@ -408,29 +408,29 @@ function updateUI(state: GameState): void {
       bidButton.textContent = 'Waiting...';
       bidButton.disabled = true;
       hasRecordedReaction = false;
-    } else if (state.status === 'countdown') {
-      bidButton.className = 'bid-button countdown-state';
+    } else if (state.status === 'auction_countdown') {
+      bidButton.className = 'bid-button auction-countdown';
       bidButton.innerHTML = `<span style="font-size: 3rem;">${state.timeRemaining}</span><br>CLICK AUCTION`;
       bidButton.disabled = true;
       myClicks = 0;
-      myStage1Taps = 0;
+      myAuctionTaps = 0;
       hasRecordedReaction = false;
       const counter = document.getElementById('clickCounter');
       if (counter) counter.textContent = '0';
-    } else if (state.status === 'bidding') {
+    } else if (state.status === 'auction') {
       bidButton.className = 'bid-button ready';
       bidButton.innerHTML =
         state.timeRemaining <= 3
           ? `<span style="font-size: 2rem; color: #ff3366;">${state.timeRemaining}s</span><br>TAP!`
           : 'TAP!';
       bidButton.disabled = false;
-    } else if (state.status === 'stage2_countdown') {
-      bidButton.className = 'bid-button stage2-countdown';
+    } else if (state.status === 'fastestFinger_countdown') {
+      bidButton.className = 'bid-button fastest-finger-countdown';
       bidButton.innerHTML = `<span style="font-size: 3rem;">${state.timeRemaining}</span><br>FASTEST<br>FINGER`;
       bidButton.disabled = true;
-    } else if (state.status === 'stage2_tap') {
+    } else if (state.status === 'fastestFinger_tap') {
       if (!hasRecordedReaction) {
-        bidButton.className = 'bid-button stage2-tap';
+        bidButton.className = 'bid-button fastest-finger-tap';
         bidButton.innerHTML = '<span style="font-size: 1.5rem;">⚡ TAP NOW! ⚡</span>';
         bidButton.disabled = false;
       }
@@ -512,7 +512,6 @@ function updateUI(state: GameState): void {
       };
 
       const myMultiplier = getMultiplier(myRank, myReactionTime);
-      const winnerMultiplier = getMultiplier(1, winnerReactionTime);
 
       if (winnerNameBig) winnerNameBig.textContent = state.winner.name + ' wins!';
       
@@ -524,21 +523,20 @@ function updateUI(state: GameState): void {
       
       // Show score breakdown for current player
       if (scoreBreakdown && !isWinner) {
-        const stage1Taps = myStage1Taps > 0 ? myStage1Taps : myClicks;
+        const auctionTaps = myAuctionTaps > 0 ? myAuctionTaps : myClicks;
         if (myReactionTime != null) {
           scoreBreakdown.innerHTML = `
             <div><span class="reaction">${myReactionTime}ms</span> reaction</div>
-            <div>${stage1Taps} taps × <span class="multiplier">${myMultiplier}x</span></div>
+            <div>${auctionTaps} taps × <span class="multiplier">${myMultiplier}x</span></div>
           `;
         } else {
           scoreBreakdown.innerHTML = `
             <div>No tap recorded</div>
-            <div>${stage1Taps} taps × <span class="multiplier">1x</span></div>
+            <div>${auctionTaps} taps × <span class="multiplier">1x</span></div>
           `;
         }
       } else if (scoreBreakdown) {
         // Winner's breakdown
-        const stage1Taps = myStage1Taps > 0 ? myStage1Taps : myClicks;
         if (myReactionTime != null) {
           scoreBreakdown.innerHTML = `
             <div><span class="reaction">${myReactionTime}ms</span> • <span class="multiplier">${myMultiplier}x multiplier</span></div>
@@ -598,4 +596,3 @@ declare global {
 }
 window.joinGame = joinGame;
 window.toggleSound = toggleSound;
-

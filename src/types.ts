@@ -23,7 +23,7 @@ export interface LeaderboardEntry {
   suspicious: boolean;
   reactionTime: number | null;
   finalScore: number;
-  stage1Score?: number; // Stage 1 taps (may differ from clicks after Stage 2)
+  auctionScore?: number; // Click Auction taps (may differ from clicks after Fastest Finger)
 }
 
 export interface Winner extends Player {
@@ -31,7 +31,7 @@ export interface Winner extends Player {
 }
 
 export interface GameState {
-  status: 'waiting' | 'countdown' | 'bidding' | 'stage2_countdown' | 'stage2_tap' | 'finished';
+  status: 'waiting' | 'auction_countdown' | 'auction' | 'fastestFinger_countdown' | 'fastestFinger_tap' | 'finished';
   players: Record<string, Player>;
   auctionDuration: number;
   countdownDuration: number;
@@ -40,9 +40,9 @@ export interface GameState {
   winnerAd: string | null;
   round: number;
   finalLeaderboard: LeaderboardEntry[];
-  stage1Scores: Record<string, number>;
-  stage2StartTime: number | null;
-  stage2CountdownDuration: number;
+  auctionScores: Record<string, number>;
+  fastestFingerStartTime: number | null;
+  fastestFingerCountdownDuration: number;
 }
 
 

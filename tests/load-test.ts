@@ -110,22 +110,22 @@ function createPlayer(playerId: number): Promise<Socket> {
       // Track state changes
       metrics.gameStates[state.status] = (metrics.gameStates[state.status] || 0) + 1;
 
-      // Start clicking during bidding phase
-      if (state.status === 'bidding' && !clickInterval) {
+      // Start clicking during Click Auction phase
+      if (state.status === 'auction' && !clickInterval) {
         clickInterval = setInterval(() => {
           socket.emit('click');
           metrics.totalClicks++;
         }, CLICK_INTERVAL_MS + Math.random() * 50); // Add some variance
       }
 
-      // Stop clicking when bidding ends
-      if (prevStatus === 'bidding' && state.status !== 'bidding' && clickInterval) {
+      // Stop clicking when auction ends
+      if (prevStatus === 'auction' && state.status !== 'auction' && clickInterval) {
         clearInterval(clickInterval);
         clickInterval = null;
       }
 
-      // Tap during stage 2
-      if (state.status === 'stage2_tap' && !hasTapped) {
+      // Tap during Fastest Finger
+      if (state.status === 'fastestFinger_tap' && !hasTapped) {
         // Random delay to simulate human reaction (50-500ms)
         setTimeout(() => {
           socket.emit('click');
@@ -178,8 +178,8 @@ function printReport(): void {
   console.log(`   ⏱️  Avg join time: ${joinTimes.length ? (joinTimes.reduce((a, b) => a + b, 0) / joinTimes.length).toFixed(2) : 0}ms`);
   
   console.log('\n👆 GAMEPLAY METRICS:');
-  console.log(`   🖱️  Total clicks (Stage 1): ${metrics.totalClicks}`);
-  console.log(`   ⚡ Total taps (Stage 2): ${metrics.totalTaps}`);
+  console.log(`   🖱️  Total clicks (Click Auction): ${metrics.totalClicks}`);
+  console.log(`   ⚡ Total taps (Fastest Finger): ${metrics.totalTaps}`);
   console.log(`   📊 Clicks per player: ${metrics.joinSuccess ? (metrics.totalClicks / metrics.joinSuccess).toFixed(1) : 0}`);
   
   if (metrics.errors.length > 0) {

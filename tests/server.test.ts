@@ -23,7 +23,7 @@ import path from 'path';
 
 // Type for game state
 interface GameState {
-  status: 'waiting' | 'countdown' | 'bidding' | 'finished';
+  status: 'waiting' | 'auction_countdown' | 'auction' | 'fastestFinger_countdown' | 'fastestFinger_tap' | 'finished';
   timeRemaining: number;
   leaderboard: Array<{
     id: string;
@@ -158,7 +158,7 @@ interface ClickUpdateResponse {
 
 // Test server state type
 interface TestGameState {
-  status: 'waiting' | 'countdown' | 'bidding' | 'stage2_countdown' | 'stage2_tap' | 'finished';
+  status: 'waiting' | 'auction_countdown' | 'auction' | 'fastestFinger_countdown' | 'fastestFinger_tap' | 'finished';
   players: Record<string, {
     name: string;
     clicks: number;
@@ -170,7 +170,7 @@ interface TestGameState {
   }>;
   auctionDuration: number;
   countdownDuration: number;
-  stage2CountdownDuration: number;
+  fastestFingerCountdownDuration: number;
   timeRemaining: number;
   winner: { name: string; id: string; color: string; clicks: number } | null;
   winnerAd: string | null;
@@ -184,8 +184,8 @@ interface TestGameState {
     reactionTime?: number | null;
     finalScore: number;
   }>;
-  stage1Scores: Record<string, number>;
-  stage2StartTime: number | null;
+  auctionScores: Record<string, number>;
+  fastestFingerStartTime: number | null;
 }
 
 describe('Click Auction Server', () => {
@@ -199,8 +199,8 @@ describe('Click Auction Server', () => {
   // Store interval references
   let countdownInterval: ReturnType<typeof setInterval> | null = null;
   let biddingInterval: ReturnType<typeof setInterval> | null = null;
-  let stage2CountdownInterval: ReturnType<typeof setInterval> | null = null;
-  let stage2TapTimeout: ReturnType<typeof setTimeout> | null = null;
+  let fastestFingerCountdownInterval: ReturnType<typeof setInterval> | null = null;
+  let fastestFingerTapTimeout: ReturnType<typeof setTimeout> | null = null;
 
   // Game logic functions (extracted for testing)
   const DSP_COLORS = [
@@ -226,13 +226,13 @@ describe('Click Auction Server', () => {
       clearInterval(biddingInterval);
       biddingInterval = null;
     }
-    if (stage2CountdownInterval) {
-      clearInterval(stage2CountdownInterval);
-      stage2CountdownInterval = null;
+    if (fastestFingerCountdownInterval) {
+      clearInterval(fastestFingerCountdownInterval);
+      fastestFingerCountdownInterval = null;
     }
-    if (stage2TapTimeout) {
-      clearTimeout(stage2TapTimeout);
-      stage2TapTimeout = null;
+    if (fastestFingerTapTimeout) {
+      clearTimeout(fastestFingerTapTimeout);
+      fastestFingerTapTimeout = null;
     }
   };
 
@@ -243,14 +243,14 @@ describe('Click Auction Server', () => {
       players: {},
       auctionDuration: 2, // Short for tests
       countdownDuration: 1, // Short for tests
-      stage2CountdownDuration: 1, // Short for tests
+      fastestFingerCountdownDuration: 1, // Short for tests
       timeRemaining: 0,
       winner: null,
       winnerAd: null,
       round: 0,
       finalLeaderboard: [],
-      stage1Scores: {},
-      stage2StartTime: null,
+      auctionScores: {},
+      fastestFingerStartTime: null,
     };
     colorIndex = 0;
   };
@@ -269,7 +269,7 @@ describe('Click Auction Server', () => {
       .sort((a, b) => b.clicks - a.clicks);
   };
 
-  const STAGE2_MULTIPLIERS = [2.0, 1.5, 1.25];
+  const FASTEST_FINGER_MULTIPLIERS = [2.0, 1.5, 1.25];
 
   const calculateFinalScores = (): Array<{ id: string; name: string; clicks: number; color: string; suspicious: boolean; reactionTime?: number | null; finalScore: number }> => {
     const entries = Object.entries(gameState.players).map(([id, player]) => ({
@@ -279,7 +279,7 @@ describe('Click Auction Server', () => {
       color: player.color,
       suspicious: player.suspicious || false,
       reactionTime: player.reactionTime ?? null,
-      stage1Score: gameState.stage1Scores[id] || player.clicks,
+      auctionScore: gameState.auctionScores[id] || player.clicks,
     }));
 
     // Sort by reaction time (fastest first, null/no-tap last)
@@ -292,12 +292,12 @@ describe('Click Auction Server', () => {
     // Apply multipliers based on reaction time ranking
     const withMultipliers = sortedByReaction.map((entry, index) => {
       const multiplier = entry.reactionTime !== null
-        ? (STAGE2_MULTIPLIERS[index] || 1.0)
+        ? (FASTEST_FINGER_MULTIPLIERS[index] || 1.0)
         : 1.0;
       
       return {
         ...entry,
-        finalScore: Math.round(entry.stage1Score * multiplier),
+        finalScore: Math.round(entry.auctionScore * multiplier),
       };
     });
 
@@ -344,13 +344,13 @@ describe('Click Auction Server', () => {
       round: gameState.round,
       playerCount: Object.keys(gameState.players).length,
       allTimeLeaderboard: getAllTimeLeaderboard().slice(0, 20),
-      stage1Scores: gameState.stage1Scores,
-      stage2StartTime: gameState.stage2StartTime,
+      auctionScores: gameState.auctionScores,
+      fastestFingerStartTime: gameState.fastestFingerStartTime,
     });
   };
 
   const startBidding = () => {
-    gameState.status = 'bidding';
+    gameState.status = 'auction';
     gameState.timeRemaining = gameState.auctionDuration;
     broadcastState();
 
@@ -361,55 +361,55 @@ describe('Click Auction Server', () => {
       if (gameState.timeRemaining <= 0) {
         if (biddingInterval) clearInterval(biddingInterval);
         biddingInterval = null;
-        endStage1();
+        endClickAuction();
       }
     }, 100); // Fast for tests
   };
 
-  const endStage1 = () => {
-    // Preserve Stage 1 scores
-    gameState.stage1Scores = {};
+  const endClickAuction = () => {
+    // Preserve Click Auction scores
+    gameState.auctionScores = {};
     Object.entries(gameState.players).forEach(([id, player]) => {
-      gameState.stage1Scores[id] = player.clicks;
+      gameState.auctionScores[id] = player.clicks;
       player.reactionTime = null;
     });
 
-    // Start Stage 2 countdown
-    gameState.status = 'stage2_countdown';
-    gameState.timeRemaining = gameState.stage2CountdownDuration;
+    // Start Fastest Finger countdown
+    gameState.status = 'fastestFinger_countdown';
+    gameState.timeRemaining = gameState.fastestFingerCountdownDuration;
     broadcastState();
 
-    stage2CountdownInterval = setInterval(() => {
+    fastestFingerCountdownInterval = setInterval(() => {
       gameState.timeRemaining--;
       broadcastState();
 
       if (gameState.timeRemaining <= 0) {
-        if (stage2CountdownInterval) clearInterval(stage2CountdownInterval);
-        stage2CountdownInterval = null;
-        startStage2Tap();
+        if (fastestFingerCountdownInterval) clearInterval(fastestFingerCountdownInterval);
+        fastestFingerCountdownInterval = null;
+        startFastestFingerTap();
       }
     }, 100); // Fast for tests
   };
 
-  const startStage2Tap = () => {
-    gameState.status = 'stage2_tap';
-    gameState.stage2StartTime = Date.now();
+  const startFastestFingerTap = () => {
+    gameState.status = 'fastestFinger_tap';
+    gameState.fastestFingerStartTime = Date.now();
     broadcastState();
 
-    // Timeout for Stage 2 (shorter for tests)
-    stage2TapTimeout = setTimeout(() => {
-      endStage2();
+    // Timeout for Fastest Finger (shorter for tests)
+    fastestFingerTapTimeout = setTimeout(() => {
+      endFastestFinger();
     }, 500); // Fast for tests (0.5 seconds)
   };
 
   const recordReactionTime = (socketId: string): boolean => {
-    if (gameState.status !== 'stage2_tap') return false;
+    if (gameState.status !== 'fastestFinger_tap') return false;
     if (!gameState.players[socketId]) return false;
     if (gameState.players[socketId].reactionTime !== null && gameState.players[socketId].reactionTime !== undefined) {
       return false;
     }
 
-    const reactionTime = Date.now() - (gameState.stage2StartTime || Date.now());
+    const reactionTime = Date.now() - (gameState.fastestFingerStartTime || Date.now());
     gameState.players[socketId].reactionTime = reactionTime;
 
     // Check if all players have tapped
@@ -418,25 +418,25 @@ describe('Click Auction Server', () => {
     );
 
     if (allTapped) {
-      if (stage2TapTimeout) {
-        clearTimeout(stage2TapTimeout);
-        stage2TapTimeout = null;
+      if (fastestFingerTapTimeout) {
+        clearTimeout(fastestFingerTapTimeout);
+        fastestFingerTapTimeout = null;
       }
-      endStage2();
+      endFastestFinger();
     }
 
     return true;
   };
 
-  const endStage2 = () => {
-    if (stage2TapTimeout) {
-      clearTimeout(stage2TapTimeout);
-      stage2TapTimeout = null;
+  const endFastestFinger = () => {
+    if (fastestFingerTapTimeout) {
+      clearTimeout(fastestFingerTapTimeout);
+      fastestFingerTapTimeout = null;
     }
 
     gameState.status = 'finished';
     
-    // Calculate final scores with Stage 2 multipliers
+    // Calculate final scores with Fastest Finger multipliers
     const leaderboard = calculateFinalScores();
     gameState.finalLeaderboard = leaderboard;
 
@@ -459,7 +459,7 @@ describe('Click Auction Server', () => {
 
   // Legacy alias for backwards compatibility (prefixed to avoid unused warning)
   const _endAuction = () => {
-    endStage1();
+    endClickAuction();
   };
   // Suppress unused variable warning
   void _endAuction;
@@ -587,8 +587,8 @@ describe('Click Auction Server', () => {
         round: gameState.round,
         playerCount: Object.keys(gameState.players).length,
         allTimeLeaderboard: getAllTimeLeaderboard().slice(0, 20),
-        stage1Scores: gameState.stage1Scores,
-        stage2StartTime: gameState.stage2StartTime,
+        auctionScores: gameState.auctionScores,
+        fastestFingerStartTime: gameState.fastestFingerStartTime,
       });
 
       socket.on('joinGame', (data: { name?: string; adContent?: string } | null) => {
@@ -649,16 +649,16 @@ describe('Click Auction Server', () => {
       });
 
       socket.on('click', () => {
-        // Stage 1: Bidding phase - count clicks
-        if (gameState.status === 'bidding' && gameState.players[socket.id]) {
+        // Click Auction phase - count clicks
+        if (gameState.status === 'auction' && gameState.players[socket.id]) {
           gameState.players[socket.id].clicks++;
           io.emit('clickUpdate', {
             playerId: socket.id,
             clicks: gameState.players[socket.id].clicks,
           });
         }
-        // Stage 2: Tap phase - record reaction time
-        else if (gameState.status === 'stage2_tap' && gameState.players[socket.id]) {
+        // Fastest Finger phase - record reaction time
+        else if (gameState.status === 'fastestFinger_tap' && gameState.players[socket.id]) {
           const recorded = recordReactionTime(socket.id);
           if (recorded) {
             io.emit('reactionTimeRecorded', {
@@ -685,14 +685,14 @@ describe('Click Auction Server', () => {
           gameState.players[id].reactionTime = null;
         });
 
-        gameState.status = 'countdown';
+        gameState.status = 'auction_countdown';
         gameState.round++;
         gameState.timeRemaining = gameState.countdownDuration;
         gameState.winner = null;
         gameState.winnerAd = null;
         gameState.finalLeaderboard = [];
-        gameState.stage1Scores = {};
-        gameState.stage2StartTime = null;
+        gameState.auctionScores = {};
+        gameState.fastestFingerStartTime = null;
 
         broadcastState();
 
@@ -720,8 +720,8 @@ describe('Click Auction Server', () => {
         gameState.winnerAd = null;
         gameState.timeRemaining = 0;
         gameState.finalLeaderboard = [];
-        gameState.stage1Scores = {};
-        gameState.stage2StartTime = null;
+        gameState.auctionScores = {};
+        gameState.fastestFingerStartTime = null;
         broadcastState();
       });
 
@@ -928,9 +928,9 @@ describe('Click Auction Server', () => {
       await emitAndWait(player, 'joinGame', { name: 'Bidder' }, (s) => s.playerCount === 1);
 
       host.emit('startAuction', { duration: 2 });
-      const state = await waitForStatus(player, 'countdown');
+      const state = await waitForStatus(player, 'auction_countdown');
 
-      expect(state.status).toBe('countdown');
+      expect(state.status).toBe('auction_countdown');
       expect(state.round).toBe(1);
 
       // Wait for auction to complete to cleanup
@@ -957,8 +957,8 @@ describe('Click Auction Server', () => {
 
       await waitForStatus(player, 'finished', 5000);
 
-      expect(statuses).toContain('countdown');
-      expect(statuses).toContain('bidding');
+      expect(statuses).toContain('auction_countdown');
+      expect(statuses).toContain('auction');
       expect(statuses).toContain('finished');
     });
 
@@ -999,14 +999,14 @@ describe('Click Auction Server', () => {
       host.emit('startAuction', { duration: 2 });
 
       // Wait for countdown, then click - should not count
-      await waitForStatus(player, 'countdown', 3000);
+      await waitForStatus(player, 'auction_countdown', 3000);
       player.emit('click');
       player.emit('click');
       // Clicks during countdown shouldn't register
       expect(getPlayer(player.id).clicks).toBe(0);
 
       // Wait for bidding, then click - should count
-      await waitForStatus(player, 'bidding', 3000);
+      await waitForStatus(player, 'auction', 3000);
 
       // Click and wait for clickUpdate event to confirm it was processed
       const clickPromise1 = waitFor<ClickUpdateResponse>(player, 'clickUpdate');
@@ -1039,7 +1039,7 @@ describe('Click Auction Server', () => {
       await emitAndWait(player, 'joinGame', { name: 'Player' }, (s) => s.playerCount === 1);
 
       host.emit('startAuction', { duration: 2 });
-      await waitForStatus(host, 'bidding', 5000);
+      await waitForStatus(host, 'auction', 5000);
 
       // Spectator (not joined) clicks - no clickUpdate should be emitted for them
       spectator.emit('click');
@@ -1062,7 +1062,7 @@ describe('Click Auction Server', () => {
       assertSocketId(player);
 
       host.emit('startAuction', { duration: 3 });
-      await waitForStatus(host, 'bidding', 5000);
+      await waitForStatus(host, 'auction', 5000);
 
       // Click and wait for confirmation
       const clickPromise = waitFor<ClickUpdateResponse>(player, 'clickUpdate');
@@ -1103,7 +1103,7 @@ describe('Click Auction Server', () => {
       const state = await waitForCondition(host, (s) => s.status !== 'waiting');
 
       // Should still be in countdown or bidding, not finished prematurely
-      expect(['countdown', 'bidding']).toContain(state.status);
+      expect(['auction_countdown', 'auction']).toContain(state.status);
 
       // Round should only increment once per real start
       expect(gameState.round).toBe(3); // Each start increments, but timers are cleared
@@ -1120,7 +1120,7 @@ describe('Click Auction Server', () => {
       await waitFor(host, 'connect');
 
       host.emit('startAuction', { duration: 5 });
-      await waitForStatus(host, 'countdown', 3000);
+      await waitForStatus(host, 'auction_countdown', 3000);
 
       host.emit('resetAuction');
       const state = await waitForStatus(host, 'waiting');
@@ -1138,7 +1138,7 @@ describe('Click Auction Server', () => {
       await waitFor(host, 'connect');
 
       host.emit('startAuction', { duration: 5 });
-      await waitForStatus(host, 'bidding', 3000);
+      await waitForStatus(host, 'auction', 3000);
 
       host.emit('resetAuction');
       const state = await waitForStatus(host, 'waiting');
@@ -1164,7 +1164,7 @@ describe('Click Auction Server', () => {
       host.emit('startAuction', { duration: 1 });
       const state = await waitForCondition(host, (s) => s.status !== 'finished' || s.round === 2);
 
-      expect(['countdown', 'bidding']).toContain(state.status);
+      expect(['auction_countdown', 'auction']).toContain(state.status);
       expect(gameState.round).toBe(2);
 
       await waitForStatus(host, 'finished', 5000);
@@ -1178,7 +1178,7 @@ describe('Click Auction Server', () => {
       // Rapid cycle - use event-driven waiting
       for (let i = 0; i < 5; i++) {
         host.emit('startAuction', { duration: 2 });
-        await waitForCondition(host, (s) => s.status === 'countdown' || s.status === 'bidding', 2000);
+        await waitForCondition(host, (s) => s.status === 'auction_countdown' || s.status === 'auction', 2000);
         host.emit('resetAuction');
         await waitForStatus(host, 'waiting', 2000);
       }
@@ -1201,7 +1201,7 @@ describe('Click Auction Server', () => {
 
       const times: number[] = [];
       const handler = (state: GameState): void => {
-        if (state.status === 'bidding') {
+        if (state.status === 'auction') {
           times.push(state.timeRemaining);
         }
       };
@@ -1235,7 +1235,7 @@ describe('Click Auction Server', () => {
       await emitAndWait(slow, 'joinGame', { name: 'SlowClicker', adContent: 'Maybe next time' }, (s) => s.playerCount === 2);
 
       host.emit('startAuction', { duration: 2 });
-      await waitForStatus(fast, 'bidding', 3000);
+      await waitForStatus(fast, 'auction', 3000);
 
       // Fast clicks more - wait for each click to be confirmed
       for (let i = 0; i < 10; i++) {
@@ -1299,7 +1299,7 @@ describe('Click Auction Server', () => {
       await emitAndWait(p2, 'joinGame', { name: 'TiePlayer2' }, (s) => s.playerCount === 2);
 
       host.emit('startAuction', { duration: 1 });
-      await waitForStatus(p1, 'bidding', 3000);
+      await waitForStatus(p1, 'auction', 3000);
 
       // Both click same amount
       const click1 = waitFor(p1, 'clickUpdate');
@@ -1340,7 +1340,7 @@ describe('Click Auction Server', () => {
       await emitAndWait(loser, 'joinGame', { name: 'Loser' }, (s) => s.playerCount === 2);
 
       host.emit('startAuction', { duration: 1 });
-      await waitForStatus(winner, 'bidding', 3000);
+      await waitForStatus(winner, 'auction', 3000);
 
       for (let i = 0; i < 10; i++) {
         const p = waitFor(winner, 'clickUpdate');
@@ -1434,7 +1434,7 @@ describe('Click Auction Server', () => {
 
       // Start auction
       host.emit('startAuction', { duration: 10 });
-      await waitForStatus(player, 'bidding', 3000);
+      await waitForStatus(player, 'auction', 3000);
 
       // Make clicks and verify each one
       for (let i = 0; i < 5; i++) {
@@ -1551,7 +1551,7 @@ describe('Click Auction Server', () => {
 
       // Start auction
       host.emit('startAuction', { duration: 10 });
-      await waitForStatus(player, 'bidding', 3000);
+      await waitForStatus(player, 'auction', 3000);
 
       // Make 3 clicks
       for (let i = 0; i < 3; i++) {
@@ -1728,7 +1728,7 @@ describe('Click Auction Server', () => {
       await emitAndWait(p3, 'joinGame', { name: 'Bronze' }, (s) => s.playerCount === 3);
 
       host.emit('startAuction', { duration: 1 });
-      await waitForStatus(p1, 'bidding', 3000);
+      await waitForStatus(p1, 'auction', 3000);
 
       for (let i = 0; i < 10; i++) {
         const p = waitFor(p1, 'clickUpdate');
@@ -1794,7 +1794,7 @@ describe('Click Auction Server', () => {
       await emitAndWait(clicker, 'joinGame', { name: 'RapidClicker' }, (s) => s.playerCount === 1);
 
       host.emit('startAuction', { duration: 5 });
-      await waitForStatus(host, 'bidding', 5000);
+      await waitForStatus(host, 'auction', 5000);
 
       // Rapid fire clicks - use reasonable count to avoid resource exhaustion
       const clickCount = 20;
@@ -1821,7 +1821,7 @@ describe('Click Auction Server', () => {
       await emitAndWait(earlyPlayer, 'joinGame', { name: 'EarlyBird' }, (s) => s.playerCount === 1);
 
       host.emit('startAuction', { duration: 3 });
-      await waitForStatus(earlyPlayer, 'bidding', 3000);
+      await waitForStatus(earlyPlayer, 'auction', 3000);
 
       // Late player joins mid-auction
       const latePlayer = createClient();
@@ -1860,7 +1860,7 @@ describe('Click Auction Server', () => {
       await emitAndWait(leaver, 'joinGame', { name: 'Leaver' }, (s) => s.playerCount === 2);
 
       host.emit('startAuction', { duration: 2 });
-      await waitForStatus(stayer, 'bidding', 3000);
+      await waitForStatus(stayer, 'auction', 3000);
 
       // Leaver clicks then disconnects
       const click1 = waitFor(leaver, 'clickUpdate');
@@ -1910,7 +1910,7 @@ describe('Click Auction Server', () => {
       await emitAndWait(solo, 'joinGame', { name: 'SoloPlayer' }, (s) => s.playerCount === 1);
 
       host.emit('startAuction', { duration: 1 });
-      await waitForStatus(solo, 'bidding', 3000);
+      await waitForStatus(solo, 'auction', 3000);
 
       const clickPromise = waitFor(solo, 'clickUpdate');
       solo.emit('click');
@@ -1970,7 +1970,7 @@ describe('Click Auction Server', () => {
       const clickUpdatePromise = waitFor<ClickUpdateResponse>(observer, 'clickUpdate', 3000);
 
       host.emit('startAuction', { duration: 2 });
-      await waitForStatus(clicker, 'bidding', 3000);
+      await waitForStatus(clicker, 'auction', 3000);
 
       clicker.emit('click');
 
@@ -1982,15 +1982,15 @@ describe('Click Auction Server', () => {
   });
 
   // ==========================================
-  // STAGE 2 FLOW INTEGRATION TESTS
+  // FASTEST FINGER FLOW INTEGRATION TESTS
   // ==========================================
 
-  describe('Stage 2 Flow', () => {
-    // Extended GameState type for Stage 2 tests
-    type Stage2Status = 'waiting' | 'countdown' | 'bidding' | 'stage2_countdown' | 'stage2_tap' | 'finished';
+  describe('Fastest Finger Flow', () => {
+    // Extended GameState type for full game tests
+    type GameStatus = 'waiting' | 'auction_countdown' | 'auction' | 'fastestFinger_countdown' | 'fastestFinger_tap' | 'finished';
     
-    interface Stage2GameState {
-      status: Stage2Status;
+    interface FullGameState {
+      status: GameStatus;
       timeRemaining: number;
       leaderboard: Array<{
         id: string;
@@ -2004,21 +2004,21 @@ describe('Click Auction Server', () => {
       winnerAd: string | null;
       round: number;
       playerCount: number;
-      stage1Scores?: Record<string, number>;
-      stage2StartTime?: number | null;
+      auctionScores?: Record<string, number>;
+      fastestFingerStartTime?: number | null;
     }
 
     /**
-     * Wait for gameState with specific Stage 2 status
+     * Wait for gameState with specific game status
      */
-    const waitForStage2Status = (socket: ClientSocket, targetStatus: Stage2Status, timeout = 15000): Promise<Stage2GameState> => {
+    const waitForGameStatus = (socket: ClientSocket, targetStatus: GameStatus, timeout = 15000): Promise<FullGameState> => {
       return new Promise((resolve, reject) => {
         const timer = setTimeout(() => {
           socket.off('gameState', handler);
           reject(new Error(`Timeout waiting for status: ${targetStatus}`));
         }, timeout);
 
-        const handler = (state: Stage2GameState) => {
+        const handler = (state: FullGameState) => {
           if (state.status === targetStatus) {
             clearTimeout(timer);
             socket.off('gameState', handler);
@@ -2030,17 +2030,17 @@ describe('Click Auction Server', () => {
       });
     };
 
-    test('game transitions through all stages: countdown → bidding → stage2_countdown → stage2_tap → finished', async () => {
+    test('game transitions through all stages: countdown → bidding → fastestFinger_countdown → fastestFinger_tap → finished', async () => {
       const host = createClient();
       const player = createClient();
 
       await waitFor(host, 'connect');
       await waitFor(player, 'connect');
 
-      await emitAndWait(player, 'joinGame', { name: 'Stage2Tester' }, (s) => s.playerCount === 1);
+      await emitAndWait(player, 'joinGame', { name: 'FastestFingerTester' }, (s) => s.playerCount === 1);
 
-      const statuses: Stage2Status[] = [];
-      player.on('gameState', (state: Stage2GameState) => {
+      const statuses: GameStatus[] = [];
+      player.on('gameState', (state: FullGameState) => {
         if (!statuses.includes(state.status)) {
           statuses.push(state.status);
         }
@@ -2049,16 +2049,16 @@ describe('Click Auction Server', () => {
       host.emit('startAuction', { duration: 1 });
 
       // Wait for the full flow to complete
-      await waitForStage2Status(player, 'finished', 20000);
+      await waitForGameStatus(player, 'finished', 20000);
 
-      expect(statuses).toContain('countdown');
-      expect(statuses).toContain('bidding');
-      expect(statuses).toContain('stage2_countdown');
-      expect(statuses).toContain('stage2_tap');
+      expect(statuses).toContain('auction_countdown');
+      expect(statuses).toContain('auction');
+      expect(statuses).toContain('fastestFinger_countdown');
+      expect(statuses).toContain('fastestFinger_tap');
       expect(statuses).toContain('finished');
     });
 
-    test('stage1 clicks are preserved in stage1Scores when transitioning to stage2', async () => {
+    test('auction clicks are preserved in auctionScores when transitioning to fastestFinger', async () => {
       const host = createClient();
       const player = createClient();
 
@@ -2068,30 +2068,30 @@ describe('Click Auction Server', () => {
       await emitAndWait(player, 'joinGame', { name: 'ScorePreserver' }, (s) => s.playerCount === 1);
 
       host.emit('startAuction', { duration: 2 });
-      await waitForStage2Status(player, 'bidding');
+      await waitForGameStatus(player, 'auction');
 
-      // Click during Stage 1
+      // Click during Click Auction
       for (let i = 0; i < 5; i++) {
         const clickPromise = waitFor(player, 'clickUpdate');
         player.emit('click');
         await clickPromise;
       }
 
-      // Wait for Stage 2 countdown - stage1Scores should be set
-      const stage2State = await waitForStage2Status(player, 'stage2_countdown', 10000);
+      // Wait for Fastest Finger countdown - auctionScores should be set
+      const fastestFingerState = await waitForGameStatus(player, 'fastestFinger_countdown', 10000);
       
-      // Verify stage1Scores contains the player's clicks
-      expect(stage2State.stage1Scores).toBeDefined();
-      if (stage2State.stage1Scores) {
-        const scores = Object.values(stage2State.stage1Scores);
+      // Verify auctionScores contains the player's clicks
+      expect(fastestFingerState.auctionScores).toBeDefined();
+      if (fastestFingerState.auctionScores) {
+        const scores = Object.values(fastestFingerState.auctionScores);
         expect(scores).toContain(5);
       }
 
       // Wait for finish
-      await waitForStage2Status(player, 'finished', 15000);
+      await waitForGameStatus(player, 'finished', 15000);
     });
 
-    test('reaction time is recorded when player taps during stage2_tap', async () => {
+    test('reaction time is recorded when player taps during fastestFinger_tap', async () => {
       const host = createClient();
       const player = createClient();
 
@@ -2102,14 +2102,14 @@ describe('Click Auction Server', () => {
 
       host.emit('startAuction', { duration: 1 });
 
-      // Wait for stage2_tap
-      await waitForStage2Status(player, 'stage2_tap', 15000);
+      // Wait for fastestFinger_tap
+      await waitForGameStatus(player, 'fastestFinger_tap', 15000);
 
-      // Tap during stage2_tap
+      // Tap during fastestFinger_tap
       player.emit('click');
 
       // Wait for finished and check reaction time
-      const finalState = await waitForStage2Status(player, 'finished', 10000);
+      const finalState = await waitForGameStatus(player, 'finished', 10000);
       
       // Player should have a reaction time recorded
       const playerEntry = finalState.leaderboard.find(p => p.name === 'ReactionTester');
@@ -2119,7 +2119,7 @@ describe('Click Auction Server', () => {
       expect(playerEntry?.reactionTime).toBeGreaterThan(0);
     });
 
-    test('only first tap during stage2_tap is recorded', async () => {
+    test('only first tap during fastestFinger_tap is recorded', async () => {
       const host = createClient();
       const player = createClient();
 
@@ -2129,10 +2129,10 @@ describe('Click Auction Server', () => {
       await emitAndWait(player, 'joinGame', { name: 'MultiTapper' }, (s) => s.playerCount === 1);
 
       host.emit('startAuction', { duration: 1 });
-      await waitForStage2Status(player, 'stage2_tap', 15000);
+      await waitForGameStatus(player, 'fastestFinger_tap', 15000);
 
       // Set up finished listener BEFORE clicking (to avoid race condition)
-      const finishedPromise = waitForStage2Status(player, 'finished', 10000);
+      const finishedPromise = waitForGameStatus(player, 'finished', 10000);
 
       // Multiple taps - first one ends the game immediately since only 1 player
       player.emit('click');
@@ -2150,22 +2150,22 @@ describe('Click Auction Server', () => {
   });
 
   // ==========================================
-  // STAGE 2 SCORING TESTS
+  // FASTEST FINGER SCORING TESTS
   // ==========================================
 
-  describe('Stage 2 Scoring', () => {
+  describe('Fastest Finger Scoring', () => {
     test('calculateFinalScores applies 2x multiplier to fastest player', () => {
       // Test scoring calculation logic
       interface PlayerScore {
         id: string;
-        stage1Score: number;
+        auctionScore: number;
         reactionTime: number | null;
       }
       
       const players: PlayerScore[] = [
-        { id: 'p1', stage1Score: 50, reactionTime: 100 }, // Fastest - should get 2x
-        { id: 'p2', stage1Score: 40, reactionTime: 200 },
-        { id: 'p3', stage1Score: 30, reactionTime: 300 },
+        { id: 'p1', auctionScore: 50, reactionTime: 100 }, // Fastest - should get 2x
+        { id: 'p2', auctionScore: 40, reactionTime: 200 },
+        { id: 'p3', auctionScore: 30, reactionTime: 300 },
       ];
       
       // Sort by reaction time (fastest first, null/undefined last)
@@ -2178,7 +2178,7 @@ describe('Click Auction Server', () => {
       const multipliers = [2.0, 1.5, 1.25];
       const scores = sorted.map((p, i) => ({
         id: p.id,
-        finalScore: Math.round(p.stage1Score * (multipliers[i] || 1.0)),
+        finalScore: Math.round(p.auctionScore * (multipliers[i] || 1.0)),
       }));
       
       expect(scores[0].id).toBe('p1');
@@ -2192,13 +2192,13 @@ describe('Click Auction Server', () => {
     test('players who did not tap get 1x multiplier', () => {
       interface PlayerScore {
         id: string;
-        stage1Score: number;
+        auctionScore: number;
         reactionTime: number | null;
       }
       
       const players: PlayerScore[] = [
-        { id: 'p1', stage1Score: 50, reactionTime: 100 },
-        { id: 'p2', stage1Score: 100, reactionTime: null }, // Did not tap
+        { id: 'p1', auctionScore: 50, reactionTime: 100 },
+        { id: 'p2', auctionScore: 100, reactionTime: null }, // Did not tap
       ];
       
       const sorted = [...players].sort((a, b) => {
@@ -2210,7 +2210,7 @@ describe('Click Auction Server', () => {
       const multipliers = [2.0, 1.5, 1.25];
       const scores = sorted.map((p, i) => ({
         id: p.id,
-        finalScore: Math.round(p.stage1Score * (multipliers[i] || 1.0)),
+        finalScore: Math.round(p.auctionScore * (multipliers[i] || 1.0)),
       }));
       
       // p1 tapped first, gets 2x
@@ -2227,13 +2227,13 @@ describe('Click Auction Server', () => {
       interface PlayerScore {
         id: string;
         name: string;
-        stage1Score: number;
+        auctionScore: number;
         reactionTime: number | null;
       }
       
       const players: PlayerScore[] = [
-        { id: 'p1', name: 'FastClicker', stage1Score: 30, reactionTime: 50 },  // Fast reaction
-        { id: 'p2', name: 'SlowClicker', stage1Score: 50, reactionTime: 500 }, // Slow reaction
+        { id: 'p1', name: 'FastClicker', auctionScore: 30, reactionTime: 50 },  // Fast reaction
+        { id: 'p2', name: 'SlowClicker', auctionScore: 50, reactionTime: 500 }, // Slow reaction
       ];
       
       const sorted = [...players].sort((a, b) => {
@@ -2245,12 +2245,12 @@ describe('Click Auction Server', () => {
       const multipliers = [2.0, 1.5, 1.25];
       const scores = sorted.map((p, i) => ({
         ...p,
-        finalScore: Math.round(p.stage1Score * (multipliers[i] || 1.0)),
+        finalScore: Math.round(p.auctionScore * (multipliers[i] || 1.0)),
       }));
       
       // FastClicker: 30 * 2.0 = 60
       // SlowClicker: 50 * 1.5 = 75
-      // SlowClicker still wins because higher Stage 1 score
+      // SlowClicker still wins because higher Click Auction score
       const winner = [...scores].sort((a, b) => b.finalScore - a.finalScore)[0];
       expect(winner.name).toBe('SlowClicker');
       expect(winner.finalScore).toBe(75);
@@ -2259,16 +2259,16 @@ describe('Click Auction Server', () => {
     test('4th place and below get 1x multiplier', () => {
       interface PlayerScore {
         id: string;
-        stage1Score: number;
+        auctionScore: number;
         reactionTime: number;
       }
       
       const players: PlayerScore[] = [
-        { id: 'p1', stage1Score: 40, reactionTime: 100 },
-        { id: 'p2', stage1Score: 40, reactionTime: 200 },
-        { id: 'p3', stage1Score: 40, reactionTime: 300 },
-        { id: 'p4', stage1Score: 40, reactionTime: 400 }, // 4th place
-        { id: 'p5', stage1Score: 40, reactionTime: 500 }, // 5th place
+        { id: 'p1', auctionScore: 40, reactionTime: 100 },
+        { id: 'p2', auctionScore: 40, reactionTime: 200 },
+        { id: 'p3', auctionScore: 40, reactionTime: 300 },
+        { id: 'p4', auctionScore: 40, reactionTime: 400 }, // 4th place
+        { id: 'p5', auctionScore: 40, reactionTime: 500 }, // 5th place
       ];
       
       const sorted = [...players].sort((a, b) => a.reactionTime - b.reactionTime);
@@ -2276,7 +2276,7 @@ describe('Click Auction Server', () => {
       const multipliers = [2.0, 1.5, 1.25];
       const scores = sorted.map((p, i) => ({
         id: p.id,
-        finalScore: Math.round(p.stage1Score * (multipliers[i] || 1.0)),
+        finalScore: Math.round(p.auctionScore * (multipliers[i] || 1.0)),
       }));
       
       expect(scores[0].finalScore).toBe(80);  // 40 * 2.0
@@ -3342,25 +3342,25 @@ describe('Input Validation', () => {
 });
 
 // ==========================================
-// STAGE 2 GAME STATE TESTS
+// FASTEST FINGER GAME STATE TESTS
 // ==========================================
 
-describe('Stage 2 Game State', () => {
-  test('GameState status type includes stage2 values', () => {
-    // Test that the status type allows Stage 2 values
-    type GameStatus = 'waiting' | 'countdown' | 'bidding' | 'stage2_countdown' | 'stage2_tap' | 'finished';
+describe('Fastest Finger Game State', () => {
+  test('GameState status type includes fastestFinger values', () => {
+    // Test that the status type allows Fastest Finger values
+    type GameStatus = 'waiting' | 'auction_countdown' | 'auction' | 'fastestFinger_countdown' | 'fastestFinger_tap' | 'finished';
     
     const validStatuses: GameStatus[] = [
       'waiting',
-      'countdown', 
-      'bidding',
-      'stage2_countdown',
-      'stage2_tap',
+      'auction_countdown', 
+      'auction',
+      'fastestFinger_countdown',
+      'fastestFinger_tap',
       'finished',
     ];
     
-    expect(validStatuses).toContain('stage2_countdown');
-    expect(validStatuses).toContain('stage2_tap');
+    expect(validStatuses).toContain('fastestFinger_countdown');
+    expect(validStatuses).toContain('fastestFinger_tap');
   });
 
   test('Player interface includes reactionTime field', () => {
@@ -3394,40 +3394,40 @@ describe('Stage 2 Game State', () => {
     expect(playerNoReaction.reactionTime).toBeNull();
   });
 
-  test('GameState includes stage1Scores for preserving Stage 1 clicks', () => {
-    // Test that stage1Scores can store player click counts
-    interface Stage1Scores {
+  test('GameState includes auctionScores for preserving Click Auction clicks', () => {
+    // Test that auctionScores can store player click counts
+    interface AuctionScores {
       [playerId: string]: number;
     }
     
-    const stage1Scores: Stage1Scores = {
+    const auctionScores: AuctionScores = {
       'socket1': 50,
       'socket2': 30,
       'socket3': 45,
     };
     
-    expect(stage1Scores['socket1']).toBe(50);
-    expect(stage1Scores['socket2']).toBe(30);
-    expect(Object.keys(stage1Scores).length).toBe(3);
+    expect(auctionScores['socket1']).toBe(50);
+    expect(auctionScores['socket2']).toBe(30);
+    expect(Object.keys(auctionScores).length).toBe(3);
   });
 
-  test('GameState includes stage2StartTime for reaction timing', () => {
-    // Test that stage2StartTime can be stored
-    interface GameStateWithStage2 {
-      stage2StartTime: number | null;
+  test('GameState includes fastestFingerStartTime for reaction timing', () => {
+    // Test that fastestFingerStartTime can be stored
+    interface GameStateWithFastestFinger {
+      fastestFingerStartTime: number | null;
     }
     
-    const state: GameStateWithStage2 = {
-      stage2StartTime: Date.now(),
+    const state: GameStateWithFastestFinger = {
+      fastestFingerStartTime: Date.now(),
     };
     
-    expect(typeof state.stage2StartTime).toBe('number');
+    expect(typeof state.fastestFingerStartTime).toBe('number');
     
-    const stateNoStart: GameStateWithStage2 = {
-      stage2StartTime: null,
+    const stateNoStart: GameStateWithFastestFinger = {
+      fastestFingerStartTime: null,
     };
     
-    expect(stateNoStart.stage2StartTime).toBeNull();
+    expect(stateNoStart.fastestFingerStartTime).toBeNull();
   });
 });
 

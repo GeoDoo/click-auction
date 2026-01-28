@@ -19,13 +19,13 @@ interface AllTimePlayer {
   name: string;
   wins: number;
   bestRound: number;
-  totalStage1Taps?: number;
+  totalAuctionTaps?: number;
   bestReactionTime?: number | null;
   totalFinalScore?: number;
 }
 
 interface GameState {
-  status: 'waiting' | 'countdown' | 'bidding' | 'stage2_countdown' | 'stage2_tap' | 'finished';
+  status: 'waiting' | 'auction_countdown' | 'auction' | 'fastestFinger_countdown' | 'fastestFinger_tap' | 'finished';
   round: number;
   timeRemaining: number;
   playerCount: number;
@@ -89,7 +89,7 @@ function loadAllTimeStats(): void {
         .slice(0, 8)
         .map(
           (player, index) => {
-            const stage1 = player.totalStage1Taps ?? 0;
+            const auctionTaps = player.totalAuctionTaps ?? 0;
             const reaction = player.bestReactionTime != null ? `${player.bestReactionTime}ms` : '-';
             const total = player.totalFinalScore ?? player.bestRound ?? 0;
             
@@ -98,7 +98,7 @@ function loadAllTimeStats(): void {
               <div class="rank">${index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}</div>
               <div class="player-name">${escapeHtml(player.name)}</div>
               <div class="player-alltime-stats">
-                <span class="stat stage1-stat" title="Stage 1 Taps">${stage1}</span>
+                <span class="stat auction-stat" title="Auction Taps">${auctionTaps}</span>
                 <span class="stat reaction-stat" title="Best Reaction">${reaction}</span>
                 <span class="stat total-stat" title="Total Score">${total}</span>
               </div>
@@ -118,7 +118,7 @@ setInterval(loadAllTimeStats, 10000);
 
 function updateUI(state: GameState): void {
   const bg = document.getElementById('bg');
-  const isBiddingPhase = state.status === 'bidding' || state.status === 'stage2_tap';
+  const isBiddingPhase = state.status === 'auction' || state.status === 'fastestFinger_tap';
   if (bg) bg.className = 'bg' + (isBiddingPhase ? ' bidding' : '');
 
   const roundBadge = document.getElementById('roundBadge');
@@ -129,10 +129,10 @@ function updateUI(state: GameState): void {
     badge.className = 'status-badge status-' + state.status;
     const statusTexts: Record<string, string> = {
       waiting: 'Waiting',
-      countdown: 'Click Auction...',
-      bidding: 'CLICK AUCTION!',
-      stage2_countdown: 'Fastest Finger...',
-      stage2_tap: 'FASTEST FINGER!',
+      auction_countdown: 'Click Auction...',
+      auction: 'CLICK AUCTION!',
+      fastestFinger_countdown: 'Fastest Finger...',
+      fastestFinger_tap: 'FASTEST FINGER!',
       finished: 'Complete',
     };
     badge.textContent = statusTexts[state.status] || state.status;
@@ -147,7 +147,7 @@ function updateUI(state: GameState): void {
   const stageTransitionSubtitle = document.getElementById('stageTransitionSubtitle');
 
   // Handle Click Auction Complete transition
-  if (lastStatus === 'bidding' && state.status === 'stage2_countdown') {
+  if (lastStatus === 'auction' && state.status === 'fastestFinger_countdown') {
     // Show Click Auction Complete briefly - then show the countdown
     if (stageTransitionOverlay && stageTransitionTitle && stageTransitionSubtitle) {
       stageTransitionTitle.textContent = 'CLICK AUCTION COMPLETE!';
@@ -161,15 +161,15 @@ function updateUI(state: GameState): void {
     }
   }
   
-  // Always hide transition overlay when stage2_tap starts
-  if (state.status === 'stage2_tap' && stageTransitionOverlay) {
+  // Always hide transition overlay when fastestFinger_tap starts
+  if (state.status === 'fastestFinger_tap' && stageTransitionOverlay) {
     stageTransitionOverlay.classList.remove('active');
   }
 
   if (state.status === 'waiting') {
     if (countdownOverlay) countdownOverlay.className = 'countdown-overlay';
     if (stageTransitionOverlay) stageTransitionOverlay.classList.remove('active');
-  } else if (state.status === 'countdown') {
+  } else if (state.status === 'auction_countdown') {
     if (countdownOverlay) countdownOverlay.className = 'countdown-overlay active';
     if (countdownNumber) {
       countdownNumber.textContent = String(state.timeRemaining);
@@ -183,11 +183,11 @@ function updateUI(state: GameState): void {
     }
     if (countdownLabel) countdownLabel.textContent = 'CLICK AUCTION';
     if (countdownSublabel) countdownSublabel.textContent = 'Tap as fast as you can!';
-  } else if (state.status === 'bidding') {
+  } else if (state.status === 'auction') {
     if (countdownOverlay) countdownOverlay.className = 'countdown-overlay';
-    if (lastStatus !== 'bidding') SoundManager.go();
-  } else if (state.status === 'stage2_countdown') {
-    if (countdownOverlay) countdownOverlay.className = 'countdown-overlay active stage2';
+    if (lastStatus !== 'auction') SoundManager.go();
+  } else if (state.status === 'fastestFinger_countdown') {
+    if (countdownOverlay) countdownOverlay.className = 'countdown-overlay active fastest-finger';
     if (countdownNumber) {
       countdownNumber.textContent = String(state.timeRemaining);
       if (lastCountdown !== state.timeRemaining) {
@@ -200,12 +200,12 @@ function updateUI(state: GameState): void {
     }
     if (countdownLabel) countdownLabel.textContent = 'FASTEST FINGER';
     if (countdownSublabel) countdownSublabel.textContent = 'One tap only - be the quickest!';
-  } else if (state.status === 'stage2_tap') {
-    if (countdownOverlay) countdownOverlay.className = 'countdown-overlay active stage2-tap';
+  } else if (state.status === 'fastestFinger_tap') {
+    if (countdownOverlay) countdownOverlay.className = 'countdown-overlay active fastest-finger-tap';
     if (countdownNumber) countdownNumber.textContent = '⚡ TAP! ⚡';
     if (countdownLabel) countdownLabel.textContent = '';
     if (countdownSublabel) countdownSublabel.textContent = '';
-    if (lastStatus !== 'stage2_tap') SoundManager.go();
+    if (lastStatus !== 'fastestFinger_tap') SoundManager.go();
   } else if (state.status === 'finished') {
     if (countdownOverlay) countdownOverlay.className = 'countdown-overlay';
   }
@@ -223,7 +223,7 @@ function updateUI(state: GameState): void {
       list.innerHTML =
         '<div class="empty-leaderboard"><div class="icon">👥</div><div>Waiting for DSPs to join...</div></div>';
     } else {
-      // Use finalScore if available (after Stage 2), otherwise clicks
+      // Use finalScore if available (after Fastest Finger), otherwise clicks
       const maxScore = state.leaderboard.length > 0 
         ? Math.max(...state.leaderboard.map(p => p.finalScore ?? p.clicks))
         : 1;

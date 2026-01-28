@@ -6,7 +6,7 @@ import { io, Socket } from 'socket.io-client';
 import { Logger } from './logger';
 
 interface GameState {
-  status: 'waiting' | 'countdown' | 'bidding' | 'stage2_countdown' | 'stage2_tap' | 'finished' | 'lobby';
+  status: 'waiting' | 'auction_countdown' | 'auction' | 'fastestFinger_countdown' | 'fastestFinger_tap' | 'finished' | 'lobby';
   playerCount: number;
   round: number;
 }
@@ -94,7 +94,7 @@ function updateUI(state: GameState): void {
   const startBtn = document.getElementById('startBtn') as HTMLButtonElement | null;
 
   // Determine if game is in progress
-  const isGameInProgress = ['countdown', 'bidding', 'stage2_countdown', 'stage2_tap'].includes(state.status);
+  const isGameInProgress = ['auction_countdown', 'auction', 'fastestFinger_countdown', 'fastestFinger_tap'].includes(state.status);
   const isLobbyOpen = state.status === 'waiting' || state.status === 'lobby';
   const isFinished = state.status === 'finished';
 
@@ -103,10 +103,10 @@ function updateUI(state: GameState): void {
     const statusMessages: Record<string, string> = {
       waiting: 'Click "New Game" to open lobby for players',
       lobby: `🎮 Lobby open! Round ${state.round + 1} • Waiting for players...`,
-      countdown: '⏳ Countdown in progress...',
-      bidding: '🔥 Click Auction in progress!',
-      stage2_countdown: '⏳ Fastest Finger countdown...',
-      stage2_tap: '⚡ Fastest Finger in progress!',
+      auction_countdown: '⏳ Click Auction countdown...',
+      auction: '🔥 Click Auction in progress!',
+      fastestFinger_countdown: '⏳ Fastest Finger countdown...',
+      fastestFinger_tap: '⚡ Fastest Finger in progress!',
       finished: `✅ Round ${state.round} complete! Click "New Game" for next round`,
     };
     gameStatus.textContent = statusMessages[state.status] || state.status;

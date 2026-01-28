@@ -13,7 +13,7 @@ import {
   getNextColor,
   clearAllIntervals,
   resetGame,
-  startBidding,
+  startClickAuction,
   setCountdownInterval,
   clearCountdownInterval,
   recordReactionTime,
@@ -176,8 +176,8 @@ export function setupSocketIO(io: Server): void {
 
     // Click
     socket.on('click', () => {
-      // Stage 1: Bidding phase - count clicks
-      if (gameState.status === 'bidding' && gameState.players[socket.id]) {
+      // Click Auction phase - count clicks
+      if (gameState.status === 'auction' && gameState.players[socket.id]) {
         if (validation.isRateLimited(socket.id)) {
           return;
         }
@@ -199,8 +199,8 @@ export function setupSocketIO(io: Server): void {
           suspicious: suspicionCheck.suspicious,
         });
       }
-      // Stage 2: Tap phase - record reaction time
-      else if (gameState.status === 'stage2_tap' && gameState.players[socket.id]) {
+      // Fastest Finger phase - record reaction time
+      else if (gameState.status === 'fastestFinger_tap' && gameState.players[socket.id]) {
         const recorded = recordReactionTime(socket.id);
         if (recorded) {
           io.emit('reactionTimeRecorded', {
@@ -235,7 +235,7 @@ export function setupSocketIO(io: Server): void {
 
       resetGame();
       gameState.round++;
-      gameState.status = 'countdown';
+      gameState.status = 'auction_countdown';
       gameState.timeRemaining = gameState.countdownDuration;
 
       broadcastState();
@@ -246,7 +246,7 @@ export function setupSocketIO(io: Server): void {
 
         if (gameState.timeRemaining <= 0) {
           clearCountdownInterval();
-          startBidding();
+          startClickAuction();
         }
       }, config.TICK_INTERVAL_MS);
       setCountdownInterval(interval);
@@ -274,8 +274,8 @@ export function setupSocketIO(io: Server): void {
       gameState.winnerAd = null;
       gameState.timeRemaining = 0;
       gameState.finalLeaderboard = [];
-      gameState.stage1Scores = {};
-      gameState.stage2StartTime = null;
+      gameState.auctionScores = {};
+      gameState.fastestFingerStartTime = null;
       
       Logger.gameEvent('New game lobby opened', { round: gameState.round + 1 });
       broadcastState();
@@ -313,7 +313,7 @@ export function setupSocketIO(io: Server): void {
 
       if (gameState.players[socket.id]) {
         const playerName = gameState.players[socket.id].name;
-        const isActiveAuction = gameState.status === 'countdown' || gameState.status === 'bidding';
+        const isActiveAuction = gameState.status === 'auction_countdown' || gameState.status === 'auction';
 
         const token = session.markSessionDisconnected(socket.id);
 

@@ -318,7 +318,8 @@ html {
 .bid-button:disabled,
 .bid-button.waiting,
 .bid-button.countdown-state,
-.bid-button.stage2-countdown {
+.bid-button.auction-countdown,
+.bid-button.fastest-finger-countdown {
   pointer-events: none;
   touch-action: none;
   cursor: not-allowed;
@@ -560,36 +561,37 @@ html {
   }
 }
 
-/* Stage 2 button states */
-.bid-button.stage2-countdown {
+/* Fastest Finger button states */
+.bid-button.auction-countdown,
+.bid-button.fastest-finger-countdown {
   background: linear-gradient(145deg, var(--viooh-purple), #8B5CF6);
   color: white;
   box-shadow: 0 10px 40px rgba(107, 63, 160, 0.5);
-  animation: pulse-stage2 1s infinite;
+  animation: pulse-fastest-finger 1s infinite;
 }
 
-.bid-button.stage2-tap {
+.bid-button.fastest-finger-tap {
   background: linear-gradient(145deg, #FF3366, #FF6B9D);
   color: white;
   box-shadow: 
     0 10px 40px rgba(255, 51, 102, 0.5),
     0 0 80px rgba(255, 51, 102, 0.3);
-  animation: pulse-stage2-tap 0.3s infinite;
+  animation: pulse-fastest-finger-tap 0.3s infinite;
 }
 
-.bid-button.stage2-tapped {
+.bid-button.fastest-finger-tapped {
   background: linear-gradient(145deg, var(--success), #00cc6a);
   color: var(--dark);
   box-shadow: 0 10px 40px rgba(0, 255, 136, 0.4);
   animation: none;
 }
 
-@keyframes pulse-stage2 {
+@keyframes pulse-fastest-finger {
   0%, 100% { box-shadow: 0 10px 40px rgba(107, 63, 160, 0.5); }
   50% { box-shadow: 0 10px 60px rgba(107, 63, 160, 0.7); }
 }
 
-@keyframes pulse-stage2-tap {
+@keyframes pulse-fastest-finger-tap {
   0%, 100% { transform: scale(1); box-shadow: 0 10px 40px rgba(255, 51, 102, 0.5); }
   50% { transform: scale(1.02); box-shadow: 0 10px 60px rgba(255, 51, 102, 0.7); }
 }
@@ -670,16 +672,27 @@ html {
   color: var(--accent);
 }
 
-/* Status badges for Stage 2 */
-.status-stage2_countdown { 
+/* Status badges for Fastest Finger */
+.status-fastestFinger_countdown { 
   background: rgba(107, 63, 160, 0.2); 
   color: var(--viooh-purple); 
 }
 
-.status-stage2_tap { 
+.status-fastestFinger_tap { 
   background: rgba(255, 51, 102, 0.2); 
   color: var(--danger);
   animation: pulse 0.3s infinite;
+}
+
+/* Status badge for Click Auction */
+.status-auction_countdown {
+  background: rgba(233, 30, 140, 0.15);
+  color: var(--accent);
+}
+
+.status-auction {
+  background: rgba(46, 164, 79, 0.15);
+  color: var(--success);
 }
 
 /* Safe area for notched phones */

@@ -45,10 +45,10 @@ export interface Config {
   RATE_LIMIT_WINDOW_MS: number;
   STATIC_CACHE_MAX_AGE: number;
 
-  // Stage 2 settings
-  STAGE2_COUNTDOWN_DURATION: number;
-  STAGE2_TAP_TIMEOUT_MS: number;
-  STAGE2_MULTIPLIERS: number[];
+  // Fastest Finger settings
+  FASTEST_FINGER_COUNTDOWN_DURATION: number;
+  FASTEST_FINGER_TAP_TIMEOUT_MS: number;
+  FASTEST_FINGER_MULTIPLIERS: number[];
 
   // VIOOH-inspired DSP colors
   DSP_COLORS: string[];
@@ -97,10 +97,10 @@ const config: Config = {
   RATE_LIMIT_WINDOW_MS: 1000, // 1 second window for rate limiting
   STATIC_CACHE_MAX_AGE: 3600, // 1 hour cache for static assets
 
-  // Stage 2 settings
-  STAGE2_COUNTDOWN_DURATION: 5, // 5 second countdown before "TAP NOW" (gives users time to prepare)
-  STAGE2_TAP_TIMEOUT_MS: 5000, // 5 seconds to tap before timeout
-  STAGE2_MULTIPLIERS: [2.0, 1.5, 1.25], // Multipliers for 1st, 2nd, 3rd fastest reaction
+  // Fastest Finger settings
+  FASTEST_FINGER_COUNTDOWN_DURATION: 5, // 5 second countdown before "TAP NOW" (gives users time to prepare)
+  FASTEST_FINGER_TAP_TIMEOUT_MS: 5000, // 5 seconds to tap before timeout
+  FASTEST_FINGER_MULTIPLIERS: [2.0, 1.5, 1.25], // Multipliers for 1st, 2nd, 3rd fastest reaction
 
   // VIOOH-inspired DSP colors
   DSP_COLORS: [

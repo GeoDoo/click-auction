@@ -132,7 +132,7 @@ header {
 
 .header-rank { width: 30px; text-align: center; }
 .header-name { flex: 1; }
-.header-stage1, .header-stage2, .header-total { width: 50px; text-align: center; }
+.header-auction, .header-finger, .header-total { width: 50px; text-align: center; }
 .header-wins { width: 50px; text-align: center; }
 
 .leaderboard-list {
@@ -244,7 +244,7 @@ header {
   text-align: center;
 }
 
-.player-alltime-stats .stage1-stat {
+.player-alltime-stats .auction-stat {
   background: rgba(0, 232, 150, 0.15);
   color: var(--success);
 }
@@ -928,12 +928,12 @@ footer {
   letter-spacing: 0.1em;
 }
 
-.countdown-overlay.stage2 .countdown-number {
+.countdown-overlay.fastest-finger .countdown-number {
   color: var(--viooh-purple);
   text-shadow: 0 0 100px rgba(107, 63, 160, 0.8);
 }
 
-.countdown-overlay.stage2-tap .countdown-number {
+.countdown-overlay.fastest-finger-tap .countdown-number {
   color: var(--danger);
   text-shadow: 0 0 100px rgba(255, 51, 102, 0.8);
   font-size: 12rem;
@@ -1004,17 +1004,30 @@ footer {
 .multiplier-badge.silver { background: rgba(192, 192, 192, 0.3); color: #C0C0C0; }
 .multiplier-badge.bronze { background: rgba(205, 127, 50, 0.3); color: #CD7F32; }
 
-/* Status badges for Stage 2 */
-.status-stage2_countdown { 
+/* Status badges for Fastest Finger */
+.status-fastestFinger_countdown { 
   background: rgba(107, 63, 160, 0.2); 
   color: var(--secondary); 
   border: 2px solid var(--secondary);
   animation: pulse 0.5s infinite;
 }
 
-.status-stage2_tap { 
+.status-fastestFinger_tap { 
   background: rgba(255, 51, 102, 0.2); 
   color: var(--danger);
   border: 2px solid var(--danger);
   animation: pulse 0.3s infinite;
+}
+
+/* Status badges for Click Auction */
+.status-auction_countdown {
+  background: rgba(233, 30, 140, 0.15);
+  color: var(--accent);
+  border: 2px solid var(--accent);
+}
+
+.status-auction {
+  background: rgba(46, 164, 79, 0.15);
+  color: var(--success);
+  border: 2px solid var(--success);
 }
