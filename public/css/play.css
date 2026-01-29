@@ -106,7 +106,9 @@ html {
 }
 
 .input-group input {
+  display: block !important;
   width: 100%;
+  min-height: 48px; /* Explicit height for iOS */
   padding: 0.75rem 1rem;
   font-size: 16px; /* Prevents iOS zoom on focus */
   font-family: 'Rajdhani', sans-serif;
@@ -114,12 +116,18 @@ html {
   border: 1px solid rgba(0, 201, 167, 0.3);
   border-radius: 6px;
   color: var(--text-primary);
-  transition: all 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
   /* Override body's user-select:none for inputs */
   user-select: text;
   -webkit-user-select: text;
-  -webkit-appearance: none; /* Remove iOS default styling */
+  /* iOS Safari fix */
+  -webkit-appearance: none;
+  -moz-appearance: none;
   appearance: none;
+  opacity: 1;
+  visibility: visible;
+  /* Ensure text input works on iOS */
+  -webkit-text-fill-color: var(--text-primary);
 }
 
 .input-group input:focus {
