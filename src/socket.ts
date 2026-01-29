@@ -26,6 +26,17 @@ const connectionsByIP: Record<string, number> = {};
 // Track authenticated host sockets
 const authenticatedHostSockets = new Set<string>();
 
+// Store io instance for broadcasting
+let ioInstance: Server | null = null;
+
+// Broadcast event to all authenticated hosts
+function broadcastToHosts(type: string, message: string, level: 'info' | 'success' | 'warning' | 'error' | 'player' = 'info'): void {
+  if (!ioInstance) return;
+  authenticatedHostSockets.forEach((socketId) => {
+    ioInstance!.to(socketId).emit('hostEvent', { type, message, level });
+  });
+}
+
 function getClientIP(socket: CustomSocket): string {
   const forwarded = socket.handshake.headers['x-forwarded-for'];
   if (forwarded) {
@@ -36,6 +47,8 @@ function getClientIP(socket: CustomSocket): string {
 }
 
 export function setupSocketIO(io: Server): void {
+  ioInstance = io;
+
   // Connection limiting middleware
   io.use((socket: CustomSocket, next) => {
     const ip = getClientIP(socket);
@@ -46,6 +59,7 @@ export function setupSocketIO(io: Server): void {
 
     if (connectionsByIP[ip] >= config.MAX_CONNECTIONS_PER_IP) {
       Logger.security('Connection rejected - limit reached', ip, { limit: config.MAX_CONNECTIONS_PER_IP });
+      broadcastToHosts('connection_rejected', `Connection rejected from ${ip} (IP limit: ${config.MAX_CONNECTIONS_PER_IP})`, 'error');
       return next(new Error('Too many connections from this IP'));
     }
 
@@ -101,8 +115,10 @@ export function setupSocketIO(io: Server): void {
 
     // Join game
     socket.on('joinGame', (data: { name?: string; adContent?: string }) => {
-      if (Object.keys(gameState.players).length >= config.MAX_PLAYERS) {
+      const playerCount = Object.keys(gameState.players).length;
+      if (playerCount >= config.MAX_PLAYERS) {
         socket.emit('joinError', { message: 'Game is full! Maximum players reached.' });
+        broadcastToHosts('max_players', `Player rejected - MAX_PLAYERS (${config.MAX_PLAYERS}) reached!`, 'error');
         return;
       }
 
@@ -124,7 +140,9 @@ export function setupSocketIO(io: Server): void {
       const sessionToken = session.createSession(socket.id, playerData);
       socket.emit('sessionCreated', { token: sessionToken });
 
+      const newCount = Object.keys(gameState.players).length;
       Logger.playerAction('joined', playerName, { session: sessionToken.substring(0, 12) });
+      broadcastToHosts('player_joined', `${playerName} joined (${newCount}/${config.MAX_PLAYERS})`, 'player');
       broadcastState();
     });
 
@@ -233,11 +251,19 @@ export function setupSocketIO(io: Server): void {
 
       gameState.countdownDuration = validation.validateCountdownDuration(gameState.countdownDuration);
 
+      const playerCount = Object.keys(gameState.players).length;
+      if (playerCount === 0) {
+        broadcastToHosts('start_error', 'Cannot start - no players connected!', 'error');
+        return;
+      }
+
       resetGame();
       gameState.round++;
       gameState.status = 'auction_countdown';
       gameState.timeRemaining = gameState.countdownDuration;
 
+      broadcastToHosts('game_started', `Round ${gameState.round} started with ${playerCount} players`, 'success');
+      Logger.gameEvent('Auction started', { round: gameState.round, players: playerCount });
       broadcastState();
 
       const interval = setInterval(() => {
@@ -309,6 +335,8 @@ export function setupSocketIO(io: Server): void {
     socket.on('disconnect', () => {
       validation.cleanupRateLimitData(socket.id);
       botDetection.resetBotDetectionData(socket.id);
+      
+      const wasHost = authenticatedHostSockets.has(socket.id);
       authenticatedHostSockets.delete(socket.id);
 
       if (gameState.players[socket.id]) {
@@ -324,14 +352,18 @@ export function setupSocketIO(io: Server): void {
             sessionData.playerData.disconnectedRound = gameState.round;
           }
           Logger.playerAction('disconnected (grace period)', playerName);
+          broadcastToHosts('player_disconnected', `${playerName} disconnected (can reconnect)`, 'warning');
         } else {
           Logger.playerAction('disconnected', playerName);
+          broadcastToHosts('player_disconnected', `${playerName} left`, 'warning');
         }
 
         if (!isActiveAuction) {
           delete gameState.players[socket.id];
         }
         broadcastState();
+      } else if (wasHost) {
+        // Don't notify about host disconnecting to other hosts
       }
     });
   });

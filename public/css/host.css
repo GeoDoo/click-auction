@@ -176,6 +176,95 @@ header {
   color: #8b949e !important;
 }
 
+/* Status Panel */
+.status-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: #0d1117;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.connection-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  transition: background 0.3s ease;
+}
+
+.connection-dot.connected {
+  background: #2ea44f;
+  box-shadow: 0 0 8px #2ea44f;
+}
+
+.connection-dot.disconnected {
+  background: #f85149;
+  box-shadow: 0 0 8px #f85149;
+}
+
+.connection-dot.reconnecting {
+  background: #f0883e;
+  animation: pulse-reconnect 1s infinite;
+}
+
+@keyframes pulse-reconnect {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.status-log {
+  background: #0d1117;
+  border: 1px solid rgba(0, 201, 167, 0.15);
+  border-radius: 6px;
+  padding: 0.75rem;
+  max-height: 200px;
+  overflow-y: auto;
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+}
+
+.log-entry {
+  padding: 0.25rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  gap: 0.5rem;
+  word-break: break-word;
+}
+
+.log-entry:last-child {
+  border-bottom: none;
+}
+
+.log-entry .time {
+  color: #6e7681;
+  flex-shrink: 0;
+}
+
+.log-entry.info { color: #8b949e; }
+.log-entry.success { color: #2ea44f; }
+.log-entry.warning { color: #f0883e; }
+.log-entry.error { color: #f85149; }
+.log-entry.player { color: #58a6ff; }
+
+.btn-clear-log {
+  background: transparent;
+  color: #8b949e;
+  border: 1px solid rgba(139, 148, 158, 0.3);
+}
+
+.btn-clear-log:hover {
+  background: rgba(139, 148, 158, 0.1);
+  border-color: #8b949e;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
   header {
