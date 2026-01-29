@@ -585,6 +585,10 @@ html {
     0 10px 40px rgba(255, 51, 102, 0.5),
     0 0 80px rgba(255, 51, 102, 0.3);
   animation: pulse-fastest-finger-tap 0.3s infinite;
+  /* Random position mode */
+  position: fixed !important;
+  z-index: 1000;
+  transition: none !important; /* Instant position change */
 }
 
 .bid-button.fastest-finger-tapped {

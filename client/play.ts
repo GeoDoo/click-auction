@@ -241,6 +241,40 @@ const bidButton = document.getElementById('bidButton') as HTMLButtonElement | nu
 
 let hasRecordedReaction = false;
 
+// Randomize button position for Fastest Finger
+function randomizeButtonPosition(): void {
+  if (!bidButton) return;
+  
+  const buttonSize = 200; // Approximate button size
+  const padding = 40; // Safe padding from edges
+  
+  // Get viewport dimensions
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  
+  // Calculate safe area for button center
+  const minX = padding + buttonSize / 2;
+  const maxX = viewportWidth - padding - buttonSize / 2;
+  const minY = padding + buttonSize / 2 + 60; // Extra top padding for header
+  const maxY = viewportHeight - padding - buttonSize / 2;
+  
+  // Random position within safe area
+  const randomX = Math.floor(Math.random() * (maxX - minX)) + minX;
+  const randomY = Math.floor(Math.random() * (maxY - minY)) + minY;
+  
+  // Apply position (centered on the random point)
+  bidButton.style.left = `${randomX - buttonSize / 2}px`;
+  bidButton.style.top = `${randomY - buttonSize / 2}px`;
+}
+
+// Reset button to normal flow position
+function resetButtonPosition(): void {
+  if (!bidButton) return;
+  bidButton.style.left = '';
+  bidButton.style.top = '';
+  bidButton.style.position = '';
+}
+
 function handleBid(e: MouseEvent | TouchEvent): void {
   if (!bidButton) return;
   
@@ -385,6 +419,8 @@ function updateUI(state: GameState): void {
       hasRecordedReaction = false; // Reset for new Fastest Finger round
       // Hide stage overlay if still visible
       if (stageOverlay) stageOverlay.classList.remove('active');
+      // Randomize button position for surprise!
+      randomizeButtonPosition();
     }
   }
 
@@ -408,7 +444,9 @@ function updateUI(state: GameState): void {
       bidButton.textContent = 'Waiting...';
       bidButton.disabled = true;
       hasRecordedReaction = false;
+      resetButtonPosition(); // Reset for new game
     } else if (state.status === 'auction_countdown') {
+      resetButtonPosition(); // Ensure normal position for countdown
       bidButton.className = 'bid-button auction-countdown';
       bidButton.innerHTML = `<span style="font-size: 3rem;">${state.timeRemaining}</span><br>CLICK AUCTION`;
       bidButton.disabled = true;
@@ -438,6 +476,8 @@ function updateUI(state: GameState): void {
       bidButton.className = 'bid-button disabled';
       bidButton.textContent = 'Done';
       bidButton.disabled = true;
+      // Reset button position back to normal
+      resetButtonPosition();
     }
   }
 
