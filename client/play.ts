@@ -603,16 +603,13 @@ function updateUI(state: GameState): void {
 
 socket.on('gameState', updateUI);
 
-// Sync click count with server (in case of missed clicks or race conditions)
-socket.on('clickUpdate', (data: { playerId: string; clicks: number }) => {
-  // Check if this update is for me by comparing socket ID
-  if (socket.id === data.playerId) {
-    // Server's count is authoritative - sync if different
-    if (myClicks !== data.clicks) {
-      myClicks = data.clicks;
-      const counter = document.getElementById('clickCounter');
-      if (counter) counter.textContent = String(myClicks);
-    }
+// Server confirms our click count (authoritative sync)
+socket.on('clickConfirm', (data: { clicks: number }) => {
+  // Server's count is authoritative - sync if different
+  if (myClicks !== data.clicks) {
+    myClicks = data.clicks;
+    const counter = document.getElementById('clickCounter');
+    if (counter) counter.textContent = String(myClicks);
   }
 });
 

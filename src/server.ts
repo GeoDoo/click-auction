@@ -15,7 +15,20 @@ import { getLocalIP } from './routes';
 
 // Create server
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+  // Optimized for 200 concurrent players
+  pingTimeout: 60000,        // 60s - more tolerance for slow connections
+  pingInterval: 25000,       // 25s - keep connections alive
+  upgradeTimeout: 30000,     // 30s - time to upgrade to WebSocket
+  maxHttpBufferSize: 1e6,    // 1MB max message size
+  perMessageDeflate: {
+    threshold: 1024,         // Only compress messages > 1KB
+  },
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST'],
+  },
+});
 
 // Initialize game module with io instance
 setIO(io);

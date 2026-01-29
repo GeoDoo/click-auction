@@ -353,7 +353,5 @@ function createConfetti(): void {
 }
 
 socket.on('gameState', updateUI);
-socket.on('clickUpdate', (data: { clicks: number }) => {
-  maxClicks = Math.max(maxClicks, data.clicks);
-});
+// maxClicks is now calculated from leaderboard in updateUI (more efficient for 200 players)
 

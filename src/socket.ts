@@ -209,13 +209,13 @@ export function setupSocketIO(io: Server): void {
           gameState.players[socket.id].suspicionReason = suspicionCheck.reason;
         }
 
-        io.emit('clickUpdate', {
-          playerId: socket.id,
-          playerName: gameState.players[socket.id].name,
+        // Send click confirmation only to the player who clicked (not everyone)
+        socket.emit('clickConfirm', {
           clicks: gameState.players[socket.id].clicks,
-          color: gameState.players[socket.id].color,
-          suspicious: suspicionCheck.suspicious,
         });
+        
+        // Throttled broadcast is handled by the 1-second gameState broadcast
+        // No longer broadcasting every click to all clients - too expensive with 200 players
       }
       // Fastest Finger phase - record reaction time
       else if (gameState.status === 'fastestFinger_tap' && gameState.players[socket.id]) {

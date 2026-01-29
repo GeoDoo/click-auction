@@ -102,12 +102,20 @@ const config: Config = {
   FASTEST_FINGER_TAP_TIMEOUT_MS: 5000, // 5 seconds to tap before timeout
   FASTEST_FINGER_MULTIPLIERS: [2.0, 1.5, 1.25], // Multipliers for 1st, 2nd, 3rd fastest reaction
 
-  // VIOOH-inspired DSP colors
+  // VIOOH-inspired DSP colors (50 colors for up to 200 players with minimal repeats)
   DSP_COLORS: [
+    // Original 20
     '#00C9A7', '#E91E8C', '#6B3FA0', '#00D4D4', '#FFB800',
     '#00E896', '#FF6B9D', '#4ECDC4', '#9B59B6', '#3498DB',
     '#F39C12', '#1ABC9C', '#E74C8C', '#00BCD4', '#8E44AD',
     '#2ECC71', '#E91E63', '#00ACC1', '#AB47BC', '#26A69A',
+    // Additional 30 for large events
+    '#FF5733', '#33FF57', '#3357FF', '#FF33F5', '#F5FF33',
+    '#33FFF5', '#FF8C33', '#8CFF33', '#338CFF', '#FF338C',
+    '#C70039', '#900C3F', '#581845', '#FFC300', '#DAF7A6',
+    '#85C1E9', '#F1948A', '#82E0AA', '#F7DC6F', '#BB8FCE',
+    '#73C6B6', '#F8B500', '#E74C3C', '#9B59B6', '#1ABC9C',
+    '#2980B9', '#27AE60', '#F39C12', '#D35400', '#C0392B',
   ],
 };
 
