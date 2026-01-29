@@ -241,44 +241,37 @@ const bidButton = document.getElementById('bidButton') as HTMLButtonElement | nu
 
 let hasRecordedReaction = false;
 
-// Randomize button position AND shrink for Fastest Finger
+// Randomize button position for Fastest Finger (CSS handles the size)
 function randomizeButtonPosition(): void {
   if (!bidButton) return;
   
-  const smallButtonSize = 50; // Tiny target for Fastest Finger
-  const padding = 40; // Safe padding from edges
+  const buttonSize = 50; // Must match CSS .fastest-finger-tap size
+  const padding = 30; // Safe padding from edges
   
   // Get viewport dimensions
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
   
-  // Calculate safe area for button center (using small size)
-  const minX = padding + smallButtonSize / 2;
-  const maxX = viewportWidth - padding - smallButtonSize / 2;
-  const minY = padding + smallButtonSize / 2 + 60; // Extra top padding for header
-  const maxY = viewportHeight - padding - smallButtonSize / 2;
+  // Calculate safe area for button
+  const minX = padding;
+  const maxX = viewportWidth - padding - buttonSize;
+  const minY = padding + 60; // Extra top padding for header
+  const maxY = viewportHeight - padding - buttonSize;
   
   // Random position within safe area
   const randomX = Math.floor(Math.random() * (maxX - minX)) + minX;
   const randomY = Math.floor(Math.random() * (maxY - minY)) + minY;
   
-  // Apply position AND size (both at once!)
-  bidButton.style.left = `${randomX - smallButtonSize / 2}px`;
-  bidButton.style.top = `${randomY - smallButtonSize / 2}px`;
-  bidButton.style.width = `${smallButtonSize}px`;
-  bidButton.style.height = `${smallButtonSize}px`;
-  bidButton.style.fontSize = '0.6rem'; // Tiny text for tiny button
+  // Apply position (CSS handles the size via .fastest-finger-tap class)
+  bidButton.style.left = `${randomX}px`;
+  bidButton.style.top = `${randomY}px`;
 }
 
-// Reset button to normal flow position AND size
+// Reset button to normal flow position
 function resetButtonPosition(): void {
   if (!bidButton) return;
   bidButton.style.left = '';
   bidButton.style.top = '';
-  bidButton.style.position = '';
-  bidButton.style.width = '';
-  bidButton.style.height = '';
-  bidButton.style.fontSize = '';
 }
 
 function handleBid(e: MouseEvent | TouchEvent): void {
