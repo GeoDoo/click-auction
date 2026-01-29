@@ -472,7 +472,7 @@ function updateUI(state: GameState): void {
     } else if (state.status === 'fastestFinger_tap') {
       if (!hasRecordedReaction) {
         bidButton.className = 'bid-button fastest-finger-tap';
-        bidButton.innerHTML = '⚡'; // Just the lightning bolt for tiny button
+        bidButton.innerHTML = '<span style="font-size:28px;line-height:50px;">⚡</span>';
         bidButton.disabled = false;
         // Randomize position AFTER class is set (so position:fixed is active)
         if (previousStatus !== 'fastestFinger_tap') {

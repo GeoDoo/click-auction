@@ -584,8 +584,11 @@ html {
   height: 50px !important;
   min-width: 50px !important;
   min-height: 50px !important;
-  font-size: 1.2rem !important;
   padding: 0 !important;
+  /* Center the emoji */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   /* Styling */
   background: linear-gradient(145deg, #FF3366, #FF6B9D);
   color: white;
