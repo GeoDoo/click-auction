@@ -246,7 +246,7 @@ function randomizeButtonPosition(): void {
   if (!bidButton) return;
   
   const buttonSize = 50; // Must match CSS .fastest-finger-tap size
-  const padding = 30; // Safe padding from edges
+  const padding = 20; // Safe padding from edges
   
   // Get viewport dimensions
   const viewportWidth = window.innerWidth;
@@ -254,24 +254,30 @@ function randomizeButtonPosition(): void {
   
   // Calculate safe area for button
   const minX = padding;
-  const maxX = viewportWidth - padding - buttonSize;
-  const minY = padding + 60; // Extra top padding for header
-  const maxY = viewportHeight - padding - buttonSize;
+  const maxX = Math.max(padding, viewportWidth - padding - buttonSize);
+  const minY = padding + 80; // Extra top padding for header
+  const maxY = Math.max(minY, viewportHeight - padding - buttonSize - 50); // Bottom safe area
   
   // Random position within safe area
   const randomX = Math.floor(Math.random() * (maxX - minX)) + minX;
   const randomY = Math.floor(Math.random() * (maxY - minY)) + minY;
   
-  // Apply position (CSS handles the size via .fastest-finger-tap class)
-  bidButton.style.left = `${randomX}px`;
-  bidButton.style.top = `${randomY}px`;
+  // Force position with inline styles (backup for CSS)
+  bidButton.style.cssText = `
+    position: fixed !important;
+    left: ${randomX}px !important;
+    top: ${randomY}px !important;
+    width: 50px !important;
+    height: 50px !important;
+    z-index: 9999 !important;
+  `;
 }
 
-// Reset button to normal flow position
+// Reset button to normal flow position and size
 function resetButtonPosition(): void {
   if (!bidButton) return;
-  bidButton.style.left = '';
-  bidButton.style.top = '';
+  // Clear all inline styles to let CSS take over
+  bidButton.style.cssText = '';
 }
 
 function handleBid(e: MouseEvent | TouchEvent): void {
@@ -418,8 +424,6 @@ function updateUI(state: GameState): void {
       hasRecordedReaction = false; // Reset for new Fastest Finger round
       // Hide stage overlay if still visible
       if (stageOverlay) stageOverlay.classList.remove('active');
-      // Randomize button position for surprise!
-      randomizeButtonPosition();
     }
   }
 
@@ -470,6 +474,10 @@ function updateUI(state: GameState): void {
         bidButton.className = 'bid-button fastest-finger-tap';
         bidButton.innerHTML = '⚡'; // Just the lightning bolt for tiny button
         bidButton.disabled = false;
+        // Randomize position AFTER class is set (so position:fixed is active)
+        if (previousStatus !== 'fastestFinger_tap') {
+          randomizeButtonPosition();
+        }
       }
     } else if (state.status === 'finished') {
       bidButton.className = 'bid-button disabled';
