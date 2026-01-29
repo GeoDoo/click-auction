@@ -245,7 +245,7 @@ let hasRecordedReaction = false;
 function randomizeButtonPosition(): void {
   if (!bidButton) return;
   
-  const smallButtonSize = 100; // Half size for Fastest Finger
+  const smallButtonSize = 50; // Tiny target for Fastest Finger
   const padding = 40; // Safe padding from edges
   
   // Get viewport dimensions
@@ -267,7 +267,7 @@ function randomizeButtonPosition(): void {
   bidButton.style.top = `${randomY - smallButtonSize / 2}px`;
   bidButton.style.width = `${smallButtonSize}px`;
   bidButton.style.height = `${smallButtonSize}px`;
-  bidButton.style.fontSize = '0.875rem'; // Smaller text too
+  bidButton.style.fontSize = '0.6rem'; // Tiny text for tiny button
 }
 
 // Reset button to normal flow position AND size
@@ -475,7 +475,7 @@ function updateUI(state: GameState): void {
     } else if (state.status === 'fastestFinger_tap') {
       if (!hasRecordedReaction) {
         bidButton.className = 'bid-button fastest-finger-tap';
-        bidButton.innerHTML = '<span style="font-size: 1.5rem;">⚡ TAP NOW! ⚡</span>';
+        bidButton.innerHTML = '⚡'; // Just the lightning bolt for tiny button
         bidButton.disabled = false;
       }
     } else if (state.status === 'finished') {
