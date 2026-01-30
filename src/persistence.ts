@@ -41,6 +41,10 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
 // All-time stats structure: { "PlayerName": { wins, totalClicks, roundsPlayed, bestRound, lastPlayed } }
 let allTimeStats: Record<string, PlayerStats> = {};
 
+// Cached leaderboard (only recalculated when stats change)
+let cachedLeaderboard: LeaderboardEntry[] = [];
+let leaderboardDirty = true;
+
 /**
  * Load scores from storage
  */
@@ -52,6 +56,7 @@ export async function loadScores(): Promise<void> {
       Logger.info(`🔍 Redis returned: ${data ? 'data found' : 'null/empty'}, type: ${typeof data}`);
       if (data) {
         allTimeStats = typeof data === 'string' ? JSON.parse(data) : data;
+        leaderboardDirty = true;
         Logger.info(`📊 Loaded ${Object.keys(allTimeStats).length} player records from Redis`);
       } else {
         Logger.warn('⚠️ No data found in Redis (key may not exist yet)');
@@ -62,6 +67,7 @@ export async function loadScores(): Promise<void> {
         const parsed = JSON.parse(data);
         if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
           allTimeStats = parsed;
+          leaderboardDirty = true;
           Logger.info(`📊 Loaded ${Object.keys(allTimeStats).length} player records from scores.json`);
         } else {
           throw new Error('Invalid scores format');
@@ -155,18 +161,25 @@ export function updatePlayerStats(
   if (isWinner) {
     allTimeStats[name].wins += 1;
   }
+  
+  // Mark leaderboard cache as dirty
+  leaderboardDirty = true;
 }
 
 /**
- * Get all-time leaderboard
+ * Get all-time leaderboard (cached for performance)
  */
 export function getAllTimeLeaderboard(): LeaderboardEntry[] {
-  return Object.entries(allTimeStats)
-    .map(([name, stats]) => ({
-      name,
-      ...stats,
-    }))
-    .sort((a, b) => b.wins - a.wins || b.totalClicks - a.totalClicks);
+  if (leaderboardDirty || cachedLeaderboard.length === 0) {
+    cachedLeaderboard = Object.entries(allTimeStats)
+      .map(([name, stats]) => ({
+        name,
+        ...stats,
+      }))
+      .sort((a, b) => b.wins - a.wins || b.totalClicks - a.totalClicks);
+    leaderboardDirty = false;
+  }
+  return cachedLeaderboard;
 }
 
 /**
@@ -175,6 +188,8 @@ export function getAllTimeLeaderboard(): LeaderboardEntry[] {
 export async function resetAllStats(): Promise<void> {
   Logger.warn('🗑️ Resetting ALL stats (intentional)');
   allTimeStats = {};
+  cachedLeaderboard = [];
+  leaderboardDirty = true;
   // Force save the empty state
   if (redis) {
     await redis.set(config.REDIS_KEY, JSON.stringify(allTimeStats));

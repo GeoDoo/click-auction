@@ -16,13 +16,13 @@ import { getLocalIP } from './routes';
 // Create server
 const server = http.createServer(app);
 const io = new Server(server, {
-  // Optimized for 200 concurrent players
-  pingTimeout: 60000,        // 60s - more tolerance for slow connections
-  pingInterval: 25000,       // 25s - keep connections alive
+  // Optimized for 200 concurrent players on FREE TIER
+  pingTimeout: 120000,       // 2min - very tolerant for slow connections
+  pingInterval: 45000,       // 45s - less frequent keepalives (saves CPU)
   upgradeTimeout: 30000,     // 30s - time to upgrade to WebSocket
-  maxHttpBufferSize: 1e6,    // 1MB max message size
+  maxHttpBufferSize: 256000, // 256KB max message size (reduced from 1MB)
   perMessageDeflate: {
-    threshold: 1024,         // Only compress messages > 1KB
+    threshold: 512,          // Compress messages > 512 bytes (more aggressive)
   },
   cors: {
     origin: '*',

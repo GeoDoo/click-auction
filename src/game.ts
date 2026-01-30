@@ -131,23 +131,62 @@ export function calculateFinalScores(): LeaderboardEntry[] {
   return withMultipliers.sort((a, b) => b.finalScore - a.finalScore);
 }
 
+// Cache all-time leaderboard to avoid recalculating on every broadcast
+let cachedAllTimeLeaderboard: persistence.LeaderboardEntry[] = [];
+let allTimeLeaderboardLastUpdated = 0;
+const ALL_TIME_LEADERBOARD_CACHE_MS = 5000; // Only refresh every 5 seconds
+
+function getCachedAllTimeLeaderboard(): persistence.LeaderboardEntry[] {
+  const now = Date.now();
+  if (now - allTimeLeaderboardLastUpdated > ALL_TIME_LEADERBOARD_CACHE_MS) {
+    cachedAllTimeLeaderboard = persistence.getAllTimeLeaderboard().slice(0, 20);
+    allTimeLeaderboardLastUpdated = now;
+  }
+  return cachedAllTimeLeaderboard;
+}
+
 export function broadcastState(): void {
-  const leaderboard = gameState.status === 'finished' && gameState.finalLeaderboard.length > 0
+  const fullLeaderboard = gameState.status === 'finished' && gameState.finalLeaderboard.length > 0
     ? gameState.finalLeaderboard
     : getLeaderboard();
 
-  io.emit('gameState', {
+  // OPTIMIZATION: Only send top 10 in the leaderboard to reduce payload size
+  // Display page shows top 10, players see their own rank via personal state
+  const slimLeaderboard = fullLeaderboard.slice(0, 10);
+  
+  const playerCount = Object.keys(gameState.players).length;
+
+  // Base state (always sent)
+  const baseState = {
     status: gameState.status,
     timeRemaining: gameState.timeRemaining,
-    leaderboard: leaderboard,
+    leaderboard: slimLeaderboard,
     winner: gameState.winner,
     winnerAd: gameState.winnerAd,
     round: gameState.round,
-    playerCount: Object.keys(gameState.players).length,
-    allTimeLeaderboard: persistence.getAllTimeLeaderboard().slice(0, 20),
-    auctionScores: gameState.auctionScores,
-    fastestFingerStartTime: gameState.fastestFingerStartTime,
-  });
+    playerCount: playerCount,
+  };
+
+  // Only include expensive data when needed
+  const isActiveGame = ['auction_countdown', 'auction', 'fastestFinger_countdown', 'fastestFinger_tap'].includes(gameState.status);
+  
+  if (isActiveGame) {
+    // During active game, include all data
+    io.emit('gameState', {
+      ...baseState,
+      allTimeLeaderboard: getCachedAllTimeLeaderboard(),
+      auctionScores: gameState.auctionScores,
+      fastestFingerStartTime: gameState.fastestFingerStartTime,
+    });
+  } else {
+    // When idle (waiting/finished), send minimal payload
+    io.emit('gameState', {
+      ...baseState,
+      allTimeLeaderboard: getCachedAllTimeLeaderboard(),
+      auctionScores: {},
+      fastestFingerStartTime: null,
+    });
+  }
 }
 
 export function addPlayer(socketId: string, playerData: Player): void {

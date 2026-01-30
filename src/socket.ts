@@ -99,13 +99,15 @@ export function setupSocketIO(io: Server): void {
 
     const isAuthenticatedHost = (): boolean => authenticatedHostSockets.has(socket.id);
 
-    // Send initial state
+    // Send initial state (slim payload - top 10 leaderboard only)
+    const initialLeaderboard = gameState.status === 'finished' && gameState.finalLeaderboard.length > 0
+      ? gameState.finalLeaderboard.slice(0, 10)
+      : getLeaderboard().slice(0, 10);
+    
     socket.emit('gameState', {
       status: gameState.status,
       timeRemaining: gameState.timeRemaining,
-      leaderboard: gameState.status === 'finished' && gameState.finalLeaderboard.length > 0
-        ? gameState.finalLeaderboard
-        : getLeaderboard(),
+      leaderboard: initialLeaderboard,
       winner: gameState.winner,
       winnerAd: gameState.winnerAd,
       round: gameState.round,
