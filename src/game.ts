@@ -200,8 +200,8 @@ export function endClickAuction(): void {
   });
 
   const totalClicks = Object.values(gameState.auctionScores).reduce((sum, c) => sum + c, 0);
-  const sortedPlayers = Object.entries(gameState.players)
-    .map(([id, p]) => ({ name: p.name, clicks: p.clicks }))
+  const sortedPlayers = Object.values(gameState.players)
+    .map((p) => ({ name: p.name, clicks: p.clicks }))
     .sort((a, b) => b.clicks - a.clicks);
   
   Logger.info(`🏁 CLICK AUCTION ENDED | Total: ${totalClicks} clicks`);
