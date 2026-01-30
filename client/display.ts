@@ -106,8 +106,10 @@ function loadAllTimeStats(): void {
         return;
       }
 
+      // Preserve scroll position while updating
+      const scrollTop = list.scrollTop;
+      
       list.innerHTML = data.allTime
-        .slice(0, 8)
         .map(
           (player, index) => {
             const auctionTaps = player.totalAuctionTaps ?? 0;
@@ -129,6 +131,9 @@ function loadAllTimeStats(): void {
           }
         )
         .join('');
+      
+      // Restore scroll position
+      list.scrollTop = scrollTop;
     })
     .catch((err) => Logger.warn('Could not load all-time stats:', err));
 }
@@ -258,8 +263,10 @@ function updateUI(state: GameState): void {
         return '';
       };
       
+      // Preserve scroll position while updating
+      const scrollTop = list.scrollTop;
+      
       list.innerHTML = state.leaderboard
-        .slice(0, 10)
         .map(
           (player, index) => {
             const score = player.finalScore ?? player.clicks;
@@ -279,6 +286,9 @@ function updateUI(state: GameState): void {
           }
         )
         .join('');
+      
+      // Restore scroll position
+      list.scrollTop = scrollTop;
     }
   }
 
