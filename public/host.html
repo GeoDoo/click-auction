@@ -52,7 +52,7 @@
       </section>
 
       <!-- Live Status Panel -->
-      <section class="card" aria-labelledby="status-panel-title" style="margin-top: 1.5rem;">
+      <section class="card status-panel-card" aria-labelledby="status-panel-title">
         <h2 id="status-panel-title">📊 Live Status</h2>
         <div class="status-panel">
           <div class="connection-status" id="connectionStatus">
@@ -62,7 +62,7 @@
           <div class="status-log" id="statusLog" aria-live="polite" aria-label="Event log">
             <div class="log-entry info">Waiting for connection...</div>
           </div>
-          <button class="btn btn-clear-log" onclick="clearLog()" style="margin-top: 0.5rem; padding: 0.5rem 1rem; font-size: 0.75rem;">
+          <button class="btn btn-clear-log" onclick="clearLog()" style="margin-top: 0.75rem; padding: 0.625rem 1.25rem; font-size: 0.875rem;">
             Clear Log
           </button>
         </div>

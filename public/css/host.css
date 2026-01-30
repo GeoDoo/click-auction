@@ -44,12 +44,21 @@ header {
 /* Main Content */
 .main {
   padding: 1.5rem;
-  max-width: 600px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
 .control-center {
   width: 100%;
+  display: grid;
+  grid-template-columns: 400px 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 900px) {
+  .control-center {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Card */
@@ -224,18 +233,20 @@ header {
   background: #0d1117;
   border: 1px solid rgba(0, 201, 167, 0.15);
   border-radius: 6px;
-  padding: 0.75rem;
-  max-height: 200px;
+  padding: 1rem 1.25rem;
+  min-height: 400px;
+  max-height: 600px;
   overflow-y: auto;
-  font-family: 'Courier New', monospace;
-  font-size: 0.75rem;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  font-size: 0.95rem;
+  line-height: 1.6;
 }
 
 .log-entry {
-  padding: 0.25rem 0;
+  padding: 0.4rem 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
-  gap: 0.5rem;
+  gap: 0.75rem;
   word-break: break-word;
 }
 
@@ -246,13 +257,34 @@ header {
 .log-entry .time {
   color: #6e7681;
   flex-shrink: 0;
+  font-size: 0.85rem;
 }
 
-.log-entry.info { color: #8b949e; }
-.log-entry.success { color: #2ea44f; }
+.log-entry .message {
+  flex: 1;
+}
+
+.log-entry.info { color: #c9d1d9; }
+.log-entry.success { color: #3fb950; font-weight: 500; }
 .log-entry.warning { color: #f0883e; }
-.log-entry.error { color: #f85149; }
+.log-entry.error { color: #f85149; font-weight: 600; }
 .log-entry.player { color: #58a6ff; }
+
+/* Status panel takes full height */
+.status-panel-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.status-panel-card .status-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.status-panel-card .status-log {
+  flex: 1;
+}
 
 .btn-clear-log {
   background: transparent;
