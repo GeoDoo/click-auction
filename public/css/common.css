@@ -393,4 +393,52 @@ label {
   font-weight: 500;
 }
 
+/* ============================================
+   CUSTOM SCROLLBARS - Dark Theme
+   ============================================ */
+
+/* Global scrollbar styles */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(13, 17, 23, 0.8);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--primary) 0%, var(--accent) 50%, var(--secondary) 100%);
+  border-radius: 5px;
+  border: 2px solid rgba(13, 17, 23, 0.8);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #00E8B8 0%, #FF3399 50%, #8B5FC0 100%);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(180deg, #00FFD4 0%, #FF66B2 50%, #9B7FD0 100%);
+}
+
+::-webkit-scrollbar-corner {
+  background: rgba(13, 17, 23, 0.8);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary) rgba(13, 17, 23, 0.8);
+}
+
+/* Thin scrollbar variant */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  border-width: 1px;
+}
+
 
