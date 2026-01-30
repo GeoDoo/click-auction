@@ -11,6 +11,7 @@
  *   --ramp=<ms>       Ramp-up time in ms (default: 5000)
  *   --pin=<pin>       Host PIN to auto-start the game (optional)
  *   --duration=<s>    Auction duration in seconds (default: 10)
+ *   --no-cleanup      Keep players connected after test (don't disconnect)
  * 
  * Examples:
  *   npx ts-node tests/load-test.ts --prod --players=50
@@ -38,6 +39,7 @@ const NUM_PLAYERS = parseInt(getArg('players', '200'), 10);
 const RAMP_UP_MS = parseInt(getArg('ramp', '5000'), 10);
 const HOST_PIN = getArg('pin', '');
 const AUCTION_DURATION = parseInt(getArg('duration', '10'), 10);
+const NO_CLEANUP = hasFlag('no-cleanup');
 const CLICK_INTERVAL_MS = 100; // Click every 100ms during bidding
 
 // Metrics
@@ -417,12 +419,19 @@ async function runLoadTest(): Promise<void> {
   }
 
   // Cleanup
-  console.log('\n🧹 Cleaning up connections...');
-  sockets.forEach(s => s.disconnect());
-  if (hostSocket) hostSocket.disconnect();
-  
-  printReport();
-  process.exit(metrics.joinSuccess >= NUM_PLAYERS * 0.95 ? 0 : 1);
+  if (NO_CLEANUP) {
+    console.log('\n🔗 Players staying connected (--no-cleanup flag)');
+    console.log('   Press Ctrl+C to disconnect and exit');
+    printReport();
+    // Keep process running
+    await new Promise(() => {});
+  } else {
+    console.log('\n🧹 Cleaning up connections...');
+    sockets.forEach(s => s.disconnect());
+    if (hostSocket) hostSocket.disconnect();
+    printReport();
+    process.exit(metrics.joinSuccess >= NUM_PLAYERS * 0.95 ? 0 : 1);
+  }
 }
 
 // Handle Ctrl+C gracefully

@@ -8,8 +8,12 @@ A real-time multiplayer auction game where audience members compete as DSPs (Dem
 
 1. **Players join** as "DSPs" via their phones by scanning a QR code
 2. **Host starts** an auction round with a configurable timer (5-60 seconds)
-3. **Players tap** furiously to place bids (each tap = 1 bid)
-4. **Winner's ad** is dynamically generated and displayed on the big screen!
+3. **Click Auction** - Players tap furiously to place bids (each tap = 1 bid)
+4. **Fastest Finger** - React quickly when the signal appears! Top 3 get score multipliers:
+   - 🥇 1st: 2x multiplier
+   - 🥈 2nd: 1.5x multiplier
+   - 🥉 3rd: 1.25x multiplier
+5. **Winner's ad** is dynamically generated and displayed on the big screen!
 
 Perfect for conferences, events, and any gathering where you want to gamify programmatic advertising concepts.
 
@@ -70,8 +74,10 @@ For the event organizer:
 
 1. **Waiting** - Players join, host prepares
 2. **Countdown** - 3, 2, 1... builds anticipation!
-3. **Bidding** - TAP! TAP! TAP!
-4. **Winner** - Celebration with dynamically generated ad
+3. **Click Auction** - TAP! TAP! TAP! (10 seconds default)
+4. **Fastest Finger Countdown** - Get ready...
+5. **Fastest Finger** - React! First tap wins multipliers!
+6. **Winner** - Celebration with confetti and dynamically generated ad
 
 ## 🔊 Sound Effects
 
@@ -107,6 +113,23 @@ The game includes immersive audio feedback (works on all devices!):
 
 Without Redis, scores persist locally but reset on redeploy.
 
+## 📊 Capacity & Performance
+
+Running on **Render free tier**? See the [Capacity Guide](CAPACITY.md) for:
+- Player limits (150 safe, 180 practical, 250 stress)
+- Real load test results
+- Best/base/worst case scenarios
+- How to run your own load tests
+
+**Quick reference:**
+| Players | Reliability |
+|---------|-------------|
+| 1-150 | ✅ 95%+ success |
+| 150-180 | ✅ 90%+ success |
+| 180-250 | ⚠️ 70-85% success |
+
+For 200+ players reliably, upgrade to Render paid tier ($7/month).
+
 ## 🛡️ Security & Protections
 
 The game includes enterprise-grade security:
@@ -116,7 +139,7 @@ The game includes enterprise-grade security:
 | **Helmet.js** | Security headers (XSS, clickjacking, MIME sniffing) |
 | **Input Validation** | Player names and ad content sanitized/truncated |
 | **Rate Limiting** | Max 20 clicks/second per player |
-| **Connection Limiting** | Max 10 connections per IP (DoS protection) |
+| **Connection Limiting** | Max 260 connections per IP (configurable) |
 | **Bot Detection** | Statistical analysis of click timing |
 | **Compression** | Gzip for faster responses |
 | **Trust Proxy** | Correct IP detection behind Render/proxies |
@@ -158,12 +181,12 @@ Optionally protect the `/host` control panel:
 - **Persistence:** Upstash Redis (optional) / Local JSON file
 - **Frontend:** Vanilla HTML/CSS/TypeScript
 - **Audio:** Web Audio API (synthesized sounds, no files)
-- **Testing:** Jest (159 tests)
+- **Testing:** Jest (171 tests)
 - **Hosting:** Render (or any Node.js host)
 
 ## 🧪 Testing
 
-The project includes a comprehensive test suite with **159 tests**:
+The project includes a comprehensive test suite with **171 tests**:
 
 ```bash
 # Run tests
