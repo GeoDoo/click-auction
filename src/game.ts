@@ -165,10 +165,19 @@ export function startClickAuction(): void {
   gameState.status = 'auction';
   gameState.timeRemaining = gameState.auctionDuration;
 
+  const playerCount = Object.keys(gameState.players).length;
+  Logger.info(`🎯 CLICK AUCTION STARTED | Round ${gameState.round} | ${playerCount} players | ${gameState.auctionDuration}s duration`);
+
   broadcastState();
 
   auctionInterval = setInterval(() => {
     gameState.timeRemaining--;
+    
+    // Log live stats every second
+    const totalClicks = Object.values(gameState.players).reduce((sum, p) => sum + p.clicks, 0);
+    const topPlayer = Object.values(gameState.players).sort((a, b) => b.clicks - a.clicks)[0];
+    Logger.info(`⏱️  ${gameState.timeRemaining}s remaining | Total clicks: ${totalClicks} | Leader: ${topPlayer?.name || 'N/A'} (${topPlayer?.clicks || 0})`);
+    
     broadcastState();
 
     if (gameState.timeRemaining <= 0) {
@@ -190,9 +199,19 @@ export function endClickAuction(): void {
     player.reactionTime = null;
   });
 
+  const totalClicks = Object.values(gameState.auctionScores).reduce((sum, c) => sum + c, 0);
+  const sortedPlayers = Object.entries(gameState.players)
+    .map(([id, p]) => ({ name: p.name, clicks: p.clicks }))
+    .sort((a, b) => b.clicks - a.clicks);
+  
+  Logger.info(`🏁 CLICK AUCTION ENDED | Total: ${totalClicks} clicks`);
+  Logger.info(`📊 TOP 5: ${sortedPlayers.slice(0, 5).map((p, i) => `${i + 1}. ${p.name} (${p.clicks})`).join(' | ')}`);
+
   // Start Fastest Finger countdown
   gameState.status = 'fastestFinger_countdown';
   gameState.timeRemaining = gameState.fastestFingerCountdownDuration;
+
+  Logger.info(`⚡ FASTEST FINGER starting in ${gameState.fastestFingerCountdownDuration}s...`);
 
   broadcastState();
 
@@ -213,6 +232,9 @@ export function endClickAuction(): void {
 export function startFastestFingerTap(): void {
   gameState.status = 'fastestFinger_tap';
   gameState.fastestFingerStartTime = Date.now();
+
+  const playerCount = Object.keys(gameState.players).length;
+  Logger.info(`⚡ FASTEST FINGER TAP! | ${playerCount} players racing...`);
 
   broadcastState();
 
@@ -261,6 +283,18 @@ export function endFastestFinger(): void {
   const leaderboard = calculateFinalScores();
   gameState.finalLeaderboard = leaderboard;
 
+  // Log fastest finger results
+  const tappedPlayers = leaderboard.filter(p => p.reactionTime !== null).sort((a, b) => (a.reactionTime || 0) - (b.reactionTime || 0));
+  const didntTap = leaderboard.filter(p => p.reactionTime === null).length;
+  
+  Logger.info(`⚡ FASTEST FINGER RESULTS:`);
+  if (tappedPlayers.length > 0) {
+    Logger.info(`   🥇 Fastest: ${tappedPlayers[0].name} (${tappedPlayers[0].reactionTime}ms)`);
+    if (tappedPlayers.length > 1) Logger.info(`   🥈 2nd: ${tappedPlayers[1].name} (${tappedPlayers[1].reactionTime}ms)`);
+    if (tappedPlayers.length > 2) Logger.info(`   🥉 3rd: ${tappedPlayers[2].name} (${tappedPlayers[2].reactionTime}ms)`);
+  }
+  if (didntTap > 0) Logger.info(`   ❌ ${didntTap} player(s) didn't tap`);
+
   let winnerName: string | null = null;
   if (leaderboard.length > 0 && leaderboard[0].finalScore > 0) {
     const winnerId = leaderboard[0].id;
@@ -271,6 +305,22 @@ export function endFastestFinger(): void {
     gameState.winnerAd = gameState.players[winnerId].adContent;
     winnerName = gameState.winner.name;
   }
+
+  // Log final results
+  Logger.info(`🏆 ═══════════════════════════════════════════════════════════`);
+  Logger.info(`🏆 ROUND ${gameState.round} COMPLETE!`);
+  Logger.info(`🏆 ═══════════════════════════════════════════════════════════`);
+  Logger.info(`🏆 WINNER: ${winnerName || 'No winner'} with ${leaderboard[0]?.finalScore || 0} points`);
+  Logger.info(`📊 FINAL LEADERBOARD:`);
+  leaderboard.slice(0, 10).forEach((player, i) => {
+    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
+    const reactionStr = player.reactionTime !== null ? `${player.reactionTime}ms` : 'no tap';
+    Logger.info(`   ${medal} ${player.name}: ${player.finalScore} pts (auction: ${player.auctionScore}, reaction: ${reactionStr})`);
+  });
+  if (leaderboard.length > 10) {
+    Logger.info(`   ... and ${leaderboard.length - 10} more players`);
+  }
+  Logger.info(`🏆 ═══════════════════════════════════════════════════════════`);
 
   leaderboard.forEach((player) => {
     // Track auction taps, reaction time, and final score

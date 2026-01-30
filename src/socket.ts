@@ -119,6 +119,7 @@ export function setupSocketIO(io: Server): void {
       if (playerCount >= config.MAX_PLAYERS) {
         socket.emit('joinError', { message: 'Game is full! Maximum players reached.' });
         broadcastToHosts('max_players', `Player rejected - MAX_PLAYERS (${config.MAX_PLAYERS}) reached!`, 'error');
+        Logger.warn(`❌ Player rejected - game full (${playerCount}/${config.MAX_PLAYERS})`);
         return;
       }
 
@@ -141,7 +142,7 @@ export function setupSocketIO(io: Server): void {
       socket.emit('sessionCreated', { token: sessionToken });
 
       const newCount = Object.keys(gameState.players).length;
-      Logger.playerAction('joined', playerName, { session: sessionToken.substring(0, 12) });
+      Logger.info(`✅ PLAYER JOINED: ${playerName} | Total players: ${newCount}/${config.MAX_PLAYERS}`);
       broadcastToHosts('player_joined', `${playerName} joined (${newCount}/${config.MAX_PLAYERS})`, 'player');
       broadcastState();
     });
@@ -221,10 +222,13 @@ export function setupSocketIO(io: Server): void {
       else if (gameState.status === 'fastestFinger_tap' && gameState.players[socket.id]) {
         const recorded = recordReactionTime(socket.id);
         if (recorded) {
+          const playerName = gameState.players[socket.id].name;
+          const reactionTime = gameState.players[socket.id].reactionTime;
+          Logger.info(`⚡ TAP: ${playerName} - ${reactionTime}ms`);
           io.emit('reactionTimeRecorded', {
             playerId: socket.id,
-            playerName: gameState.players[socket.id].name,
-            reactionTime: gameState.players[socket.id].reactionTime,
+            playerName: playerName,
+            reactionTime: reactionTime,
           });
           broadcastState();
         }
@@ -263,7 +267,10 @@ export function setupSocketIO(io: Server): void {
       gameState.timeRemaining = gameState.countdownDuration;
 
       broadcastToHosts('game_started', `Round ${gameState.round} started with ${playerCount} players`, 'success');
-      Logger.gameEvent('Auction started', { round: gameState.round, players: playerCount });
+      Logger.info(`🚀 ═══════════════════════════════════════════════════════════`);
+      Logger.info(`🚀 ROUND ${gameState.round} STARTING!`);
+      Logger.info(`🚀 Players: ${playerCount} | Auction: ${gameState.auctionDuration}s | Countdown: ${gameState.countdownDuration}s`);
+      Logger.info(`🚀 ═══════════════════════════════════════════════════════════`);
       broadcastState();
 
       const interval = setInterval(() => {
@@ -341,20 +348,23 @@ export function setupSocketIO(io: Server): void {
 
       if (gameState.players[socket.id]) {
         const playerName = gameState.players[socket.id].name;
+        const playerClicks = gameState.players[socket.id].clicks;
         const isActiveAuction = gameState.status === 'auction_countdown' || gameState.status === 'auction';
 
         const token = session.markSessionDisconnected(socket.id);
 
+        const remainingPlayers = Object.keys(gameState.players).length - 1;
+        
         if (token) {
           const sessionData = session.getSessionByToken(token);
           if (sessionData) {
             sessionData.playerData = { ...gameState.players[socket.id] };
             sessionData.playerData.disconnectedRound = gameState.round;
           }
-          Logger.playerAction('disconnected (grace period)', playerName);
+          Logger.warn(`⚠️  PLAYER DISCONNECTED: ${playerName} (clicks: ${playerClicks}) - can reconnect | Remaining: ${remainingPlayers}`);
           broadcastToHosts('player_disconnected', `${playerName} disconnected (can reconnect)`, 'warning');
         } else {
-          Logger.playerAction('disconnected', playerName);
+          Logger.warn(`👋 PLAYER LEFT: ${playerName} (clicks: ${playerClicks}) | Remaining: ${remainingPlayers}`);
           broadcastToHosts('player_disconnected', `${playerName} left`, 'warning');
         }
 
@@ -363,7 +373,7 @@ export function setupSocketIO(io: Server): void {
         }
         broadcastState();
       } else if (wasHost) {
-        // Don't notify about host disconnecting to other hosts
+        Logger.info(`🎛️  Host disconnected`);
       }
     });
   });
