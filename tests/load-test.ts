@@ -9,9 +9,12 @@
  *   --prod            Use production URL (https://click-auction.onrender.com)
  *   --players=<n>     Number of players (default: 200)
  *   --ramp=<ms>       Ramp-up time in ms (default: 5000)
+ *   --pin=<pin>       Host PIN to auto-start the game (optional)
+ *   --duration=<s>    Auction duration in seconds (default: 10)
  * 
  * Examples:
  *   npx ts-node tests/load-test.ts --prod --players=50
+ *   npx ts-node tests/load-test.ts --prod --players=200 --pin=1234
  *   npx ts-node tests/load-test.ts --url=https://click-auction.onrender.com --players=200
  * 
  * NOTE: All connections from this machine share ONE IP address.
@@ -33,6 +36,8 @@ const PROD_URL = 'https://click-auction.onrender.com';
 const SERVER_URL = hasFlag('prod') ? PROD_URL : getArg('url', 'http://localhost:3000');
 const NUM_PLAYERS = parseInt(getArg('players', '200'), 10);
 const RAMP_UP_MS = parseInt(getArg('ramp', '5000'), 10);
+const HOST_PIN = getArg('pin', '');
+const AUCTION_DURATION = parseInt(getArg('duration', '10'), 10);
 const CLICK_INTERVAL_MS = 100; // Click every 100ms during bidding
 
 // Metrics
@@ -72,6 +77,83 @@ const connectTimes: number[] = [];
 const joinTimes: number[] = [];
 const sockets: Socket[] = [];
 let currentGameStatus = 'waiting';
+let hostSocket: Socket | null = null;
+let gameFinished = false;
+
+// Authenticate as host and get auth token
+async function authenticateHost(): Promise<string | null> {
+  if (!HOST_PIN) return null;
+  
+  try {
+    const response = await fetch(`${SERVER_URL}/api/host/auth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: HOST_PIN }),
+    });
+    
+    if (!response.ok) {
+      console.log('   ❌ Host authentication failed - wrong PIN?');
+      return null;
+    }
+    
+    const data = await response.json() as { token?: string };
+    if (data.token) {
+      console.log('   ✅ Host authenticated');
+      return data.token;
+    }
+    return null;
+  } catch (err) {
+    console.log('   ❌ Host auth error:', (err as Error).message);
+    return null;
+  }
+}
+
+// Create host socket and start the game
+async function createHostAndStartGame(): Promise<void> {
+  const token = await authenticateHost();
+  if (!token) {
+    console.log('   ⚠️  No host PIN provided or auth failed - waiting for manual start');
+    return;
+  }
+  
+  return new Promise((resolve) => {
+    hostSocket = io(SERVER_URL, {
+      reconnection: false,
+      timeout: 10000,
+      transports: ['websocket'],
+    });
+    
+    hostSocket.on('connect', () => {
+      console.log('   🎮 Host socket connected');
+      hostSocket!.emit('authenticateHost', { token });
+    });
+    
+    hostSocket.on('hostAuthenticated', (data: { success: boolean }) => {
+      if (data.success) {
+        console.log('   🎮 Host socket authenticated - starting auction in 2s...');
+        setTimeout(() => {
+          console.log(`   🚀 Starting auction (${AUCTION_DURATION}s duration)...`);
+          hostSocket!.emit('startAuction', { duration: AUCTION_DURATION });
+          resolve();
+        }, 2000);
+      } else {
+        console.log('   ❌ Host socket auth failed');
+        resolve();
+      }
+    });
+    
+    hostSocket.on('gameState', (state: { status: string }) => {
+      if (state.status === 'finished') {
+        gameFinished = true;
+      }
+    });
+    
+    hostSocket.on('connect_error', (err) => {
+      console.log('   ❌ Host socket error:', err.message);
+      resolve();
+    });
+  });
+}
 
 // Create a simulated player
 function createPlayer(playerId: number): Promise<Socket> {
@@ -303,15 +385,41 @@ async function runLoadTest(): Promise<void> {
   await Promise.allSettled(promises);
   
   console.log('✅ All players connected/attempted');
-  console.log(`\n🎮 Waiting for game... (Start the game from host panel)`);
+  
+  // Start game as host if PIN provided
+  if (HOST_PIN) {
+    console.log('\n🎮 Starting game as host...');
+    await createHostAndStartGame();
+  } else {
+    console.log(`\n🎮 Waiting for game... (Start the game from host panel)`);
+    console.log('   Or re-run with --pin=YOUR_PIN to auto-start');
+  }
   console.log('   Press Ctrl+C to stop and see results\n');
 
-  // Wait for game to play out (60 seconds max)
-  await new Promise(r => setTimeout(r, 60000));
+  // Wait for game to finish or timeout (90 seconds max)
+  const startWait = Date.now();
+  const maxWait = 90000;
+  while (!gameFinished && Date.now() - startWait < maxWait) {
+    await new Promise(r => setTimeout(r, 1000));
+    // Show progress
+    if (currentGameStatus === 'auction') {
+      process.stdout.write(`\r   🎯 Click Auction in progress... (${metrics.totalClicks} clicks)   `);
+    } else if (currentGameStatus === 'fastestFinger_tap') {
+      process.stdout.write(`\r   ⚡ Fastest Finger in progress... (${metrics.totalTaps} taps)   `);
+    } else if (currentGameStatus === 'finished') {
+      console.log('\n   ✅ Game finished!');
+      break;
+    }
+  }
+  
+  if (!gameFinished && Date.now() - startWait >= maxWait) {
+    console.log('\n   ⏱️  Timeout reached');
+  }
 
   // Cleanup
   console.log('\n🧹 Cleaning up connections...');
   sockets.forEach(s => s.disconnect());
+  if (hostSocket) hostSocket.disconnect();
   
   printReport();
   process.exit(metrics.joinSuccess >= NUM_PLAYERS * 0.95 ? 0 : 1);
@@ -321,6 +429,7 @@ async function runLoadTest(): Promise<void> {
 process.on('SIGINT', () => {
   console.log('\n\n⏹️  Test interrupted');
   sockets.forEach(s => s.disconnect());
+  if (hostSocket) hostSocket.disconnect();
   printReport();
   process.exit(0);
 });
