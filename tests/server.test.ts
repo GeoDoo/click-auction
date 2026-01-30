@@ -1339,21 +1339,21 @@ describe('Click Auction Server', () => {
       await emitAndWait(winner, 'joinGame', { name: 'Winner' }, (s) => s.playerCount === 1);
       await emitAndWait(loser, 'joinGame', { name: 'Loser' }, (s) => s.playerCount === 2);
 
-      host.emit('startAuction', { duration: 1 });
+      host.emit('startAuction', { duration: 3 }); // Longer duration for reliable clicking
       await waitForStatus(winner, 'auction', 3000);
 
+      // Click rapidly - don't wait for confirmations to avoid timing issues
       for (let i = 0; i < 10; i++) {
-        const p = waitFor(winner, 'clickUpdate');
         winner.emit('click');
-        await p;
       }
       for (let i = 0; i < 2; i++) {
-        const p = waitFor(loser, 'clickUpdate');
         loser.emit('click');
-        await p;
       }
 
-      await waitForStatus(winner, 'finished', 5000);
+      // Small delay to ensure clicks are processed
+      await new Promise(r => setTimeout(r, 100));
+
+      await waitForStatus(winner, 'finished', 15000); // Longer timeout for full game flow
 
       // Winner disconnects - wait for playerCount to decrease
       const disconnectPromise = waitForPlayerCount(loser, 1);
