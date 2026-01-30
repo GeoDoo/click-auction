@@ -269,6 +269,7 @@ header {
 .log-entry.warning { color: #f0883e; }
 .log-entry.error { color: #f85149; font-weight: 600; }
 .log-entry.player { color: #58a6ff; }
+.log-entry.game { color: #d2a8ff; font-weight: 500; }
 
 /* Status panel takes full height */
 .status-panel-card {

@@ -4,6 +4,7 @@ import * as botDetection from './botDetection';
 import * as persistence from './persistence';
 import Logger from './logger';
 import { GameState, LeaderboardEntry, Player } from './types';
+import { broadcastToHosts } from './socket';
 
 // Game state
 export const gameState: GameState = {
@@ -167,6 +168,7 @@ export function startClickAuction(): void {
 
   const playerCount = Object.keys(gameState.players).length;
   Logger.info(`🎯 CLICK AUCTION STARTED | Round ${gameState.round} | ${playerCount} players | ${gameState.auctionDuration}s duration`);
+  broadcastToHosts('auction_start', `🎯 CLICK AUCTION STARTED | ${playerCount} players | ${gameState.auctionDuration}s`, 'game');
 
   broadcastState();
 
@@ -206,6 +208,8 @@ export function endClickAuction(): void {
   
   Logger.info(`🏁 CLICK AUCTION ENDED | Total: ${totalClicks} clicks`);
   Logger.info(`📊 TOP 5: ${sortedPlayers.slice(0, 5).map((p, i) => `${i + 1}. ${p.name} (${p.clicks})`).join(' | ')}`);
+  broadcastToHosts('auction_end', `🏁 AUCTION ENDED | ${totalClicks} clicks`, 'game');
+  broadcastToHosts('auction_top5', `📊 TOP 5: ${sortedPlayers.slice(0, 5).map((p, i) => `${i + 1}. ${p.name} (${p.clicks})`).join(' | ')}`, 'game');
 
   // Start Fastest Finger countdown
   gameState.status = 'fastestFinger_countdown';
@@ -292,6 +296,12 @@ export function endFastestFinger(): void {
     Logger.info(`   🥇 Fastest: ${tappedPlayers[0].name} (${tappedPlayers[0].reactionTime}ms)`);
     if (tappedPlayers.length > 1) Logger.info(`   🥈 2nd: ${tappedPlayers[1].name} (${tappedPlayers[1].reactionTime}ms)`);
     if (tappedPlayers.length > 2) Logger.info(`   🥉 3rd: ${tappedPlayers[2].name} (${tappedPlayers[2].reactionTime}ms)`);
+    
+    // Broadcast fastest finger top 3 to host
+    let ffResults = `⚡ FASTEST FINGER: 🥇 ${tappedPlayers[0].name} (${tappedPlayers[0].reactionTime}ms)`;
+    if (tappedPlayers.length > 1) ffResults += ` | 🥈 ${tappedPlayers[1].name} (${tappedPlayers[1].reactionTime}ms)`;
+    if (tappedPlayers.length > 2) ffResults += ` | 🥉 ${tappedPlayers[2].name} (${tappedPlayers[2].reactionTime}ms)`;
+    broadcastToHosts('fastest_finger', ffResults, 'game');
   }
   if (didntTap > 0) Logger.info(`   ❌ ${didntTap} player(s) didn't tap`);
 
@@ -321,6 +331,16 @@ export function endFastestFinger(): void {
     Logger.info(`   ... and ${leaderboard.length - 10} more players`);
   }
   Logger.info(`🏆 ═══════════════════════════════════════════════════════════`);
+
+  // Broadcast winner and top 3 to host
+  broadcastToHosts('round_complete', `🏆 ROUND ${gameState.round} COMPLETE!`, 'success');
+  broadcastToHosts('winner', `🏆 WINNER: ${winnerName || 'No winner'} with ${leaderboard[0]?.finalScore || 0} points`, 'success');
+  
+  const top3 = leaderboard.slice(0, 3).map((p, i) => {
+    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉';
+    return `${medal} ${p.name}: ${p.finalScore} pts`;
+  }).join(' | ');
+  broadcastToHosts('leaderboard_top3', `📊 ${top3}`, 'game');
 
   leaderboard.forEach((player) => {
     // Track auction taps, reaction time, and final score

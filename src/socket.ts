@@ -30,7 +30,7 @@ const authenticatedHostSockets = new Set<string>();
 let ioInstance: Server | null = null;
 
 // Broadcast event to all authenticated hosts
-function broadcastToHosts(type: string, message: string, level: 'info' | 'success' | 'warning' | 'error' | 'player' = 'info'): void {
+export function broadcastToHosts(type: string, message: string, level: 'info' | 'success' | 'warning' | 'error' | 'player' | 'game' = 'info'): void {
   if (!ioInstance) return;
   authenticatedHostSockets.forEach((socketId) => {
     ioInstance!.to(socketId).emit('hostEvent', { type, message, level });
