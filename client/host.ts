@@ -145,6 +145,18 @@ socket.on('connect_error', (err: Error) => {
   Logger.error('Socket connection error:', err.message);
   setConnectionStatus(false, 'Connection error');
   addLog(`Connection error: ${err.message}`, 'error');
+  
+  // "Session ID unknown" happens when server restarts and client has stale session
+  if (err.message === 'Session ID unknown') {
+    Logger.info('Server restarted - forcing fresh connection');
+    addLog('Server restarted - reconnecting...', 'warning');
+    
+    // Force a completely fresh connection by disconnecting and reconnecting
+    socket.disconnect();
+    setTimeout(() => {
+      socket.connect();
+    }, 500);
+  }
 });
 
 // Host-specific events

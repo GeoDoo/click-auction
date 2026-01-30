@@ -136,6 +136,24 @@ socket.on('reconnect_failed', () => {
   }
 });
 
+// Handle connection errors (including server cold-start "Session ID unknown")
+socket.on('connect_error', (err: Error) => {
+  Logger.warn('Connection error:', err.message);
+  
+  // "Session ID unknown" happens when server restarts and client has stale session
+  if (err.message === 'Session ID unknown') {
+    Logger.info('Server restarted - forcing fresh connection');
+    showReconnectMessage('Server restarted. Reconnecting...');
+    
+    // Force a completely fresh connection by disconnecting and reconnecting
+    // This clears the stale Socket.io session ID
+    socket.disconnect();
+    setTimeout(() => {
+      socket.connect();
+    }, 500);
+  }
+});
+
 // Handle successful reconnection
 socket.on('reconnect', (attemptNumber: number) => {
   Logger.info(`Reconnected after ${attemptNumber} attempts`);

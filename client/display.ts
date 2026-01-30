@@ -41,10 +41,31 @@ interface ConfigResponse {
   baseUrl: string;
 }
 
-const socket: Socket = io();
+const socket: Socket = io({
+  reconnection: true,
+  reconnectionAttempts: 10,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+});
 let maxClicks = 1;
 let lastCountdown: number | null = null;
 let lastStatus: GameState['status'] = 'waiting';
+
+// Handle connection errors (including server cold-start "Session ID unknown")
+socket.on('connect_error', (err: Error) => {
+  Logger.warn('Connection error:', err.message);
+  
+  // "Session ID unknown" happens when server restarts and client has stale session
+  if (err.message === 'Session ID unknown') {
+    Logger.info('Server restarted - forcing fresh connection');
+    
+    // Force a completely fresh connection by disconnecting and reconnecting
+    socket.disconnect();
+    setTimeout(() => {
+      socket.connect();
+    }, 500);
+  }
+});
 
 
 // Fetch config for QR code
